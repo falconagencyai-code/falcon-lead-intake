@@ -9,8 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as FormContatto1RouteImport } from './routes/form-contatto-1'
 import { Route as IndexRouteImport } from './routes/index'
 
+const FormContatto1Route = FormContatto1RouteImport.update({
+  id: '/form-contatto-1',
+  path: '/form-contatto-1',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +25,39 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/form-contatto-1': typeof FormContatto1Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/form-contatto-1': typeof FormContatto1Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/form-contatto-1': typeof FormContatto1Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/form-contatto-1'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/form-contatto-1'
+  id: '__root__' | '/' | '/form-contatto-1'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FormContatto1Route: typeof FormContatto1Route
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/form-contatto-1': {
+      id: '/form-contatto-1'
+      path: '/form-contatto-1'
+      fullPath: '/form-contatto-1'
+      preLoaderRoute: typeof FormContatto1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +70,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FormContatto1Route: FormContatto1Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
