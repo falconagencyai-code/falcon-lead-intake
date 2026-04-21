@@ -33,91 +33,68 @@ const questionsByService: Record<ServiceKey, { key: string; label: string; type:
 const budgets = ["< €1.000", "€1.000–€5.000", "€5.000–€15.000", "€15.000+"];
 const timelines = ["Prima possibile", "1-3 mesi", "3-6 mesi", "Non ho fretta"];
 
+function OptionGrid({ items, value, onSelect }: { items: string[]; value: string | null | undefined; onSelect: (v: string) => void }) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {items.map((opt) => {
+        const active = value === opt;
+        return (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onSelect(opt)}
+            className={`glass glass-hover px-4 py-4 text-sm font-medium text-white text-left ${active ? "glass-active" : ""}`}
+            style={active ? { color: "#00d4ff" } : undefined}
+          >
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function Step2Details({ state, setAnswer, setBudget, setTimeline }: Props) {
   const qs = state.service ? questionsByService[state.service] : [];
 
   return (
-    <div className="space-y-6 animate-slide-in">
+    <div className="space-y-8 animate-slide-in">
       <div>
-        <p className="text-xs tracking-[0.3em] text-primary uppercase">Step 2 / 4</p>
-        <h2 className="mt-2 text-3xl md:text-4xl font-bold">Raccontaci di più</h2>
-        <p className="mt-2 text-muted-foreground">Più dettagli ci dai, più precisa sarà la risposta del tuo Falcon.</p>
+        <p className="label-section">Dettagli</p>
+        <h2 className="mt-3 font-bold text-white" style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+          Raccontaci di più
+        </h2>
+        <p className="mt-3 text-base" style={{ color: "#6677aa" }}>
+          Più dettagli ci dai, più precisa sarà la risposta del tuo Falcon.
+        </p>
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-7">
         {qs.map((q) => (
           <div key={q.key}>
-            <label className="block text-sm font-medium mb-2">{q.label}</label>
+            <label className="label-section block mb-3">{q.label}</label>
             {q.type === "text" ? (
               <textarea
                 value={state.answers[q.key] || ""}
                 onChange={(e) => setAnswer(q.key, e.target.value)}
                 placeholder={q.placeholder}
                 rows={3}
-                className="w-full p-3 rounded-lg bg-input border border-border focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors resize-none"
+                className="input-premium resize-none"
               />
             ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {q.options!.map((opt) => {
-                  const active = state.answers[q.key] === opt;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setAnswer(q.key, opt)}
-                      className={`p-3 rounded-lg border text-sm font-medium transition-all ${
-                        active ? "neon-border border-primary bg-primary/10 text-primary" : "border-border bg-card/60 hover:border-primary/60"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
-              </div>
+              <OptionGrid items={q.options!} value={state.answers[q.key]} onSelect={(v) => setAnswer(q.key, v)} />
             )}
           </div>
         ))}
 
         <div>
-          <label className="block text-sm font-medium mb-2">Budget indicativo</label>
-          <div className="grid grid-cols-2 gap-2">
-            {budgets.map((b) => {
-              const active = state.budget === b;
-              return (
-                <button
-                  key={b}
-                  type="button"
-                  onClick={() => setBudget(b)}
-                  className={`p-3 rounded-lg border text-sm font-medium transition-all ${
-                    active ? "neon-border border-primary bg-primary/10 text-primary" : "border-border bg-card/60 hover:border-primary/60"
-                  }`}
-                >
-                  {b}
-                </button>
-              );
-            })}
-          </div>
+          <label className="label-section block mb-3">Budget indicativo</label>
+          <OptionGrid items={budgets} value={state.budget} onSelect={setBudget} />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-2">Quando vuoi iniziare?</label>
-          <div className="grid grid-cols-2 gap-2">
-            {timelines.map((t) => {
-              const active = state.timeline === t;
-              return (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTimeline(t)}
-                  className={`p-3 rounded-lg border text-sm font-medium transition-all ${
-                    active ? "neon-border border-primary bg-primary/10 text-primary" : "border-border bg-card/60 hover:border-primary/60"
-                  }`}
-                >
-                  {t}
-                </button>
-              );
-            })}
-          </div>
+          <label className="label-section block mb-3">Quando vuoi iniziare?</label>
+          <OptionGrid items={timelines} value={state.timeline} onSelect={setTimeline} />
         </div>
       </div>
     </div>

@@ -16,14 +16,18 @@ const options: { key: ServiceKey; label: string; desc: string; Icon: typeof Glob
 
 export function Step1Service({ value, onChange }: Props) {
   return (
-    <div className="space-y-6 animate-slide-in">
+    <div className="space-y-8 animate-slide-in">
       <div>
-        <p className="text-xs tracking-[0.3em] text-primary uppercase">Step 1 / 4</p>
-        <h2 className="mt-2 text-3xl md:text-4xl font-bold">Di cosa hai bisogno?</h2>
-        <p className="mt-2 text-muted-foreground">Seleziona il servizio più vicino al tuo progetto.</p>
+        <p className="label-section">Servizio</p>
+        <h2 className="mt-3 font-bold text-white" style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+          Di cosa hai bisogno?
+        </h2>
+        <p className="mt-3 text-base" style={{ color: "#6677aa" }}>
+          Seleziona il servizio più vicino al tuo progetto.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {options.map(({ key, label, desc, Icon }) => {
           const active = value === key;
           return (
@@ -31,15 +35,25 @@ export function Step1Service({ value, onChange }: Props) {
               key={key}
               type="button"
               onClick={() => onChange(key)}
-              className={`group relative text-left p-5 rounded-xl border bg-card/60 backdrop-blur transition-all hover:-translate-y-0.5 hover:border-primary ${
-                active ? "neon-border border-primary bg-primary/10" : "border-border"
-              }`}
+              className={`glass glass-hover text-left p-5 ${active ? "glass-active" : ""}`}
             >
-              <div className={`flex items-center justify-center w-12 h-12 rounded-lg ${active ? "gradient-cyan text-primary-foreground" : "bg-secondary text-primary"}`}>
-                <Icon className="w-6 h-6" />
+              <div
+                className="relative flex items-center justify-center w-12 h-12 rounded-full"
+                style={{
+                  background: "rgba(0, 212, 255, 0.08)",
+                  boxShadow: active
+                    ? "0 0 24px rgba(0,212,255,0.45), inset 0 0 12px rgba(0,212,255,0.2)"
+                    : "0 0 16px rgba(0,212,255,0.15)",
+                }}
+              >
+                <Icon className="w-6 h-6" style={{ color: "#00d4ff" }} />
               </div>
-              <h3 className="mt-4 font-semibold text-foreground">{label}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
+              <h3 className="mt-4 text-white font-semibold" style={{ fontSize: "18px" }}>
+                {label}
+              </h3>
+              <p className="mt-1" style={{ color: "#8899aa", fontSize: "13px" }}>
+                {desc}
+              </p>
             </button>
           );
         })}
