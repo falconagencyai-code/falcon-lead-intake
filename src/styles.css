@@ -236,55 +236,72 @@
   to { background-position: 0 -560px; }
 }
 
+/* Falcon: corpo che galleggia con leggera rotazione */
 @keyframes falcon-float {
-  0%, 100% { transform: translateY(-8px); }
-  50% { transform: translateY(8px); }
+  0%   { transform: translateY(0px) rotate(-1deg); }
+  25%  { transform: translateY(-14px) rotate(0.5deg); }
+  50%  { transform: translateY(-20px) rotate(1.5deg); }
+  75%  { transform: translateY(-10px) rotate(0.5deg); }
+  100% { transform: translateY(0px) rotate(-1deg); }
 }
+
+/* Falcon: sbattito ali — scale orizzontale + prospettiva verticale */
 @keyframes falcon-wings {
-  0% { transform: rotate(-3deg); }
-  100% { transform: rotate(3deg); }
+  0%   { transform: scaleX(1) scaleY(1) rotate(0deg); }
+  15%  { transform: scaleX(1.08) scaleY(0.93) rotate(-1.5deg); }
+  30%  { transform: scaleX(0.94) scaleY(1.06) rotate(1deg); }
+  45%  { transform: scaleX(1.06) scaleY(0.95) rotate(-1deg); }
+  60%  { transform: scaleX(0.96) scaleY(1.04) rotate(0.5deg); }
+  80%  { transform: scaleX(1.04) scaleY(0.97) rotate(-0.5deg); }
+  100% { transform: scaleX(1) scaleY(1) rotate(0deg); }
 }
+
+/* Glow sotto il falco che pulsa */
 @keyframes falcon-glow-pulse {
-  0%, 100% { opacity: 0.6; transform: scaleX(0.9); }
-  50% { opacity: 1; transform: scaleX(1.05); }
+  0%, 100% { opacity: 0.5; transform: scaleX(0.85); }
+  50%       { opacity: 1;   transform: scaleX(1.1); }
 }
+
+/* Celebrazione step 4 */
 @keyframes celebrate {
-  0% { transform: translateY(0) scale(1); }
-  30% { transform: translateY(-24px) scale(1.08) rotate(-5deg); }
-  60% { transform: translateY(-8px) scale(1.04) rotate(5deg); }
-  100% { transform: translateY(0) scale(1); }
+  0%   { transform: translateY(0) scale(1) rotate(0deg); }
+  15%  { transform: translateY(-30px) scale(1.1) rotate(-6deg); }
+  35%  { transform: translateY(-18px) scale(1.06) rotate(6deg); }
+  55%  { transform: translateY(-26px) scale(1.08) rotate(-4deg); }
+  75%  { transform: translateY(-12px) scale(1.04) rotate(3deg); }
+  100% { transform: translateY(0) scale(1) rotate(0deg); }
 }
 
 @keyframes slide-in-right {
   from { opacity: 0; transform: translateX(40px); }
-  to { opacity: 1; transform: translateX(0); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 @keyframes slide-out-left {
   from { opacity: 1; transform: translateX(0); }
-  to { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 0; transform: translateX(-40px); }
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
+  0%   { transform: translateX(-100%); }
   100% { transform: translateX(200%); }
 }
 
 @keyframes dot-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.6); }
-  50% { box-shadow: 0 0 0 8px rgba(0, 212, 255, 0); }
+  50%       { box-shadow: 0 0 0 8px rgba(0, 212, 255, 0); }
 }
 
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.3); }
-  50% { box-shadow: 0 0 50px rgba(0, 212, 255, 0.65); }
+  50%       { box-shadow: 0 0 50px rgba(0, 212, 255, 0.65); }
 }
 
-.animate-falcon-float { animation: falcon-float 3s ease-in-out infinite; }
-.animate-falcon-wings { animation: falcon-wings 1.5s ease-in-out infinite alternate; }
-.animate-falcon-glow { animation: falcon-glow-pulse 3s ease-in-out infinite; }
-.animate-celebrate { animation: celebrate 1.2s ease-in-out infinite; }
-.animate-slide-in { animation: slide-in-right 350ms cubic-bezier(0.4, 0, 0.2, 1); }
-.animate-slide-out { animation: slide-out-left 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.animate-pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
-.animate-dot-pulse { animation: dot-pulse 2s ease-in-out infinite; }
-.animate-shimmer { animation: shimmer 2.2s ease-in-out infinite; }
+.animate-falcon-float { animation: falcon-float 4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
+.animate-falcon-wings { animation: falcon-wings 0.9s ease-in-out infinite; }
+.animate-falcon-glow  { animation: falcon-glow-pulse 4s ease-in-out infinite; }
+.animate-celebrate    { animation: celebrate 1.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite; }
+.animate-slide-in     { animation: slide-in-right 350ms cubic-bezier(0.4, 0, 0.2, 1); }
+.animate-slide-out    { animation: slide-out-left 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.animate-pulse-glow   { animation: pulse-glow 2.5s ease-in-out infinite; }
+.animate-dot-pulse    { animation: dot-pulse 2s ease-in-out infinite; }
+.animate-shimmer      { animation: shimmer 2.2s ease-in-out infinite; }
