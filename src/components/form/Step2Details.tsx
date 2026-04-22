@@ -3,8 +3,6 @@ import type { FormState, ServiceKey } from "./types";
 interface Props {
   state: FormState;
   setAnswer: (key: string, value: string) => void;
-  setBudget: (value: string) => void;
-  setTimeline: (value: string) => void;
 }
 
 const questionsByService: Record<ServiceKey, { key: string; label: string; type: "text" | "options"; options?: string[]; placeholder?: string }[]> = {
@@ -30,9 +28,6 @@ const questionsByService: Record<ServiceKey, { key: string; label: string; type:
   ],
 };
 
-const budgets = ["< €1.000", "€1.000–€5.000", "€5.000–€15.000", "€15.000+"];
-const timelines = ["Prima possibile", "1-3 mesi", "3-6 mesi", "Non ho fretta"];
-
 function OptionGrid({ items, value, onSelect }: { items: string[]; value: string | null | undefined; onSelect: (v: string) => void }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -54,14 +49,17 @@ function OptionGrid({ items, value, onSelect }: { items: string[]; value: string
   );
 }
 
-export function Step2Details({ state, setAnswer, setBudget, setTimeline }: Props) {
+export function Step2Details({ state, setAnswer }: Props) {
   const qs = state.service ? questionsByService[state.service] : [];
 
   return (
     <div className="space-y-8 animate-slide-in">
       <div>
         <p className="label-section">Dettagli</p>
-        <h2 className="mt-3 font-bold text-white" style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-0.02em", lineHeight: 1.1 }}>
+        <h2
+          className="mt-3 font-bold text-white"
+          style={{ fontSize: "clamp(28px, 4vw, 40px)", letterSpacing: "-0.02em", lineHeight: 1.1 }}
+        >
           Raccontaci di più
         </h2>
         <p className="mt-3 text-base" style={{ color: "#6677aa" }}>
@@ -86,16 +84,6 @@ export function Step2Details({ state, setAnswer, setBudget, setTimeline }: Props
             )}
           </div>
         ))}
-
-        <div>
-          <label className="label-section block mb-3">Budget indicativo</label>
-          <OptionGrid items={budgets} value={state.budget} onSelect={setBudget} />
-        </div>
-
-        <div>
-          <label className="label-section block mb-3">Quando vuoi iniziare?</label>
-          <OptionGrid items={timelines} value={state.timeline} onSelect={setTimeline} />
-        </div>
       </div>
     </div>
   );

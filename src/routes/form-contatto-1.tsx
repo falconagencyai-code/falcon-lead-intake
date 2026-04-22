@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { FalconMascot } from "@/components/FalconMascot";
 import { Step1Service } from "@/components/form/Step1Service";
 import { Step2Details } from "@/components/form/Step2Details";
+import { Step3BudgetTimeline } from "@/components/form/Step3BudgetTimeline";
 import { Step3Contact } from "@/components/form/Step3Contact";
 import { Step4ThankYou } from "@/components/form/Step4ThankYou";
 import { initialState, type FormState, type ServiceKey } from "@/components/form/types";
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/form-contatto-1")({
   component: FormPage,
 });
 
-function StepDots({ step, total = 4 }: { step: number; total?: number }) {
+function StepDots({ step, total = 5 }: { step: number; total?: number }) {
   return (
     <div className="flex items-center gap-3" aria-label={`Step ${step} di ${total}`}>
       {Array.from({ length: total }).map((_, i) => {
@@ -61,8 +62,9 @@ function FormPage() {
 
   const canAdvance = () => {
     if (step === 1) return state.service !== null;
-    if (step === 2) return state.budget !== null && state.timeline !== null;
-    if (step === 3)
+    if (step === 2) return true;
+    if (step === 3) return state.budget !== null && state.timeline !== null;
+    if (step === 4)
       return (
         state.fullName.trim().length > 1 &&
         /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(state.email) &&
@@ -101,12 +103,12 @@ function FormPage() {
   };
 
   const next = () => {
-    if (step === 3) return submit();
+    if (step === 4) return submit();
     setStep((s) => s + 1);
   };
   const back = () => setStep((s) => Math.max(1, s - 1));
 
-  const progress = (step / 4) * 100;
+  const progress = (step / 5) * 100;
 
   return (
     <main className="relative min-h-screen overflow-hidden" style={{ background: "#070b14" }}>
@@ -131,7 +133,7 @@ function FormPage() {
           </div>
           <span className="font-semibold tracking-wide text-white">Falcon Agency</span>
         </div>
-        <StepDots step={Math.min(step, 4)} />
+        <StepDots step={Math.min(step, 5)} />
       </header>
 
       {/* Progress bar */}
@@ -184,15 +186,21 @@ function FormPage() {
               <Step2Details
                 state={state}
                 setAnswer={setAnswer}
+              />
+            )}
+            {step === 3 && (
+              <Step3BudgetTimeline
+                budget={state.budget}
+                timeline={state.timeline}
                 setBudget={(v) => update({ budget: v })}
                 setTimeline={(v) => update({ timeline: v })}
               />
             )}
-            {step === 3 && <Step3Contact state={state} update={update} />}
-            {step === 4 && <Step4ThankYou />}
+            {step === 4 && <Step3Contact state={state} update={update} />}
+            {step === 5 && <Step4ThankYou />}
           </div>
 
-          {step < 4 && (
+          {step < 5 && (
             <div className="mt-10 flex items-center justify-between gap-3">
               <button
                 type="button"
@@ -212,7 +220,7 @@ function FormPage() {
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" /> Invio...
                   </>
-                ) : step === 3 ? (
+                ) : step === 4 ? (
                   <>Invia richiesta <ArrowRight className="w-4 h-4" /></>
                 ) : (
                   <>Avanti <ArrowRight className="w-4 h-4" /></>
@@ -224,12 +232,13 @@ function FormPage() {
 
         {/* Mascot */}
         <aside className="hidden lg:flex flex-col items-center justify-center sticky top-10">
-          <FalconMascot step={step} celebrate={step === 4} size={400} />
+          <FalconMascot step={step} celebrate={step === 5} size={400} />
           <p className="mt-8 text-center text-sm max-w-xs" style={{ color: "#6677aa" }}>
             {step === 1 && "Scegli il tuo punto di partenza. Sono qui per aiutarti a decollare."}
-            {step === 2 && "Bene! Più sei preciso, meglio costruirò la proposta."}
-            {step === 3 && "Ultimo passo. Lascia i tuoi contatti e parto subito."}
-            {step === 4 && "Missione ricevuta! Decollerò entro 24 ore."}
+            {step === 2 && "Perfetto! Dimmi di più sul tuo progetto."}
+            {step === 3 && "Bene! Più sei preciso, meglio costruirò la proposta."}
+            {step === 4 && "Ultimo passo. Lascia i tuoi contatti e parto subito."}
+            {step === 5 && "Missione ricevuta! Decollerò entro 24 ore."}
           </p>
         </aside>
       </div>
