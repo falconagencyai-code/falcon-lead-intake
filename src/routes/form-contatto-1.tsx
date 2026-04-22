@@ -53,6 +53,7 @@ function StepDots({ step, total = 5 }: { step: number; total?: number }) {
 
 function FormPage() {
   const [step, setStep] = useState(1);
+  const [visible, setVisible] = useState(true);
   const [state, setState] = useState<FormState>(initialState);
   const [submitting, setSubmitting] = useState(false);
 
@@ -93,7 +94,7 @@ function FormPage() {
       } else {
         console.warn("Supabase non configurato — skip insert", state);
       }
-      setStep(4);
+      setStep(5);
     } catch (e) {
       console.error(e);
       toast.error("Errore nell'invio. Riprova tra poco.");
@@ -102,11 +103,19 @@ function FormPage() {
     }
   };
 
+  const changeStep = (targetStep: number) => {
+    setVisible(false);
+    window.setTimeout(() => {
+      setStep(targetStep);
+      setVisible(true);
+    }, 180);
+  };
+
   const next = () => {
     if (step === 4) return submit();
-    setStep((s) => s + 1);
+    changeStep(step + 1);
   };
-  const back = () => setStep((s) => Math.max(1, s - 1));
+  const back = () => changeStep(Math.max(1, step - 1));
 
   const progress = (step / 5) * 100;
 
@@ -175,7 +184,13 @@ function FormPage() {
             boxShadow: "0 30px 80px -20px rgba(0,0,0,0.6)",
           }}
         >
-          <div key={step}>
+          <div
+            style={{
+              opacity: visible ? 1 : 0,
+              transform: visible ? "translateY(0)" : "translateY(8px)",
+              transition: "opacity 180ms ease, transform 180ms ease",
+            }}
+          >
             {step === 1 && (
               <Step1Service
                 value={state.service}
