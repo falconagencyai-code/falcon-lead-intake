@@ -5,9 +5,9 @@ import frame3 from "@/assets/frames/frame3_wings_spread.png";
 import frame4 from "@/assets/frames/frame4_wings_down.png";
 import frame5 from "@/assets/frames/frame5_wings_low.png";
 
-// Wing cycle: up → mid → spread → down → low → down → spread → mid → up
-const HOVER_CYCLE = [frame1, frame2, frame3, frame4, frame5, frame4, frame3, frame2];
-const HOVER_FPS = 100; // ms per frame — ~10fps, smooth flap
+// Symmetric wing cycle: up → mid → spread → down → low → down → spread → mid → up
+const FRAMES = [frame1, frame2, frame3, frame4, frame5, frame4, frame3, frame2];
+const FRAME_MS = 110; // ms per frame
 
 interface Props {
   step: number;
@@ -16,16 +16,21 @@ interface Props {
 }
 
 export function FalconMascot({ celebrate = false, size = 380 }: Props) {
-  const [frameIdx, setFrameIdx] = useState(0);
+  const [current, setCurrent] = useState(0);
+  const [next, setNext] = useState(1);
+  const [fading, setFading] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setFrameIdx((i) => (i + 1) % HOVER_CYCLE.length);
-    }, HOVER_FPS);
+      setFading(true);
+      setTimeout(() => {
+        setCurrent((c) => (c + 1) % FRAMES.length);
+        setNext((n) => (n + 1) % FRAMES.length);
+        setFading(false);
+      }, FRAME_MS * 0.4); // crossfade at 40% of frame duration
+    }, FRAME_MS);
     return () => clearInterval(interval);
   }, []);
-
-  const src = HOVER_CYCLE[frameIdx];
 
   return (
     <div
@@ -37,40 +42,53 @@ export function FalconMascot({ celebrate = false, size = 380 }: Props) {
         aria-hidden
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            "radial-gradient(ellipse at 50% 55%, rgba(0,212,255,0.07) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse at 50% 55%, rgba(0,212,255,0.07) 0%, transparent 70%)",
           transform: "scale(1.3)",
         }}
       />
 
-      {/* Slow vertical float wrapper */}
+      {/* Float wrapper */}
       <div
         className={celebrate ? "animate-celebrate" : "animate-falcon-float"}
-        style={{ background: "none" }}
+        style={{ background: "none", position: "relative" }}
       >
+        {/* Current frame */}
         <img
-          key={src}
-          src={src}
+          src={FRAMES[current]}
           alt="Falcon Agency mascot"
           draggable={false}
           className="w-full h-auto block"
           style={{
-            filter:
-              "drop-shadow(0 0 20px rgba(0,212,255,0.45)) drop-shadow(0 6px 24px rgba(0,100,200,0.25))",
-            background: "none",
+            position: "absolute",
+            top: 0, left: 0,
+            opacity: fading ? 0 : 1,
+            transition: `opacity ${FRAME_MS * 0.4}ms ease-in-out`,
+            filter: "drop-shadow(0 0 20px rgba(0,212,255,0.45)) drop-shadow(0 6px 24px rgba(0,100,200,0.25))",
+          }}
+        />
+        {/* Next frame (crossfade target) */}
+        <img
+          src={FRAMES[next]}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="w-full h-auto block"
+          style={{
+            opacity: fading ? 1 : 0,
+            transition: `opacity ${FRAME_MS * 0.4}ms ease-in-out`,
+            filter: "drop-shadow(0 0 20px rgba(0,212,255,0.45)) drop-shadow(0 6px 24px rgba(0,100,200,0.25))",
           }}
         />
 
-        {/* Ground glow — pulses with the float */}
+        {/* Ground glow */}
         <div
           aria-hidden
-          className="mx-auto -mt-4 animate-falcon-glow"
+          className="mx-auto animate-falcon-glow"
           style={{
             width: "50%",
             height: "16px",
             borderRadius: "50%",
-            background:
-              "radial-gradient(ellipse at center, rgba(0,212,255,0.45) 0%, rgba(0,212,255,0) 70%)",
+            background: "radial-gradient(ellipse at center, rgba(0,212,255,0.45) 0%, rgba(0,212,255,0) 70%)",
           }}
         />
       </div>
