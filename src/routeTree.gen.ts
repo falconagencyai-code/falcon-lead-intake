@@ -13,6 +13,7 @@ import { Route as FormContatto1RouteImport } from './routes/form-contatto-1'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
 import { Route as AdminContractsRouteImport } from './routes/admin.contracts'
@@ -36,6 +37,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminTeamRoute = AdminTeamRouteImport.update({
   id: '/team',
   path: '/team',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminTasksRoute = AdminTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/tasks': typeof AdminTasksRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/tasks': typeof AdminTasksRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/tasks': typeof AdminTasksRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/admin/contracts'
     | '/admin/leads'
     | '/admin/settings'
+    | '/admin/tasks'
     | '/admin/team'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/admin/contracts'
     | '/admin/leads'
     | '/admin/settings'
+    | '/admin/tasks'
     | '/admin/team'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/admin/contracts'
     | '/admin/leads'
     | '/admin/settings'
+    | '/admin/tasks'
     | '/admin/team'
   fileRoutesById: FileRoutesById
 }
@@ -159,6 +171,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTeamRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/tasks': {
+      id: '/admin/tasks'
+      path: '/tasks'
+      fullPath: '/admin/tasks'
+      preLoaderRoute: typeof AdminTasksRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
@@ -195,6 +214,7 @@ interface AdminRouteChildren {
   AdminContractsRoute: typeof AdminContractsRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminTasksRoute: typeof AdminTasksRoute
   AdminTeamRoute: typeof AdminTeamRoute
 }
 
@@ -203,6 +223,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminContractsRoute: AdminContractsRoute,
   AdminLeadsRoute: AdminLeadsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminTasksRoute: AdminTasksRoute,
   AdminTeamRoute: AdminTeamRoute,
 }
 

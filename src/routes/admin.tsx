@@ -2,6 +2,7 @@ import { Link, Outlet, createFileRoute, useLocation } from "@tanstack/react-rout
 import {
   BarChart2,
   CheckCircle,
+  CheckSquare,
   Clock,
   FileText,
   LayoutDashboard,
@@ -43,6 +44,7 @@ const navItems = [
   { label: "Team", to: "/admin/team", icon: Shield },
   { label: "Contratti", to: "/admin/contracts", icon: FileText },
   { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2 },
+  { label: "Task", to: "/admin/tasks", icon: CheckSquare },
   { label: "Impostazioni", to: "/admin/settings", icon: Settings },
 ] as const;
 
