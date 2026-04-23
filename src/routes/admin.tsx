@@ -42,6 +42,7 @@ const navItems = [
   { label: "Lead", to: "/admin/leads", icon: Users },
   { label: "Team", to: "/admin/team", icon: Shield },
   { label: "Contratti", to: "/admin/contracts", icon: FileText },
+  { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2 },
   { label: "Impostazioni", to: "/admin/settings", icon: Settings },
 ] as const;
 
