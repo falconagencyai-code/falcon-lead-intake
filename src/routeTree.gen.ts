@@ -13,7 +13,9 @@ import { Route as FormContatto1RouteImport } from './routes/form-contatto-1'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
+import { Route as AdminContractsRouteImport } from './routes/admin.contracts'
 
 const FormContatto1Route = FormContatto1RouteImport.update({
   id: '/form-contatto-1',
@@ -35,9 +37,19 @@ const AdminTeamRoute = AdminTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminLeadsRoute = AdminLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminContractsRoute = AdminContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
   getParentRoute: () => AdminRoute,
 } as any)
 
@@ -45,14 +57,18 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRoutesById {
@@ -60,7 +76,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRouteTypes {
@@ -69,16 +87,27 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/form-contatto-1'
+    | '/admin/contracts'
     | '/admin/leads'
+    | '/admin/settings'
     | '/admin/team'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/form-contatto-1' | '/admin/leads' | '/admin/team'
+  to:
+    | '/'
+    | '/admin'
+    | '/form-contatto-1'
+    | '/admin/contracts'
+    | '/admin/leads'
+    | '/admin/settings'
+    | '/admin/team'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/form-contatto-1'
+    | '/admin/contracts'
     | '/admin/leads'
+    | '/admin/settings'
     | '/admin/team'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +147,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTeamRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/leads': {
       id: '/admin/leads'
       path: '/leads'
@@ -125,16 +161,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLeadsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/contracts': {
+      id: '/admin/contracts'
+      path: '/contracts'
+      fullPath: '/admin/contracts'
+      preLoaderRoute: typeof AdminContractsRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminContractsRoute: typeof AdminContractsRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminTeamRoute: typeof AdminTeamRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminContractsRoute: AdminContractsRoute,
   AdminLeadsRoute: AdminLeadsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminTeamRoute: AdminTeamRoute,
 }
 
