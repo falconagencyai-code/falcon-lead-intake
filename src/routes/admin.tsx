@@ -2,10 +2,10 @@ import { Link, Outlet, createFileRoute, useLocation } from "@tanstack/react-rout
 import {
   BarChart2,
   CheckCircle,
-  CheckSquare,
   Clock,
   FileText,
   LayoutDashboard,
+  Map,
   Radar,
   Settings,
   Shield,
