@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as FormContatto1RouteImport } from './routes/form-contatto-1'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
 const FormContatto1Route = FormContatto1RouteImport.update({
   id: '/form-contatto-1',
   path: '/form-contatto-1',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,27 +31,31 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/form-contatto-1': typeof FormContatto1Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/form-contatto-1': typeof FormContatto1Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/form-contatto-1': typeof FormContatto1Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/form-contatto-1'
+  fullPaths: '/' | '/admin' | '/form-contatto-1'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/form-contatto-1'
-  id: '__root__' | '/' | '/form-contatto-1'
+  to: '/' | '/admin' | '/form-contatto-1'
+  id: '__root__' | '/' | '/admin' | '/form-contatto-1'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   FormContatto1Route: typeof FormContatto1Route
 }
 
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/form-contatto-1'
       fullPath: '/form-contatto-1'
       preLoaderRoute: typeof FormContatto1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,6 +87,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   FormContatto1Route: FormContatto1Route,
 }
 export const routeTree = rootRouteImport
