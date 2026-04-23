@@ -1,5 +1,6 @@
 import { Link, Outlet, createFileRoute, useLocation } from "@tanstack/react-router";
 import {
+  BarChart2,
   CheckCircle,
   Clock,
   FileText,
