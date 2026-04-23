@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Calendar, FileText, Plus, X } from "lucide-react";
 import { useState } from "react";
 
-import { AdminBadge, AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
+import { AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
 
 export const Route = createFileRoute("/admin/clienti")({
   head: () => ({
