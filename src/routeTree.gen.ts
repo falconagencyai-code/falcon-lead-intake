@@ -13,8 +13,8 @@ import { Route as FormContatto1RouteImport } from './routes/form-contatto-1'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
-import { Route as AdminTasksRouteImport } from './routes/admin.tasks'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminRoadmapRouteImport } from './routes/admin.roadmap'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
 import { Route as AdminContractsRouteImport } from './routes/admin.contracts'
 import { Route as AdminContabilitaRouteImport } from './routes/admin.contabilita'
@@ -40,14 +40,14 @@ const AdminTeamRoute = AdminTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminTasksRoute = AdminTasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => AdminRoute,
-} as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRoadmapRoute = AdminRoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminLeadsRoute = AdminLeadsRouteImport.update({
@@ -79,8 +79,8 @@ export interface FileRoutesByFullPath {
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
-  '/admin/tasks': typeof AdminTasksRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRoutesByTo {
@@ -91,8 +91,8 @@ export interface FileRoutesByTo {
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
-  '/admin/tasks': typeof AdminTasksRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRoutesById {
@@ -104,8 +104,8 @@ export interface FileRoutesById {
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
-  '/admin/tasks': typeof AdminTasksRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRouteTypes {
@@ -118,8 +118,8 @@ export interface FileRouteTypes {
     | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/leads'
+    | '/admin/roadmap'
     | '/admin/settings'
-    | '/admin/tasks'
     | '/admin/team'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -130,8 +130,8 @@ export interface FileRouteTypes {
     | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/leads'
+    | '/admin/roadmap'
     | '/admin/settings'
-    | '/admin/tasks'
     | '/admin/team'
   id:
     | '__root__'
@@ -142,8 +142,8 @@ export interface FileRouteTypes {
     | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/leads'
+    | '/admin/roadmap'
     | '/admin/settings'
-    | '/admin/tasks'
     | '/admin/team'
   fileRoutesById: FileRoutesById
 }
@@ -183,18 +183,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTeamRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/tasks': {
-      id: '/admin/tasks'
-      path: '/tasks'
-      fullPath: '/admin/tasks'
-      preLoaderRoute: typeof AdminTasksRouteImport
-      parentRoute: typeof AdminRoute
-    }
     '/admin/settings': {
       id: '/admin/settings'
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/roadmap': {
+      id: '/admin/roadmap'
+      path: '/roadmap'
+      fullPath: '/admin/roadmap'
+      preLoaderRoute: typeof AdminRoadmapRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/leads': {
@@ -233,8 +233,8 @@ interface AdminRouteChildren {
   AdminContabilitaRoute: typeof AdminContabilitaRoute
   AdminContractsRoute: typeof AdminContractsRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
+  AdminRoadmapRoute: typeof AdminRoadmapRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
-  AdminTasksRoute: typeof AdminTasksRoute
   AdminTeamRoute: typeof AdminTeamRoute
 }
 
@@ -243,8 +243,8 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminContabilitaRoute: AdminContabilitaRoute,
   AdminContractsRoute: AdminContractsRoute,
   AdminLeadsRoute: AdminLeadsRoute,
+  AdminRoadmapRoute: AdminRoadmapRoute,
   AdminSettingsRoute: AdminSettingsRoute,
-  AdminTasksRoute: AdminTasksRoute,
   AdminTeamRoute: AdminTeamRoute,
 }
 
