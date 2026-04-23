@@ -16,6 +16,7 @@ import { Route as AdminTeamRouteImport } from './routes/admin.team'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
 import { Route as AdminContractsRouteImport } from './routes/admin.contracts'
+import { Route as AdminContabilitaRouteImport } from './routes/admin.contabilita'
 
 const FormContatto1Route = FormContatto1RouteImport.update({
   id: '/form-contatto-1',
@@ -52,11 +53,17 @@ const AdminContractsRoute = AdminContractsRouteImport.update({
   path: '/contracts',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminContabilitaRoute = AdminContabilitaRouteImport.update({
+  id: '/contabilita',
+  path: '/contabilita',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/form-contatto-1'
+    | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/leads'
     | '/admin/settings'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/form-contatto-1'
+    | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/leads'
     | '/admin/settings'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/form-contatto-1'
+    | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/leads'
     | '/admin/settings'
@@ -168,10 +180,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminContractsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/contabilita': {
+      id: '/admin/contabilita'
+      path: '/contabilita'
+      fullPath: '/admin/contabilita'
+      preLoaderRoute: typeof AdminContabilitaRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
 interface AdminRouteChildren {
+  AdminContabilitaRoute: typeof AdminContabilitaRoute
   AdminContractsRoute: typeof AdminContractsRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -179,6 +199,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminContabilitaRoute: AdminContabilitaRoute,
   AdminContractsRoute: AdminContractsRoute,
   AdminLeadsRoute: AdminLeadsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
