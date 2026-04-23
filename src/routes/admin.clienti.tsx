@@ -309,8 +309,6 @@ function ClientiPage() {
           }}
         />
       )}
-
-      <AdminBadge status="Bozza">{""}</AdminBadge>
     </div>
   );
 }
