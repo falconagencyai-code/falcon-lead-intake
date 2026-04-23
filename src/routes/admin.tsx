@@ -6,6 +6,7 @@ import {
   Clock,
   FileText,
   LayoutDashboard,
+  Radar,
   Settings,
   Shield,
   TrendingUp,
@@ -45,6 +46,7 @@ const navItems = [
   { label: "Contratti", to: "/admin/contracts", icon: FileText },
   { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2 },
   { label: "Task", to: "/admin/tasks", icon: CheckSquare },
+  { label: "Competitor", to: "/admin/competitor", icon: Radar },
   { label: "Impostazioni", to: "/admin/settings", icon: Settings },
 ] as const;
 
