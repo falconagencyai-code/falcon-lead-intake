@@ -19,6 +19,7 @@ import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
 import { Route as AdminContractsRouteImport } from './routes/admin.contracts'
 import { Route as AdminContabilitaRouteImport } from './routes/admin.contabilita'
 import { Route as AdminCompetitorRouteImport } from './routes/admin.competitor'
+import { Route as AdminClientiRouteImport } from './routes/admin.clienti'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 
 const FormContatto1Route = FormContatto1RouteImport.update({
@@ -71,6 +72,11 @@ const AdminCompetitorRoute = AdminCompetitorRouteImport.update({
   path: '/competitor',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminClientiRoute = AdminClientiRouteImport.update({
+  id: '/clienti',
+  path: '/clienti',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -82,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/clienti': typeof AdminClientiRoute
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/clienti': typeof AdminClientiRoute
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/clienti': typeof AdminClientiRoute
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/form-contatto-1'
     | '/admin/analytics'
+    | '/admin/clienti'
     | '/admin/competitor'
     | '/admin/contabilita'
     | '/admin/contracts'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/form-contatto-1'
     | '/admin/analytics'
+    | '/admin/clienti'
     | '/admin/competitor'
     | '/admin/contabilita'
     | '/admin/contracts'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/form-contatto-1'
     | '/admin/analytics'
+    | '/admin/clienti'
     | '/admin/competitor'
     | '/admin/contabilita'
     | '/admin/contracts'
@@ -237,6 +249,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCompetitorRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/clienti': {
+      id: '/admin/clienti'
+      path: '/clienti'
+      fullPath: '/admin/clienti'
+      preLoaderRoute: typeof AdminClientiRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/analytics': {
       id: '/admin/analytics'
       path: '/analytics'
@@ -249,6 +268,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminClientiRoute: typeof AdminClientiRoute
   AdminCompetitorRoute: typeof AdminCompetitorRoute
   AdminContabilitaRoute: typeof AdminContabilitaRoute
   AdminContractsRoute: typeof AdminContractsRoute
@@ -260,6 +280,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminClientiRoute: AdminClientiRoute,
   AdminCompetitorRoute: AdminCompetitorRoute,
   AdminContabilitaRoute: AdminContabilitaRoute,
   AdminContractsRoute: AdminContractsRoute,
