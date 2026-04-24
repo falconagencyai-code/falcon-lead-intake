@@ -523,7 +523,7 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
   return (
     <div
       onClick={onOpen}
-      className="group grid min-h-[72px] cursor-pointer grid-cols-1 items-center gap-4 border-b border-[rgba(255,255,255,0.05)] px-6 py-4 transition-colors duration-150 last:border-b-0 hover:bg-[rgba(0,212,255,0.04)] lg:grid-cols-[minmax(280px,2fr)_minmax(140px,1fr)_minmax(110px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(110px,1fr)_minmax(120px,auto)]"
+      className="group grid min-h-[72px] cursor-pointer grid-cols-1 items-center gap-4 border-b border-[rgba(255,255,255,0.05)] px-6 py-4 transition-colors duration-150 last:border-b-0 hover:bg-[rgba(0,212,255,0.04)] lg:grid-cols-[minmax(260px,2fr)_minmax(130px,1fr)_minmax(100px,0.9fr)_minmax(110px,0.9fr)_minmax(170px,1.3fr)_minmax(100px,0.9fr)_minmax(120px,auto)]"
     >
       {/* Lead */}
       <div className="flex items-center gap-3 min-w-0">
