@@ -44,6 +44,8 @@ type LeadRow = {
   phone: string | null;
   company: string | null;
   status: string | null;
+  pipeline_stage: string | null;
+  lost_reason: string | null;
   service_interest: string | null;
   budget_range: string | null;
   timeline: string | null;
@@ -56,6 +58,15 @@ type LeadNote = {
   lead_id: string;
   user_id: string | null;
   content: string;
+  created_at: string;
+};
+
+type LeadEvent = {
+  id: string;
+  lead_id: string;
+  stage_from: string | null;
+  stage_to: string | null;
+  lost_reason: string | null;
   created_at: string;
 };
 
