@@ -62,7 +62,7 @@ const SERVICE_LABELS: Record<string, string> = {
   sito_web: "Sito web",
   piattaforma_ai: "Piattaforma AI",
   gestionale: "Gestionale",
-  automazione_ai_agent: "Automazione AI",
+  automazione_ai_agent: "Automazione AI Agent",
   altro: "Altro",
 };
 
