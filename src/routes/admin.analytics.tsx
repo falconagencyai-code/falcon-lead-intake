@@ -96,11 +96,14 @@ function AnalyticsPage() {
 
   const dropoffs = funnelData.slice(1).map((s, i) => ({
     step: s.step,
-    drop: funnelData[i].visits - s.visits,
+    drop: Math.max(0, funnelData[i].visits - s.visits),
   }));
-  const worstDrop = dropoffs.length
-    ? dropoffs.reduce((a, b) => (b.drop > a.drop ? b : a))
+  const stepsWithSessions = funnelData.filter((s) => s.visits > 0).length;
+  const hasEnoughData = stepsWithSessions >= 2;
+  const worstDrop = hasEnoughData
+    ? dropoffs.reduce((a, b) => (b.drop > a.drop ? b : a), { step: "—", drop: 0 })
     : { step: "—", drop: 0 };
+  const worstDropAvailable = hasEnoughData && worstDrop.drop > 0;
 
   // Trend 30 days from leads
   const weeklyData = (() => {
@@ -179,8 +182,8 @@ function AnalyticsPage() {
         <AdminKpi
           icon={TrendingDown}
           title="Step con più abbandoni"
-          value={worstDrop.drop ? `-${worstDrop.drop}` : "—"}
-          meta={worstDrop.step}
+          value={worstDropAvailable ? `${worstDrop.drop} ${worstDrop.drop === 1 ? "sessione" : "sessioni"}` : "N/D"}
+          meta={worstDropAvailable ? worstDrop.step : "dati insufficienti"}
           tone="orange"
         />
         <AdminKpi
