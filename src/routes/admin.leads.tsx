@@ -268,7 +268,7 @@ async function fetchLeads(): Promise<LeadRow[]> {
   const { data, error } = await supabase
     .from("leads")
     .select(
-      "id, full_name, email, phone, company, status, service_interest, budget_range, timeline, form_answers, created_at",
+      "id, full_name, email, phone, company, status, pipeline_stage, lost_reason, service_interest, budget_range, timeline, form_answers, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -281,9 +281,20 @@ async function fetchNotes(leadId: string): Promise<LeadNote[]> {
     .from("lead_notes")
     .select("id, lead_id, user_id, content, created_at")
     .eq("lead_id", leadId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []) as LeadNote[];
+}
+
+async function fetchEvents(leadId: string): Promise<LeadEvent[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("lead_events")
+    .select("id, lead_id, stage_from, stage_to, lost_reason, created_at")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as LeadEvent[];
 }
 
 // ============================================================
