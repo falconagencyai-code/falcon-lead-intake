@@ -591,11 +591,18 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
   const statusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       if (!supabase || !lead) throw new Error("Supabase non configurato");
+      const prev = lead.status ?? "pending";
       const { error } = await supabase.from("leads").update({ status: newStatus }).eq("id", lead.id);
       if (error) throw error;
+      // Log timeline event as a system note
+      await supabase.from("lead_notes").insert({
+        lead_id: lead.id,
+        content: `[status] ${STATUS_LABELS[prev] ?? prev} → ${STATUS_LABELS[newStatus] ?? newStatus}`,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-notes", lead?.id] });
       toast.success("Stato aggiornato");
     },
     onError: (e: Error) => toast.error(`Errore aggiornamento stato: ${e.message}`),
