@@ -43,11 +43,11 @@ export const Route = createFileRoute("/admin")({
 const navItems = [
   { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
   { label: "Lead", to: "/admin/leads", icon: Users },
+  { label: "Analytics", to: "/admin/analytics", icon: BarChart2 },
   { label: "Clienti", to: "/admin/clienti", icon: Users },
   { label: "Team", to: "/admin/team", icon: Shield },
   { label: "Contratti", to: "/admin/contracts", icon: FileText },
   { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2 },
-  { label: "Analytics", to: "/admin/analytics", icon: BarChart2 },
   { label: "AI Monitor", to: "/admin/ai-monitor", icon: Cpu },
   { label: "Road-map", to: "/admin/roadmap", icon: Map },
   { label: "Competitor", to: "/admin/competitor", icon: Radar },
