@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
 import { it } from "date-fns/locale";
+import { toast } from "sonner";
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { AdminCard } from "./admin/-admin-ui";
@@ -593,7 +594,11 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
       const { error } = await supabase.from("leads").update({ status: newStatus }).eq("id", lead.id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success("Stato aggiornato");
+    },
+    onError: (e: Error) => toast.error(`Errore aggiornamento stato: ${e.message}`),
   });
 
   const noteMutation = useMutation({
@@ -608,7 +613,9 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
     onSuccess: () => {
       setNoteText("");
       queryClient.invalidateQueries({ queryKey: ["lead-notes", lead?.id] });
+      toast.success("Nota salvata");
     },
+    onError: (e: Error) => toast.error(`Errore salvataggio nota: ${e.message}`),
   });
 
   const isOpen = !!lead;
@@ -837,27 +844,30 @@ function DrawerContent({
         <section>
           <p className="label-section mb-3">Timeline</p>
           <ol className="relative space-y-4 border-l border-[rgba(0,212,255,0.18)] pl-5">
-            <li>
-              <span className="absolute -left-[7px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020] bg-primary" />
+            {notesLoading && (
+              <li className="text-xs text-muted-foreground italic">Caricamento note…</li>
+            )}
+            {notes.map((n) => (
+              <li key={n.id} className="relative">
+                <span className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020] bg-emerald-400" />
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
+                  Nota interna
+                </p>
+                <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{n.content}</p>
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {fullDate(n.created_at)}
+                </p>
+              </li>
+            ))}
+            <li className="relative">
+              <span className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020] bg-primary" />
               <p className="text-sm font-semibold text-foreground">Form compilato</p>
               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
                 {fullDate(lead.created_at)}
               </p>
             </li>
-            {notes.map((n) => (
-              <li key={n.id}>
-                <span className="absolute -left-[7px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020] bg-emerald-400" />
-                <p className="text-sm text-foreground whitespace-pre-wrap">{n.content}</p>
-                <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {fullDate(n.created_at)}
-                </p>
-              </li>
-            ))}
-            {notesLoading && (
-              <li className="text-xs text-muted-foreground italic">Caricamento note…</li>
-            )}
           </ol>
         </section>
 
