@@ -612,6 +612,38 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const PIPELINE_STAGE_SHORT_LABELS: Record<string, string> = {
+  form_compilato: "Form",
+  contattato: "Contattato",
+  call_schedulata: "Call sched.",
+  call_effettuata: "Call fatta",
+  no_show: "No show",
+  preventivo_inviato: "Preventivo",
+  chiuso_vinto: "Vinto ✓",
+  chiuso_perso: "Perso ✗",
+};
+
+function StageBadge({ stage }: { stage: string }) {
+  const style = PIPELINE_STAGE_STYLES[stage] ?? PIPELINE_STAGE_STYLES.form_compilato;
+  const icon = STAGE_ICONS[stage] ?? "•";
+  const label = PIPELINE_STAGE_SHORT_LABELS[stage] ?? PIPELINE_STAGE_LABELS[stage] ?? stage;
+  return (
+    <span
+      className="inline-flex max-w-full items-center gap-1.5 truncate whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+      style={{
+        background: style.bg,
+        color: style.color,
+        borderColor: style.border,
+        boxShadow: style.glow,
+      }}
+      title={PIPELINE_STAGE_LABELS[stage] ?? stage}
+    >
+      <span aria-hidden className="text-[11px] leading-none">{icon}</span>
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
 function ActionIconButton({
   children,
   onClick,
