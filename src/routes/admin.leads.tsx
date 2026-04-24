@@ -114,16 +114,16 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; border: string;
 };
 
 const ANSWER_LABELS: Record<string, string> = {
-  users: "Numero utenti",
   process: "Processo da gestire",
+  users: "Numero utenti",
   ai_use_case: "Caso d'uso AI",
-  data_source: "Fonti dati",
-  site_type: "Tipo sito",
-  pages: "Struttura",
+  data_source: "Fonti dati disponibili",
+  site_type: "Tipo di sito",
+  pages: "Contenuti e struttura",
   task: "Task da automatizzare",
   tools: "Tool da integrare",
-  idea: "Idea",
-  goal: "Obiettivo",
+  idea: "Idea del progetto",
+  goal: "Obiettivo principale",
 };
 
 const AVATAR_PALETTE = [
