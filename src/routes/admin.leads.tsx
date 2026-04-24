@@ -898,24 +898,43 @@ function DrawerContent({
           </div>
         </section>
 
-        {/* Stato */}
+        {/* Stage pipeline */}
         <section>
-          <p className="label-section mb-2">Stato</p>
+          <p className="label-section mb-2">Stage pipeline</p>
           <div className="flex items-center gap-3">
             <select
-              value={statusDraft}
-              onChange={(e) => setStatusDraft(e.target.value)}
-              disabled={statusSaving}
+              value={stageDraft}
+              onChange={(e) => onStageChange(e.target.value)}
+              disabled={stageSaving}
               className="glass h-11 flex-1 px-3 text-sm text-foreground outline-none"
             >
-              {STATUS_OPTIONS.map((s) => (
+              {PIPELINE_STAGE_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {STATUS_LABELS[s]}
+                  {PIPELINE_STAGE_LABELS[s]}
                 </option>
               ))}
             </select>
-            {statusSaving && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            {stageSaving && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
+
+          {stageDraft === "chiuso_perso" && (
+            <div className="mt-3">
+              <p className="label-section mb-2">Motivo perdita</p>
+              <select
+                value={lostReasonDraft}
+                onChange={(e) => onLostReasonChange(e.target.value)}
+                disabled={stageSaving}
+                className="glass h-11 w-full px-3 text-sm text-foreground outline-none"
+              >
+                <option value="">Seleziona un motivo…</option>
+                {LOST_REASON_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {LOST_REASON_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </section>
 
         {/* Risposte form — profilo completo in ordine */}
