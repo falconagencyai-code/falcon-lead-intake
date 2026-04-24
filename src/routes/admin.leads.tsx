@@ -774,26 +774,63 @@ function DrawerContent({
           </div>
         </section>
 
-        {/* Risposte form */}
+        {/* Risposte form — profilo completo in ordine */}
         <section>
           <p className="label-section mb-3">Risposte form</p>
-          {answerEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">Nessuna risposta del form disponibile.</p>
-          ) : (
-            <div className="space-y-2">
-              {answerEntries.map(([key, value]) => (
-                <div
-                  key={key}
-                  className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-4 py-3"
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    {ANSWER_LABELS[key] ?? key}
-                  </p>
-                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{formatAnswerValue(value)}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          {(() => {
+            const ANSWER_ORDER = [
+              "process",
+              "users",
+              "ai_use_case",
+              "data_source",
+              "site_type",
+              "pages",
+              "task",
+              "tools",
+              "idea",
+              "goal",
+            ];
+            const orderedKeys = [
+              ...ANSWER_ORDER.filter((k) => k in (answers as Record<string, unknown>)),
+              ...Object.keys(answers).filter((k) => !ANSWER_ORDER.includes(k)),
+            ];
+            const items: Array<{ label: string; value: string }> = [];
+
+            if (lead.service_interest) {
+              items.push({
+                label: "Servizio richiesto",
+                value: SERVICE_LABELS[lead.service_interest] ?? lead.service_interest,
+              });
+            }
+            for (const key of orderedKeys) {
+              const raw = (answers as Record<string, unknown>)[key];
+              const v = formatAnswerValue(raw);
+              if (v && v !== "—") {
+                items.push({ label: ANSWER_LABELS[key] ?? key, value: v });
+              }
+            }
+            if (lead.budget_range) items.push({ label: "Budget indicativo", value: lead.budget_range });
+            if (lead.timeline) items.push({ label: "Tempistiche", value: lead.timeline });
+
+            if (items.length === 0) {
+              return <p className="text-sm text-muted-foreground italic">Nessuna risposta del form disponibile.</p>;
+            }
+            return (
+              <div className="space-y-2">
+                {items.map((it, i) => (
+                  <div
+                    key={`${it.label}-${i}`}
+                    className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-4 py-3"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                      {it.label}
+                    </p>
+                    <p className="mt-1 text-sm text-foreground whitespace-pre-wrap leading-relaxed">{it.value}</p>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </section>
 
         {/* Timeline */}
