@@ -125,6 +125,69 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; border: string;
   },
 };
 
+// ============================================================
+// Pipeline stages
+// ============================================================
+
+const PIPELINE_STAGE_LABELS: Record<string, string> = {
+  form_compilato: "Form compilato",
+  contattato: "Contattato",
+  call_schedulata: "Call schedulata",
+  call_effettuata: "Call effettuata",
+  no_show: "No show",
+  preventivo_inviato: "Preventivo inviato",
+  chiuso_vinto: "Chiuso — Vinto ✓",
+  chiuso_perso: "Chiuso — Perso ✗",
+};
+
+const PIPELINE_STAGE_OPTIONS = [
+  "form_compilato",
+  "contattato",
+  "call_schedulata",
+  "call_effettuata",
+  "no_show",
+  "preventivo_inviato",
+  "chiuso_vinto",
+  "chiuso_perso",
+] as const;
+
+const PIPELINE_STAGE_STYLES: Record<string, { bg: string; color: string; border: string; glow?: string }> = {
+  form_compilato: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  contattato: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  call_schedulata: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  call_effettuata: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  no_show: { bg: "rgba(251,146,60,0.12)", color: "#fdba74", border: "rgba(251,146,60,0.45)" },
+  preventivo_inviato: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  chiuso_vinto: {
+    bg: "rgba(16,185,129,0.18)",
+    color: "#6ee7b7",
+    border: "rgba(16,185,129,0.55)",
+    glow: "0 0 18px rgba(16,185,129,0.4)",
+  },
+  chiuso_perso: { bg: "rgba(248,113,113,0.12)", color: "#fca5a5", border: "rgba(248,113,113,0.45)" },
+};
+
+const STAGE_ICONS: Record<string, string> = {
+  form_compilato: "📝",
+  contattato: "📧",
+  call_schedulata: "📅",
+  call_effettuata: "📞",
+  no_show: "🚫",
+  preventivo_inviato: "📄",
+  chiuso_vinto: "✓",
+  chiuso_perso: "✗",
+};
+
+const LOST_REASON_LABELS: Record<string, string> = {
+  prezzo: "Prezzo troppo alto",
+  no_show: "Non si è presentato alla call",
+  nessuna_risposta: "Nessuna risposta",
+  non_convinto: "Non convinto del servizio",
+  altro: "Altro",
+};
+
+const LOST_REASON_OPTIONS = ["prezzo", "no_show", "nessuna_risposta", "non_convinto", "altro"] as const;
+
 const ANSWER_LABELS: Record<string, string> = {
   process: "Processo da gestire",
   users: "Numero utenti",
