@@ -408,12 +408,12 @@ function LeadsPage() {
       {/* Lead list */}
       <AdminCard className="overflow-hidden p-0">
         {/* Header row */}
-        <div className="hidden grid-cols-[minmax(280px,2fr)_minmax(140px,1fr)_minmax(110px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(110px,1fr)_minmax(120px,auto)] items-center gap-4 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
+        <div className="hidden grid-cols-[minmax(260px,2fr)_minmax(130px,1fr)_minmax(100px,0.9fr)_minmax(110px,0.9fr)_minmax(170px,1.3fr)_minmax(100px,0.9fr)_minmax(120px,auto)] items-center gap-4 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
           <span>Lead</span>
           <span>Servizio</span>
           <span>Budget</span>
           <span>Timing</span>
-          <span>Stato</span>
+          <span>Stage</span>
           <span>Data</span>
           <span className="text-right">Azioni</span>
         </div>
@@ -500,7 +500,7 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
   const queryClient = useQueryClient();
   const seed = lead.full_name || lead.email || lead.id;
   const tone = avatarTone(seed);
-  const status = lead.status ?? "pending";
+  const stage = lead.pipeline_stage ?? "form_compilato";
   const service = lead.service_interest ?? "altro";
   const serviceColor = SERVICE_COLORS[service] ?? SERVICE_COLORS.altro;
 
@@ -523,7 +523,7 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
   return (
     <div
       onClick={onOpen}
-      className="group grid min-h-[72px] cursor-pointer grid-cols-1 items-center gap-4 border-b border-[rgba(255,255,255,0.05)] px-6 py-4 transition-colors duration-150 last:border-b-0 hover:bg-[rgba(0,212,255,0.04)] lg:grid-cols-[minmax(280px,2fr)_minmax(140px,1fr)_minmax(110px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(110px,1fr)_minmax(120px,auto)]"
+      className="group grid min-h-[72px] cursor-pointer grid-cols-1 items-center gap-4 border-b border-[rgba(255,255,255,0.05)] px-6 py-4 transition-colors duration-150 last:border-b-0 hover:bg-[rgba(0,212,255,0.04)] lg:grid-cols-[minmax(260px,2fr)_minmax(130px,1fr)_minmax(100px,0.9fr)_minmax(110px,0.9fr)_minmax(170px,1.3fr)_minmax(100px,0.9fr)_minmax(120px,auto)]"
     >
       {/* Lead */}
       <div className="flex items-center gap-3 min-w-0">
@@ -569,9 +569,9 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
         {lead.timeline ?? "—"}
       </div>
 
-      {/* Stato */}
-      <div>
-        <StatusBadge status={status} />
+      {/* Stage */}
+      <div className="min-w-0">
+        <StageBadge stage={stage} />
       </div>
 
       {/* Data */}
@@ -608,6 +608,38 @@ function StatusBadge({ status }: { status: string }) {
       }}
     >
       {STATUS_LABELS[status] ?? status}
+    </span>
+  );
+}
+
+const PIPELINE_STAGE_SHORT_LABELS: Record<string, string> = {
+  form_compilato: "Form",
+  contattato: "Contattato",
+  call_schedulata: "Call sched.",
+  call_effettuata: "Call fatta",
+  no_show: "No show",
+  preventivo_inviato: "Preventivo",
+  chiuso_vinto: "Vinto ✓",
+  chiuso_perso: "Perso ✗",
+};
+
+function StageBadge({ stage }: { stage: string }) {
+  const style = PIPELINE_STAGE_STYLES[stage] ?? PIPELINE_STAGE_STYLES.form_compilato;
+  const icon = STAGE_ICONS[stage] ?? "•";
+  const label = PIPELINE_STAGE_SHORT_LABELS[stage] ?? PIPELINE_STAGE_LABELS[stage] ?? stage;
+  return (
+    <span
+      className="inline-flex max-w-full items-center gap-1.5 truncate whitespace-nowrap rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+      style={{
+        background: style.bg,
+        color: style.color,
+        borderColor: style.border,
+        boxShadow: style.glow,
+      }}
+      title={PIPELINE_STAGE_LABELS[stage] ?? stage}
+    >
+      <span aria-hidden className="text-[11px] leading-none">{icon}</span>
+      <span className="truncate">{label}</span>
     </span>
   );
 }
