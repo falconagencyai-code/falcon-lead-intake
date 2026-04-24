@@ -44,6 +44,8 @@ type LeadRow = {
   phone: string | null;
   company: string | null;
   status: string | null;
+  pipeline_stage: string | null;
+  lost_reason: string | null;
   service_interest: string | null;
   budget_range: string | null;
   timeline: string | null;
@@ -56,6 +58,15 @@ type LeadNote = {
   lead_id: string;
   user_id: string | null;
   content: string;
+  created_at: string;
+};
+
+type LeadEvent = {
+  id: string;
+  lead_id: string;
+  stage_from: string | null;
+  stage_to: string | null;
+  lost_reason: string | null;
   created_at: string;
 };
 
@@ -113,6 +124,69 @@ const STATUS_STYLES: Record<string, { bg: string; color: string; border: string;
     glow: "0 0 18px rgba(16,185,129,0.4)",
   },
 };
+
+// ============================================================
+// Pipeline stages
+// ============================================================
+
+const PIPELINE_STAGE_LABELS: Record<string, string> = {
+  form_compilato: "Form compilato",
+  contattato: "Contattato",
+  call_schedulata: "Call schedulata",
+  call_effettuata: "Call effettuata",
+  no_show: "No show",
+  preventivo_inviato: "Preventivo inviato",
+  chiuso_vinto: "Chiuso — Vinto ✓",
+  chiuso_perso: "Chiuso — Perso ✗",
+};
+
+const PIPELINE_STAGE_OPTIONS = [
+  "form_compilato",
+  "contattato",
+  "call_schedulata",
+  "call_effettuata",
+  "no_show",
+  "preventivo_inviato",
+  "chiuso_vinto",
+  "chiuso_perso",
+] as const;
+
+const PIPELINE_STAGE_STYLES: Record<string, { bg: string; color: string; border: string; glow?: string }> = {
+  form_compilato: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  contattato: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  call_schedulata: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  call_effettuata: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  no_show: { bg: "rgba(251,146,60,0.12)", color: "#fdba74", border: "rgba(251,146,60,0.45)" },
+  preventivo_inviato: { bg: "rgba(0,212,255,0.12)", color: "#7dd9ff", border: "rgba(0,212,255,0.4)" },
+  chiuso_vinto: {
+    bg: "rgba(16,185,129,0.18)",
+    color: "#6ee7b7",
+    border: "rgba(16,185,129,0.55)",
+    glow: "0 0 18px rgba(16,185,129,0.4)",
+  },
+  chiuso_perso: { bg: "rgba(248,113,113,0.12)", color: "#fca5a5", border: "rgba(248,113,113,0.45)" },
+};
+
+const STAGE_ICONS: Record<string, string> = {
+  form_compilato: "📝",
+  contattato: "📧",
+  call_schedulata: "📅",
+  call_effettuata: "📞",
+  no_show: "🚫",
+  preventivo_inviato: "📄",
+  chiuso_vinto: "✓",
+  chiuso_perso: "✗",
+};
+
+const LOST_REASON_LABELS: Record<string, string> = {
+  prezzo: "Prezzo troppo alto",
+  no_show: "Non si è presentato alla call",
+  nessuna_risposta: "Nessuna risposta",
+  non_convinto: "Non convinto del servizio",
+  altro: "Altro",
+};
+
+const LOST_REASON_OPTIONS = ["prezzo", "no_show", "nessuna_risposta", "non_convinto", "altro"] as const;
 
 const ANSWER_LABELS: Record<string, string> = {
   process: "Processo da gestire",
@@ -194,7 +268,7 @@ async function fetchLeads(): Promise<LeadRow[]> {
   const { data, error } = await supabase
     .from("leads")
     .select(
-      "id, full_name, email, phone, company, status, service_interest, budget_range, timeline, form_answers, created_at",
+      "id, full_name, email, phone, company, status, pipeline_stage, lost_reason, service_interest, budget_range, timeline, form_answers, created_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -207,9 +281,20 @@ async function fetchNotes(leadId: string): Promise<LeadNote[]> {
     .from("lead_notes")
     .select("id, lead_id, user_id, content, created_at")
     .eq("lead_id", leadId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return (data ?? []) as LeadNote[];
+}
+
+async function fetchEvents(leadId: string): Promise<LeadEvent[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("lead_events")
+    .select("id, lead_id, stage_from, stage_to, lost_reason, created_at")
+    .eq("lead_id", leadId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as LeadEvent[];
 }
 
 // ============================================================
@@ -563,11 +648,13 @@ function ActionIconButton({
 function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [noteText, setNoteText] = useState("");
-  const [statusDraft, setStatusDraft] = useState<string>("");
+  const [stageDraft, setStageDraft] = useState<string>("");
+  const [lostReasonDraft, setLostReasonDraft] = useState<string>("");
 
   useEffect(() => {
     if (lead) {
-      setStatusDraft(lead.status ?? "pending");
+      setStageDraft(lead.pipeline_stage ?? "form_compilato");
+      setLostReasonDraft(lead.lost_reason ?? "");
       setNoteText("");
     }
   }, [lead?.id]);
@@ -588,24 +675,38 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
     enabled: !!lead && isSupabaseConfigured,
   });
 
-  const statusMutation = useMutation({
-    mutationFn: async (newStatus: string) => {
+  const eventsQuery = useQuery({
+    queryKey: ["lead-events", lead?.id],
+    queryFn: () => fetchEvents(lead!.id),
+    enabled: !!lead && isSupabaseConfigured,
+  });
+
+  const stageMutation = useMutation({
+    mutationFn: async ({ newStage, reason }: { newStage: string; reason: string | null }) => {
       if (!supabase || !lead) throw new Error("Supabase non configurato");
-      const prev = lead.status ?? "pending";
-      const { error } = await supabase.from("leads").update({ status: newStatus }).eq("id", lead.id);
+      const prev = lead.pipeline_stage ?? "form_compilato";
+      const update: Record<string, unknown> = { pipeline_stage: newStage };
+      if (newStage === "chiuso_perso") {
+        update.lost_reason = reason;
+      } else {
+        update.lost_reason = null;
+      }
+      const { error } = await supabase.from("leads").update(update).eq("id", lead.id);
       if (error) throw error;
-      // Log timeline event as a system note
-      await supabase.from("lead_notes").insert({
+      const { error: evErr } = await supabase.from("lead_events").insert({
         lead_id: lead.id,
-        content: `[status] ${STATUS_LABELS[prev] ?? prev} → ${STATUS_LABELS[newStatus] ?? newStatus}`,
+        stage_from: prev,
+        stage_to: newStage,
+        lost_reason: newStage === "chiuso_perso" ? reason : null,
       });
+      if (evErr) throw evErr;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["lead-notes", lead?.id] });
-      toast.success("Stato aggiornato");
+      queryClient.invalidateQueries({ queryKey: ["lead-events", lead?.id] });
+      toast.success("Stage pipeline aggiornato");
     },
-    onError: (e: Error) => toast.error(`Errore aggiornamento stato: ${e.message}`),
+    onError: (e: Error) => toast.error(`Errore aggiornamento stage: ${e.message}`),
   });
 
   const noteMutation = useMutation({
@@ -624,6 +725,26 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
     },
     onError: (e: Error) => toast.error(`Errore salvataggio nota: ${e.message}`),
   });
+
+  const handleStageChange = (s: string) => {
+    setStageDraft(s);
+    if (s === "chiuso_perso") {
+      // wait for reason; trigger only if reason already set
+      if (lostReasonDraft) {
+        stageMutation.mutate({ newStage: s, reason: lostReasonDraft });
+      }
+    } else {
+      setLostReasonDraft("");
+      stageMutation.mutate({ newStage: s, reason: null });
+    }
+  };
+
+  const handleLostReasonChange = (r: string) => {
+    setLostReasonDraft(r);
+    if (r && stageDraft === "chiuso_perso") {
+      stageMutation.mutate({ newStage: "chiuso_perso", reason: r });
+    }
+  };
 
   const isOpen = !!lead;
 
@@ -648,12 +769,13 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
           onClose={onClose}
           notes={notesQuery.data ?? []}
           notesLoading={notesQuery.isLoading}
-          statusDraft={statusDraft}
-          setStatusDraft={(s) => {
-            setStatusDraft(s);
-            statusMutation.mutate(s);
-          }}
-          statusSaving={statusMutation.isPending}
+          events={eventsQuery.data ?? []}
+          eventsLoading={eventsQuery.isLoading}
+          stageDraft={stageDraft}
+          onStageChange={handleStageChange}
+          lostReasonDraft={lostReasonDraft}
+          onLostReasonChange={handleLostReasonChange}
+          stageSaving={stageMutation.isPending}
           noteText={noteText}
           setNoteText={setNoteText}
           onAddNote={() => noteText.trim() && noteMutation.mutate(noteText.trim())}
@@ -669,9 +791,13 @@ function DrawerContent({
   onClose,
   notes,
   notesLoading,
-  statusDraft,
-  setStatusDraft,
-  statusSaving,
+  events,
+  eventsLoading,
+  stageDraft,
+  onStageChange,
+  lostReasonDraft,
+  onLostReasonChange,
+  stageSaving,
   noteText,
   setNoteText,
   onAddNote,
@@ -681,9 +807,13 @@ function DrawerContent({
   onClose: () => void;
   notes: LeadNote[];
   notesLoading: boolean;
-  statusDraft: string;
-  setStatusDraft: (s: string) => void;
-  statusSaving: boolean;
+  events: LeadEvent[];
+  eventsLoading: boolean;
+  stageDraft: string;
+  onStageChange: (s: string) => void;
+  lostReasonDraft: string;
+  onLostReasonChange: (r: string) => void;
+  stageSaving: boolean;
   noteText: string;
   setNoteText: (s: string) => void;
   onAddNote: () => void;
@@ -768,24 +898,43 @@ function DrawerContent({
           </div>
         </section>
 
-        {/* Stato */}
+        {/* Stage pipeline */}
         <section>
-          <p className="label-section mb-2">Stato</p>
+          <p className="label-section mb-2">Stage pipeline</p>
           <div className="flex items-center gap-3">
             <select
-              value={statusDraft}
-              onChange={(e) => setStatusDraft(e.target.value)}
-              disabled={statusSaving}
+              value={stageDraft}
+              onChange={(e) => onStageChange(e.target.value)}
+              disabled={stageSaving}
               className="glass h-11 flex-1 px-3 text-sm text-foreground outline-none"
             >
-              {STATUS_OPTIONS.map((s) => (
+              {PIPELINE_STAGE_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {STATUS_LABELS[s]}
+                  {PIPELINE_STAGE_LABELS[s]}
                 </option>
               ))}
             </select>
-            {statusSaving && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            {stageSaving && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
           </div>
+
+          {stageDraft === "chiuso_perso" && (
+            <div className="mt-3">
+              <p className="label-section mb-2">Motivo perdita</p>
+              <select
+                value={lostReasonDraft}
+                onChange={(e) => onLostReasonChange(e.target.value)}
+                disabled={stageSaving}
+                className="glass h-11 w-full px-3 text-sm text-foreground outline-none"
+              >
+                <option value="">Seleziona un motivo…</option>
+                {LOST_REASON_OPTIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {LOST_REASON_LABELS[r]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </section>
 
         {/* Risposte form — profilo completo in ordine */}
@@ -851,32 +1000,74 @@ function DrawerContent({
         <section>
           <p className="label-section mb-3">Timeline</p>
           <ol className="relative space-y-4 border-l border-[rgba(0,212,255,0.18)] pl-5">
-            {notesLoading && (
-              <li className="text-xs text-muted-foreground italic">Caricamento note…</li>
+            {(notesLoading || eventsLoading) && (
+              <li className="text-xs text-muted-foreground italic">Caricamento timeline…</li>
             )}
-            {notes.map((n) => {
-              const isStatus = n.content.startsWith("[status]");
-              const text = isStatus ? n.content.replace(/^\[status\]\s*/, "") : n.content;
-              return (
-                <li key={n.id} className="relative">
-                  <span
-                    className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020]"
-                    style={{ background: isStatus ? "#fcd34d" : "#34d399" }}
-                  />
-                  <p
-                    className="text-[11px] font-semibold uppercase tracking-[0.14em]"
-                    style={{ color: isStatus ? "rgba(252,211,77,0.85)" : "rgba(110,231,183,0.85)" }}
-                  >
-                    {isStatus ? "Cambio stato" : "Nota interna"}
-                  </p>
-                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{text}</p>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {fullDate(n.created_at)}
-                  </p>
-                </li>
-              );
-            })}
+            {(() => {
+              type TLItem =
+                | { kind: "event"; id: string; created_at: string; ev: LeadEvent }
+                | { kind: "note"; id: string; created_at: string; note: LeadNote };
+              const items: TLItem[] = [
+                ...events.map((ev) => ({ kind: "event" as const, id: `e-${ev.id}`, created_at: ev.created_at, ev })),
+                ...notes
+                  .filter((n) => !n.content.startsWith("[status]"))
+                  .map((n) => ({ kind: "note" as const, id: `n-${n.id}`, created_at: n.created_at, note: n })),
+              ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+              return items.map((it) => {
+                if (it.kind === "event") {
+                  const stage = it.ev.stage_to ?? "";
+                  const style = PIPELINE_STAGE_STYLES[stage] ?? PIPELINE_STAGE_STYLES.form_compilato;
+                  const icon = STAGE_ICONS[stage] ?? "•";
+                  return (
+                    <li key={it.id} className="relative">
+                      <span
+                        className="absolute -left-[31px] mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#0a1020] text-[10px]"
+                        style={{ background: style.bg, color: style.color, borderColor: style.border, boxShadow: style.glow }}
+                      >
+                        {icon}
+                      </span>
+                      <p
+                        className="text-[11px] font-semibold uppercase tracking-[0.14em]"
+                        style={{ color: style.color }}
+                      >
+                        {PIPELINE_STAGE_LABELS[stage] ?? stage}
+                      </p>
+                      {it.ev.stage_from && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          da {PIPELINE_STAGE_LABELS[it.ev.stage_from] ?? it.ev.stage_from}
+                        </p>
+                      )}
+                      {it.ev.lost_reason && (
+                        <p className="mt-1 text-xs font-medium text-red-300">
+                          Motivo: {LOST_REASON_LABELS[it.ev.lost_reason] ?? it.ev.lost_reason}
+                        </p>
+                      )}
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {fullDate(it.ev.created_at)}
+                      </p>
+                    </li>
+                  );
+                }
+                return (
+                  <li key={it.id} className="relative">
+                    <span
+                      className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020]"
+                      style={{ background: "#34d399" }}
+                    />
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300/85">
+                      Nota interna
+                    </p>
+                    <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{it.note.content}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {fullDate(it.note.created_at)}
+                    </p>
+                  </li>
+                );
+              });
+            })()}
             <li className="relative">
               <span className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020] bg-primary" />
               <p className="text-sm font-semibold text-foreground">Form compilato</p>
