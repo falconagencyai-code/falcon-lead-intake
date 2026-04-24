@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { FalconMascot } from "@/components/FalconMascot";
 import { Step1Service } from "@/components/form/Step1Service";
@@ -51,11 +51,34 @@ function StepDots({ step, total = 5 }: { step: number; total?: number }) {
   );
 }
 
+const STEP_NAMES = ["Servizio", "Dettagli", "Budget", "Contatto", "Grazie"];
+
 function FormPage() {
   const [step, setStep] = useState(1);
   const [visible, setVisible] = useState(true);
   const [state, setState] = useState<FormState>(initialState);
   const [submitting, setSubmitting] = useState(false);
+  const sessionIdRef = useRef<string>(
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
+
+  // Fire-and-forget step tracking
+  useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+    void supabase
+      .from("form_events")
+      .insert({
+        session_id: sessionIdRef.current,
+        step,
+        step_name: STEP_NAMES[step - 1] ?? `Step ${step}`,
+        completed: step === 5,
+      })
+      .then(({ error }) => {
+        if (error) console.warn("form_events insert error", error);
+      });
+  }, [step]);
 
   const update = (patch: Partial<FormState>) => setState((s) => ({ ...s, ...patch }));
   const setAnswer = (key: string, value: string) =>
