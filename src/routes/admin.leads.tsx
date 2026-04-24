@@ -594,7 +594,11 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
       const { error } = await supabase.from("leads").update({ status: newStatus }).eq("id", lead.id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leads"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success("Stato aggiornato");
+    },
+    onError: (e: Error) => toast.error(`Errore aggiornamento stato: ${e.message}`),
   });
 
   const noteMutation = useMutation({
@@ -609,7 +613,9 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
     onSuccess: () => {
       setNoteText("");
       queryClient.invalidateQueries({ queryKey: ["lead-notes", lead?.id] });
+      toast.success("Nota salvata");
     },
+    onError: (e: Error) => toast.error(`Errore salvataggio nota: ${e.message}`),
   });
 
   const isOpen = !!lead;
