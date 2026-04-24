@@ -791,9 +791,13 @@ function DrawerContent({
   onClose,
   notes,
   notesLoading,
-  statusDraft,
-  setStatusDraft,
-  statusSaving,
+  events,
+  eventsLoading,
+  stageDraft,
+  onStageChange,
+  lostReasonDraft,
+  onLostReasonChange,
+  stageSaving,
   noteText,
   setNoteText,
   onAddNote,
@@ -803,9 +807,13 @@ function DrawerContent({
   onClose: () => void;
   notes: LeadNote[];
   notesLoading: boolean;
-  statusDraft: string;
-  setStatusDraft: (s: string) => void;
-  statusSaving: boolean;
+  events: LeadEvent[];
+  eventsLoading: boolean;
+  stageDraft: string;
+  onStageChange: (s: string) => void;
+  lostReasonDraft: string;
+  onLostReasonChange: (r: string) => void;
+  stageSaving: boolean;
   noteText: string;
   setNoteText: (s: string) => void;
   onAddNote: () => void;
