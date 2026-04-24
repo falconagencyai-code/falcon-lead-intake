@@ -648,11 +648,13 @@ function ActionIconButton({
 function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [noteText, setNoteText] = useState("");
-  const [statusDraft, setStatusDraft] = useState<string>("");
+  const [stageDraft, setStageDraft] = useState<string>("");
+  const [lostReasonDraft, setLostReasonDraft] = useState<string>("");
 
   useEffect(() => {
     if (lead) {
-      setStatusDraft(lead.status ?? "pending");
+      setStageDraft(lead.pipeline_stage ?? "form_compilato");
+      setLostReasonDraft(lead.lost_reason ?? "");
       setNoteText("");
     }
   }, [lead?.id]);
@@ -673,24 +675,38 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
     enabled: !!lead && isSupabaseConfigured,
   });
 
-  const statusMutation = useMutation({
-    mutationFn: async (newStatus: string) => {
+  const eventsQuery = useQuery({
+    queryKey: ["lead-events", lead?.id],
+    queryFn: () => fetchEvents(lead!.id),
+    enabled: !!lead && isSupabaseConfigured,
+  });
+
+  const stageMutation = useMutation({
+    mutationFn: async ({ newStage, reason }: { newStage: string; reason: string | null }) => {
       if (!supabase || !lead) throw new Error("Supabase non configurato");
-      const prev = lead.status ?? "pending";
-      const { error } = await supabase.from("leads").update({ status: newStatus }).eq("id", lead.id);
+      const prev = lead.pipeline_stage ?? "form_compilato";
+      const update: Record<string, unknown> = { pipeline_stage: newStage };
+      if (newStage === "chiuso_perso") {
+        update.lost_reason = reason;
+      } else {
+        update.lost_reason = null;
+      }
+      const { error } = await supabase.from("leads").update(update).eq("id", lead.id);
       if (error) throw error;
-      // Log timeline event as a system note
-      await supabase.from("lead_notes").insert({
+      const { error: evErr } = await supabase.from("lead_events").insert({
         lead_id: lead.id,
-        content: `[status] ${STATUS_LABELS[prev] ?? prev} → ${STATUS_LABELS[newStatus] ?? newStatus}`,
+        stage_from: prev,
+        stage_to: newStage,
+        lost_reason: newStage === "chiuso_perso" ? reason : null,
       });
+      if (evErr) throw evErr;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["lead-notes", lead?.id] });
-      toast.success("Stato aggiornato");
+      queryClient.invalidateQueries({ queryKey: ["lead-events", lead?.id] });
+      toast.success("Stage pipeline aggiornato");
     },
-    onError: (e: Error) => toast.error(`Errore aggiornamento stato: ${e.message}`),
+    onError: (e: Error) => toast.error(`Errore aggiornamento stage: ${e.message}`),
   });
 
   const noteMutation = useMutation({
@@ -709,6 +725,26 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
     },
     onError: (e: Error) => toast.error(`Errore salvataggio nota: ${e.message}`),
   });
+
+  const handleStageChange = (s: string) => {
+    setStageDraft(s);
+    if (s === "chiuso_perso") {
+      // wait for reason; trigger only if reason already set
+      if (lostReasonDraft) {
+        stageMutation.mutate({ newStage: s, reason: lostReasonDraft });
+      }
+    } else {
+      setLostReasonDraft("");
+      stageMutation.mutate({ newStage: s, reason: null });
+    }
+  };
+
+  const handleLostReasonChange = (r: string) => {
+    setLostReasonDraft(r);
+    if (r && stageDraft === "chiuso_perso") {
+      stageMutation.mutate({ newStage: "chiuso_perso", reason: r });
+    }
+  };
 
   const isOpen = !!lead;
 
@@ -733,12 +769,13 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
           onClose={onClose}
           notes={notesQuery.data ?? []}
           notesLoading={notesQuery.isLoading}
-          statusDraft={statusDraft}
-          setStatusDraft={(s) => {
-            setStatusDraft(s);
-            statusMutation.mutate(s);
-          }}
-          statusSaving={statusMutation.isPending}
+          events={eventsQuery.data ?? []}
+          eventsLoading={eventsQuery.isLoading}
+          stageDraft={stageDraft}
+          onStageChange={handleStageChange}
+          lostReasonDraft={lostReasonDraft}
+          onLostReasonChange={handleLostReasonChange}
+          stageSaving={stageMutation.isPending}
           noteText={noteText}
           setNoteText={setNoteText}
           onAddNote={() => noteText.trim() && noteMutation.mutate(noteText.trim())}
