@@ -500,7 +500,7 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
   const queryClient = useQueryClient();
   const seed = lead.full_name || lead.email || lead.id;
   const tone = avatarTone(seed);
-  const status = lead.status ?? "pending";
+  const stage = lead.pipeline_stage ?? "form_compilato";
   const service = lead.service_interest ?? "altro";
   const serviceColor = SERVICE_COLORS[service] ?? SERVICE_COLORS.altro;
 
