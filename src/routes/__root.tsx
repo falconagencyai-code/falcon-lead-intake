@@ -71,10 +71,12 @@ function RootComponent() {
   const [queryClient] = useState(() => new QueryClient({
     defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
   }));
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
-      <Toaster theme="dark" position="top-right" />
+      {mounted && <Toaster theme="dark" position="top-right" />}
     </QueryClientProvider>
   );
 }
