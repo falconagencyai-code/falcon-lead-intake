@@ -591,11 +591,18 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
   const statusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
       if (!supabase || !lead) throw new Error("Supabase non configurato");
+      const prev = lead.status ?? "pending";
       const { error } = await supabase.from("leads").update({ status: newStatus }).eq("id", lead.id);
       if (error) throw error;
+      // Log timeline event as a system note
+      await supabase.from("lead_notes").insert({
+        lead_id: lead.id,
+        content: `[status] ${STATUS_LABELS[prev] ?? prev} → ${STATUS_LABELS[newStatus] ?? newStatus}`,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-notes", lead?.id] });
       toast.success("Stato aggiornato");
     },
     onError: (e: Error) => toast.error(`Errore aggiornamento stato: ${e.message}`),
@@ -847,19 +854,29 @@ function DrawerContent({
             {notesLoading && (
               <li className="text-xs text-muted-foreground italic">Caricamento note…</li>
             )}
-            {notes.map((n) => (
-              <li key={n.id} className="relative">
-                <span className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020] bg-emerald-400" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
-                  Nota interna
-                </p>
-                <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{n.content}</p>
-                <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3" />
-                  {fullDate(n.created_at)}
-                </p>
-              </li>
-            ))}
+            {notes.map((n) => {
+              const isStatus = n.content.startsWith("[status]");
+              const text = isStatus ? n.content.replace(/^\[status\]\s*/, "") : n.content;
+              return (
+                <li key={n.id} className="relative">
+                  <span
+                    className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020]"
+                    style={{ background: isStatus ? "#fcd34d" : "#34d399" }}
+                  />
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-[0.14em]"
+                    style={{ color: isStatus ? "rgba(252,211,77,0.85)" : "rgba(110,231,183,0.85)" }}
+                  >
+                    {isStatus ? "Cambio stato" : "Nota interna"}
+                  </p>
+                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{text}</p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {fullDate(n.created_at)}
+                  </p>
+                </li>
+              );
+            })}
             <li className="relative">
               <span className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020] bg-primary" />
               <p className="text-sm font-semibold text-foreground">Form compilato</p>
