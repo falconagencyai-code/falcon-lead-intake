@@ -413,7 +413,7 @@ function LeadsPage() {
           <span>Servizio</span>
           <span>Budget</span>
           <span>Timing</span>
-          <span>Stato</span>
+          <span>Stage</span>
           <span>Data</span>
           <span className="text-right">Azioni</span>
         </div>
