@@ -1000,32 +1000,74 @@ function DrawerContent({
         <section>
           <p className="label-section mb-3">Timeline</p>
           <ol className="relative space-y-4 border-l border-[rgba(0,212,255,0.18)] pl-5">
-            {notesLoading && (
-              <li className="text-xs text-muted-foreground italic">Caricamento note…</li>
+            {(notesLoading || eventsLoading) && (
+              <li className="text-xs text-muted-foreground italic">Caricamento timeline…</li>
             )}
-            {notes.map((n) => {
-              const isStatus = n.content.startsWith("[status]");
-              const text = isStatus ? n.content.replace(/^\[status\]\s*/, "") : n.content;
-              return (
-                <li key={n.id} className="relative">
-                  <span
-                    className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020]"
-                    style={{ background: isStatus ? "#fcd34d" : "#34d399" }}
-                  />
-                  <p
-                    className="text-[11px] font-semibold uppercase tracking-[0.14em]"
-                    style={{ color: isStatus ? "rgba(252,211,77,0.85)" : "rgba(110,231,183,0.85)" }}
-                  >
-                    {isStatus ? "Cambio stato" : "Nota interna"}
-                  </p>
-                  <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{text}</p>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {fullDate(n.created_at)}
-                  </p>
-                </li>
-              );
-            })}
+            {(() => {
+              type TLItem =
+                | { kind: "event"; id: string; created_at: string; ev: LeadEvent }
+                | { kind: "note"; id: string; created_at: string; note: LeadNote };
+              const items: TLItem[] = [
+                ...events.map((ev) => ({ kind: "event" as const, id: `e-${ev.id}`, created_at: ev.created_at, ev })),
+                ...notes
+                  .filter((n) => !n.content.startsWith("[status]"))
+                  .map((n) => ({ kind: "note" as const, id: `n-${n.id}`, created_at: n.created_at, note: n })),
+              ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+              return items.map((it) => {
+                if (it.kind === "event") {
+                  const stage = it.ev.stage_to ?? "";
+                  const style = PIPELINE_STAGE_STYLES[stage] ?? PIPELINE_STAGE_STYLES.form_compilato;
+                  const icon = STAGE_ICONS[stage] ?? "•";
+                  return (
+                    <li key={it.id} className="relative">
+                      <span
+                        className="absolute -left-[31px] mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#0a1020] text-[10px]"
+                        style={{ background: style.bg, color: style.color, borderColor: style.border, boxShadow: style.glow }}
+                      >
+                        {icon}
+                      </span>
+                      <p
+                        className="text-[11px] font-semibold uppercase tracking-[0.14em]"
+                        style={{ color: style.color }}
+                      >
+                        {PIPELINE_STAGE_LABELS[stage] ?? stage}
+                      </p>
+                      {it.ev.stage_from && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          da {PIPELINE_STAGE_LABELS[it.ev.stage_from] ?? it.ev.stage_from}
+                        </p>
+                      )}
+                      {it.ev.lost_reason && (
+                        <p className="mt-1 text-xs font-medium text-red-300">
+                          Motivo: {LOST_REASON_LABELS[it.ev.lost_reason] ?? it.ev.lost_reason}
+                        </p>
+                      )}
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {fullDate(it.ev.created_at)}
+                      </p>
+                    </li>
+                  );
+                }
+                return (
+                  <li key={it.id} className="relative">
+                    <span
+                      className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020]"
+                      style={{ background: "#34d399" }}
+                    />
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300/85">
+                      Nota interna
+                    </p>
+                    <p className="mt-1 text-sm text-foreground whitespace-pre-wrap">{it.note.content}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {fullDate(it.note.created_at)}
+                    </p>
+                  </li>
+                );
+              });
+            })()}
             <li className="relative">
               <span className="absolute -left-[27px] mt-1 flex h-3 w-3 rounded-full border-2 border-[#0a1020] bg-primary" />
               <p className="text-sm font-semibold text-foreground">Form compilato</p>
