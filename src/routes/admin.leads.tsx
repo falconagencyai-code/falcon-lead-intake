@@ -569,9 +569,9 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
         {lead.timeline ?? "—"}
       </div>
 
-      {/* Stato */}
-      <div>
-        <StatusBadge status={status} />
+      {/* Stage */}
+      <div className="min-w-0">
+        <StageBadge stage={stage} />
       </div>
 
       {/* Data */}
