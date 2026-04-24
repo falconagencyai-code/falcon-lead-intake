@@ -408,7 +408,7 @@ function LeadsPage() {
       {/* Lead list */}
       <AdminCard className="overflow-hidden p-0">
         {/* Header row */}
-        <div className="hidden grid-cols-[minmax(280px,2fr)_minmax(140px,1fr)_minmax(110px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(110px,1fr)_minmax(120px,auto)] items-center gap-4 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
+        <div className="hidden grid-cols-[minmax(260px,2fr)_minmax(130px,1fr)_minmax(100px,0.9fr)_minmax(110px,0.9fr)_minmax(170px,1.3fr)_minmax(100px,0.9fr)_minmax(120px,auto)] items-center gap-4 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
           <span>Lead</span>
           <span>Servizio</span>
           <span>Budget</span>
