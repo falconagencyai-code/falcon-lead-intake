@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Calendar, FileText, Plus, X } from "lucide-react";
+import { Calendar, Cpu, FileText, Plus, Receipt, Users, X } from "lucide-react";
 import { useState } from "react";
 
+import { ContractsPage } from "./admin.contracts";
+import { AIMonitorPage } from "./admin.ai-monitor";
 import { AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
 
 export const Route = createFileRoute("/admin/clienti")({
@@ -13,6 +15,65 @@ export const Route = createFileRoute("/admin/clienti")({
   }),
   component: ClientiPage,
 });
+
+type SectionTab = "clienti" | "contratti" | "fatture" | "ai-monitor";
+
+const sectionTabs: { id: SectionTab; label: string; icon: typeof Users }[] = [
+  { id: "clienti", label: "Clienti", icon: Users },
+  { id: "contratti", label: "Contratti", icon: FileText },
+  { id: "fatture", label: "Fatture", icon: Receipt },
+  { id: "ai-monitor", label: "AI Monitor", icon: Cpu },
+];
+
+function ClientiPage() {
+  const [section, setSection] = useState<SectionTab>("clienti");
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-1">
+        {sectionTabs.map((t) => {
+          const Icon = t.icon;
+          const active = section === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setSection(t.id)}
+              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition ${
+                active
+                  ? "bg-[rgba(0,212,255,0.12)] text-primary shadow-[inset_0_0_24px_rgba(0,212,255,0.08)]"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {section === "clienti" && <ClientiInner />}
+      {section === "contratti" && <ContractsPage />}
+      {section === "fatture" && <FattureEmpty />}
+      {section === "ai-monitor" && <AIMonitorPage />}
+    </div>
+  );
+}
+
+function FattureEmpty() {
+  return (
+    <AdminCard className="p-12">
+      <div className="flex flex-col items-center justify-center text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)]">
+          <Receipt className="h-7 w-7 text-primary" />
+        </div>
+        <AdminSectionTitle eyebrow="Coming soon" title="In arrivo" />
+        <p className="mt-3 max-w-md text-sm text-muted-foreground">
+          Sezione in costruzione — il modulo fatturazione sarà disponibile a breve.
+        </p>
+      </div>
+    </AdminCard>
+  );
+}
 
 type ProjectStatus = "In corso" | "Consegnato" | "In pausa";
 type ProposalStatus = "Inviata" | "Vista" | "Accettata" | "Rifiutata" | "Scaduta";
