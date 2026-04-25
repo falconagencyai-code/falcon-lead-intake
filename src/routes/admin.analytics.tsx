@@ -224,8 +224,7 @@ function AnalyticsPage() {
                     background: "rgba(0,212,255,0.04)",
                   }}
                 >
-                  🎯 Collega Ads
-                  <ExternalLink className="h-4 w-4" />
+                  🎯 Ads
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs">
