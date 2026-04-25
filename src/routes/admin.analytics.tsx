@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart2, CheckCircle2, Clock, ExternalLink, TrendingDown, Users } from "lucide-react";
+import { BarChart2, CheckCircle2, Clock, TrendingDown, Users } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -224,8 +224,7 @@ function AnalyticsPage() {
                     background: "rgba(0,212,255,0.04)",
                   }}
                 >
-                  🎯 Collega Ads
-                  <ExternalLink className="h-4 w-4" />
+                  🎯 Ads
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs">
