@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { DollarSign, ExternalLink, Target, TrendingUp, Users } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { ArrowLeft, DollarSign, ExternalLink, Target, TrendingUp, Users } from "lucide-react";
 
 import { AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
 
@@ -24,7 +24,14 @@ function AdsPage() {
   return (
     <div className="space-y-8">
       <header>
-        <p className="label-section">Marketing · Performance</p>
+        <Link
+          to="/admin/analytics"
+          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Torna ad Analytics
+        </Link>
+        <p className="label-section mt-4">Marketing · Performance</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-5xl">
           Ads & <span className="text-primary text-glow">Campagne</span>
         </h1>

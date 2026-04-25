@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, CheckCircle2, Users, XCircle } from "lucide-react";
+import { Activity, ArrowLeft, CheckCircle2, Users, XCircle } from "lucide-react";
 import {
   Bar,
   BarChart,
