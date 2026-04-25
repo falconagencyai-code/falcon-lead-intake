@@ -40,30 +40,11 @@ export const Route = createFileRoute("/admin")({
 
 type NavStatus = "active" | "mock";
 
-type NavChild = { label: string; to: string; icon: typeof Users; status: NavStatus };
-type NavItem = {
-  label: string;
-  to: string;
-  icon: typeof Users;
-  status: NavStatus;
-  children?: NavChild[];
-};
-
-const navItems: NavItem[] = [
+const navItems: { label: string; to: string; icon: typeof Users; status: NavStatus }[] = [
   { label: "Dashboard", to: "/admin", icon: LayoutDashboard, status: "mock" },
   { label: "Lead", to: "/admin/leads", icon: Users, status: "active" },
   { label: "Analytics", to: "/admin/analytics", icon: BarChart2, status: "active" },
-  {
-    label: "Clienti",
-    to: "/admin/clienti",
-    icon: Users,
-    status: "mock",
-    children: [
-      { label: "Contratti", to: "/admin/contracts", icon: FileText, status: "mock" },
-      { label: "Fatture", to: "/admin/fatture", icon: Receipt, status: "mock" },
-      { label: "AI Monitor", to: "/admin/ai-monitor", icon: Cpu, status: "mock" },
-    ],
-  },
+  { label: "Clienti", to: "/admin/clienti", icon: Users, status: "mock" },
   { label: "Team", to: "/admin/team", icon: Shield, status: "mock" },
   { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2, status: "mock" },
   { label: "Road-map", to: "/admin/roadmap", icon: Map, status: "mock" },
@@ -80,14 +61,6 @@ function AdminLayout() {
   const itemIsActive = (to: string) =>
     to === "/admin" ? location.pathname === to : location.pathname.startsWith(to);
 
-  const childActiveFor = (item: NavItem) =>
-    item.children?.some((c) => itemIsActive(c.to)) ?? false;
-
-  const clientiItem = navItems.find((i) => i.label === "Clienti");
-  const [clientiOpen, setClientiOpen] = useState<boolean>(
-    clientiItem ? childActiveFor(clientiItem) || itemIsActive(clientiItem.to) : false,
-  );
-
   const rowBase =
     "group flex h-10 items-center gap-3 rounded-xl border-l-2 px-3 text-sm font-medium transition-all md:px-4";
 
@@ -101,12 +74,6 @@ function AdminLayout() {
       ? "border-l-primary bg-[rgba(0,212,255,0.08)] text-foreground shadow-[inset_0_0_24px_rgba(0,212,255,0.08)]"
       : "border-l-transparent text-foreground hover:bg-[rgba(255,255,255,0.04)]";
   };
-
-  const mockBadge = (
-    <span className="hidden rounded-md border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#4a5568] md:inline">
-      Mock
-    </span>
-  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -125,52 +92,6 @@ function AdminLayout() {
             const Icon = item.icon;
             const isMock = item.status === "mock";
             const iconClass = isMock ? "text-[#4a5568]" : "text-primary";
-
-            if (item.children) {
-              const childActive = childActiveFor(item);
-              const selfActive = itemIsActive(item.to);
-              const expanded = clientiOpen || childActive;
-              const rowActive = selfActive || childActive;
-
-              return (
-                <div key={item.to}>
-                  <button
-                    type="button"
-                    onClick={() => setClientiOpen((v) => !v || childActive)}
-                    className={`${rowBase} w-full ${rowStateClass(rowActive, isMock)}`}
-                  >
-                    <Icon className={`h-5 w-5 shrink-0 ${iconClass}`} />
-                    <span className="hidden flex-1 text-left md:inline">{item.label}</span>
-                    {isMock && mockBadge}
-                    <ChevronDown
-                      className={`hidden h-4 w-4 shrink-0 text-[#4a5568] transition-transform md:inline ${expanded ? "rotate-180" : ""}`}
-                    />
-                  </button>
-                  {expanded && (
-                    <div className="ml-5 mt-1 hidden flex-col gap-1 border-l border-[rgba(255,255,255,0.06)] pl-3 md:flex">
-                      {item.children.map((child) => {
-                        const ChildIcon = child.icon;
-                        const cActive = itemIsActive(child.to);
-                        const cMock = child.status === "mock";
-                        const cIconClass = cMock ? "text-[#4a5568]" : "text-primary";
-                        return (
-                          <Link
-                            key={child.to}
-                            to={child.to}
-                            className={`${rowBase} ${rowStateClass(cActive, cMock)}`}
-                          >
-                            <ChildIcon className={`h-4 w-4 shrink-0 ${cIconClass}`} />
-                            <span className="flex-1">{child.label}</span>
-                            {cMock && mockBadge}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
             const active = itemIsActive(item.to);
             return (
               <Link
@@ -180,7 +101,11 @@ function AdminLayout() {
               >
                 <Icon className={`h-5 w-5 shrink-0 ${iconClass}`} />
                 <span className="hidden flex-1 md:inline">{item.label}</span>
-                {isMock && mockBadge}
+                {isMock && (
+                  <span className="hidden rounded-md border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#4a5568] md:inline">
+                    Mock
+                  </span>
+                )}
               </Link>
             );
           })}
