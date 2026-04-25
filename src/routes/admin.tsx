@@ -7,11 +7,13 @@ import {
   FileText,
   LayoutDashboard,
   Map,
+  Megaphone,
   Radar,
   Settings,
   Shield,
   TrendingUp,
   Users,
+  Workflow,
 } from "lucide-react";
 import {
   Area,
@@ -40,19 +42,23 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
 });
 
-const navItems = [
-  { label: "Dashboard", to: "/admin", icon: LayoutDashboard },
-  { label: "Lead", to: "/admin/leads", icon: Users },
-  { label: "Analytics", to: "/admin/analytics", icon: BarChart2 },
-  { label: "Clienti", to: "/admin/clienti", icon: Users },
-  { label: "Team", to: "/admin/team", icon: Shield },
-  { label: "Contratti", to: "/admin/contracts", icon: FileText },
-  { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2 },
-  { label: "AI Monitor", to: "/admin/ai-monitor", icon: Cpu },
-  { label: "Road-map", to: "/admin/roadmap", icon: Map },
-  { label: "Competitor", to: "/admin/competitor", icon: Radar },
-  { label: "Impostazioni", to: "/admin/settings", icon: Settings },
-] as const;
+type NavStatus = "active" | "mock";
+
+const navItems: { label: string; to: string; icon: typeof Users; status: NavStatus }[] = [
+  { label: "Dashboard", to: "/admin", icon: LayoutDashboard, status: "mock" },
+  { label: "Lead", to: "/admin/leads", icon: Users, status: "active" },
+  { label: "Analytics", to: "/admin/analytics", icon: BarChart2, status: "active" },
+  { label: "Pipeline", to: "/admin/pipeline", icon: Workflow, status: "active" },
+  { label: "Clienti", to: "/admin/clienti", icon: Users, status: "mock" },
+  { label: "Team", to: "/admin/team", icon: Shield, status: "mock" },
+  { label: "Contratti", to: "/admin/contracts", icon: FileText, status: "mock" },
+  { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2, status: "mock" },
+  { label: "AI Monitor", to: "/admin/ai-monitor", icon: Cpu, status: "mock" },
+  { label: "Road-map", to: "/admin/roadmap", icon: Map, status: "mock" },
+  { label: "Competitor", to: "/admin/competitor", icon: Radar, status: "mock" },
+  { label: "Ads", to: "/admin/ads", icon: Megaphone, status: "mock" },
+  { label: "Impostazioni", to: "/admin/settings", icon: Settings, status: "mock" },
+];
 
 const contractColors = ["var(--falcon-cyan)", "var(--falcon-deep)", "#f59e0b"];
 
@@ -77,18 +83,36 @@ function AdminLayout() {
             const Icon = item.icon;
             const active =
               item.to === "/admin" ? location.pathname === item.to : location.pathname.startsWith(item.to);
+            const isMock = item.status === "mock";
+
+            const baseClass = "group flex h-12 items-center gap-3 rounded-2xl border-l-2 px-3 text-sm font-medium transition-all md:px-4";
+
+            let stateClass = "";
+            if (isMock) {
+              stateClass = active
+                ? "border-l-transparent bg-[rgba(255,255,255,0.03)] text-[#4a5568] hover:bg-[rgba(255,255,255,0.04)]"
+                : "border-l-transparent text-[#4a5568] hover:bg-[rgba(255,255,255,0.025)]";
+            } else {
+              stateClass = active
+                ? "border-l-primary bg-[rgba(0,212,255,0.08)] text-foreground shadow-[inset_0_0_24px_rgba(0,212,255,0.08)]"
+                : "border-l-transparent text-foreground hover:bg-[rgba(255,255,255,0.04)]";
+            }
+
+            const iconClass = isMock ? "text-[#4a5568]" : "text-primary";
+
             return (
               <Link
                 key={item.to}
                 to={item.to}
-                className={`group flex h-12 items-center gap-3 rounded-2xl border-l-2 px-3 text-sm font-medium transition-all md:px-4 ${
-                  active
-                    ? "border-l-primary bg-[rgba(0,212,255,0.08)] text-primary shadow-[inset_0_0_24px_rgba(0,212,255,0.08)]"
-                    : "border-l-transparent text-muted-foreground hover:bg-[rgba(255,255,255,0.04)] hover:text-foreground"
-                }`}
+                className={`${baseClass} ${stateClass}`}
               >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className="hidden md:inline">{item.label}</span>
+                <Icon className={`h-5 w-5 shrink-0 ${iconClass}`} />
+                <span className="hidden flex-1 md:inline">{item.label}</span>
+                {isMock && (
+                  <span className="hidden rounded-md border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-[#4a5568] md:inline">
+                    Mock
+                  </span>
+                )}
               </Link>
             );
           })}
