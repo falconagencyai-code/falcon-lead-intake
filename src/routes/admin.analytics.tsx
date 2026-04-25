@@ -211,26 +211,48 @@ function AnalyticsPage() {
         </div>
 
         <TooltipProvider delayDuration={150}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => navigate({ to: "/admin/ads" })}
-                className="btn-ghost inline-flex items-center gap-2 text-sm"
-                style={{
-                  border: "1px solid rgba(0,212,255,0.4)",
-                  color: "#00d4ff",
-                  background: "rgba(0,212,255,0.04)",
-                }}
-              >
-                🎯 Collega Ads
-                <ExternalLink className="h-4 w-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs">
-              Vai alla sezione Ads per collegare Facebook Business Manager
-            </TooltipContent>
-          </Tooltip>
+          <div className="flex flex-wrap items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: "/admin/ads" })}
+                  className="btn-ghost inline-flex items-center gap-2 text-sm"
+                  style={{
+                    border: "1px solid rgba(0,212,255,0.4)",
+                    color: "#00d4ff",
+                    background: "rgba(0,212,255,0.04)",
+                  }}
+                >
+                  🎯 Collega Ads
+                  <ExternalLink className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                Vai alla sezione Ads per collegare Facebook Business Manager
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => navigate({ to: "/admin/pipeline" })}
+                  className="btn-ghost inline-flex items-center gap-2 text-sm"
+                  style={{
+                    border: "1px solid rgba(0,212,255,0.4)",
+                    color: "#00d4ff",
+                    background: "rgba(0,212,255,0.04)",
+                  }}
+                >
+                  📊 Pipeline
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                Analisi conversioni pipeline e motivi di perdita lead
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </TooltipProvider>
       </header>
 
