@@ -17,6 +17,7 @@ import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminRoadmapRouteImport } from './routes/admin.roadmap'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
+import { Route as AdminFattureRouteImport } from './routes/admin.fatture'
 import { Route as AdminContractsRouteImport } from './routes/admin.contracts'
 import { Route as AdminContabilitaRouteImport } from './routes/admin.contabilita'
 import { Route as AdminCompetitorRouteImport } from './routes/admin.competitor'
@@ -63,6 +64,11 @@ const AdminPipelineRoute = AdminPipelineRouteImport.update({
 const AdminLeadsRoute = AdminLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFattureRoute = AdminFattureRouteImport.update({
+  id: '/fatture',
+  path: '/fatture',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminContractsRoute = AdminContractsRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
+  '/admin/fatture': typeof AdminFattureRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
+  '/admin/fatture': typeof AdminFattureRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
+  '/admin/fatture': typeof AdminFattureRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/admin/competitor'
     | '/admin/contabilita'
     | '/admin/contracts'
+    | '/admin/fatture'
     | '/admin/leads'
     | '/admin/pipeline'
     | '/admin/roadmap'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/admin/competitor'
     | '/admin/contabilita'
     | '/admin/contracts'
+    | '/admin/fatture'
     | '/admin/leads'
     | '/admin/pipeline'
     | '/admin/roadmap'
@@ -200,6 +211,7 @@ export interface FileRouteTypes {
     | '/admin/competitor'
     | '/admin/contabilita'
     | '/admin/contracts'
+    | '/admin/fatture'
     | '/admin/leads'
     | '/admin/pipeline'
     | '/admin/roadmap'
@@ -271,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLeadsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/fatture': {
+      id: '/admin/fatture'
+      path: '/fatture'
+      fullPath: '/admin/fatture'
+      preLoaderRoute: typeof AdminFattureRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/contracts': {
       id: '/admin/contracts'
       path: '/contracts'
@@ -331,6 +350,7 @@ interface AdminRouteChildren {
   AdminCompetitorRoute: typeof AdminCompetitorRoute
   AdminContabilitaRoute: typeof AdminContabilitaRoute
   AdminContractsRoute: typeof AdminContractsRoute
+  AdminFattureRoute: typeof AdminFattureRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminRoadmapRoute: typeof AdminRoadmapRoute
@@ -346,6 +366,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCompetitorRoute: AdminCompetitorRoute,
   AdminContabilitaRoute: AdminContabilitaRoute,
   AdminContractsRoute: AdminContractsRoute,
+  AdminFattureRoute: AdminFattureRoute,
   AdminLeadsRoute: AdminLeadsRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminRoadmapRoute: AdminRoadmapRoute,
