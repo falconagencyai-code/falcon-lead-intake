@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Activity, CheckCircle2, Users, XCircle } from "lucide-react";
+import { Activity, ArrowLeft, CheckCircle2, Users, XCircle } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -190,7 +190,14 @@ function PipelinePage() {
   return (
     <div className="space-y-8">
       <header>
-        <p className="label-section">Pipeline · Conversioni</p>
+        <Link
+          to="/admin/analytics"
+          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Torna ad Analytics
+        </Link>
+        <p className="label-section mt-4">Pipeline · Conversioni</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-5xl">
           Pipeline <span className="text-primary text-glow">Lead</span>
         </h1>
