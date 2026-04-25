@@ -219,7 +219,7 @@ const initialProposals: Proposal[] = [
   { id: "p6", client: "Chiara Monti — Polar", service: "Automazioni", value: "€14.200", date: "12 Mar 2026", status: "Scaduta" },
 ];
 
-function ClientiPage() {
+function ClientiInner() {
   const [tab, setTab] = useState<"clienti" | "proposte">("clienti");
   const [clients, setClients] = useState(initialClients);
   const [activeId, setActiveId] = useState<string | null>(null);
