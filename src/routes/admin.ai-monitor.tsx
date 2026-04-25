@@ -69,7 +69,7 @@ const tooltipStyle = { background: "#070b14", border: "1px solid rgba(0,212,255,
 const fmtEur = (n: number) => `€${n.toLocaleString("it-IT", { maximumFractionDigits: 0 })}`;
 const fmtTok = (n: number) => n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : `${(n / 1000).toFixed(0)}k`;
 
-function AIMonitorPage() {
+export function AIMonitorPage() {
   const [projects, setProjects] = useState(initialProjects);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftThreshold, setDraftThreshold] = useState<string>("");

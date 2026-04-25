@@ -16,7 +16,7 @@ export const Route = createFileRoute("/admin/contracts")({
 
 const filters = ["Tutti", "Attivo", "In scadenza", "Scaduto", "Bozza"];
 
-function ContractsPage() {
+export function ContractsPage() {
   return (
     <div className="space-y-6">
       <header>
