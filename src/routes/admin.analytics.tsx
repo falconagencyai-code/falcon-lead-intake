@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { BarChart2, CheckCircle2, Clock, ExternalLink, TrendingDown, Users } from "lucide-react";
+import { BarChart2, CheckCircle2, Clock, TrendingDown, Users } from "lucide-react";
 import {
   Bar,
   BarChart,
