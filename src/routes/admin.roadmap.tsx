@@ -72,23 +72,124 @@ const tabs: { key: TabKey; label: string }[] = [
 ];
 
 function RoadmapPage() {
-  const [sections, setSections] = useState<Section[]>(initialSections);
+  const [sections, setSections] = useState<Section[]>(
+    sectionMeta.map((m) => ({ ...m, items: [] })),
+  );
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("panoramica");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("roadmap_items")
+        .select("id, section_id, label, priority, done")
+        .order("position");
+      if (cancelled) return;
+      if (error) {
+        console.error("Failed to load roadmap_items", error);
+        setLoading(false);
+        return;
+      }
+      const rows = (data ?? []) as Array<{
+        id: string;
+        section_id: string;
+        label: string;
+        priority: Priority;
+        done: boolean;
+      }>;
+      setSections(
+        sectionMeta.map((m) => ({
+          ...m,
+          items: rows
+            .filter((r) => r.section_id === m.id)
+            .map((r) => ({ id: r.id, label: r.label, priority: r.priority, done: r.done })),
+        })),
+      );
+      setLoading(false);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const totals = useMemo(() => {
     const all = sections.flatMap((s) => s.items);
     const done = all.filter((i) => i.done).length;
-    return { done, total: all.length, pct: Math.round((done / all.length) * 100) };
+    const total = all.length;
+    return { done, total, pct: total === 0 ? 0 : Math.round((done / total) * 100) };
   }, [sections]);
 
-  const toggle = (sectionId: string, itemId: string) => {
+  const toggle = async (sectionId: string, itemId: string) => {
+    const section = sections.find((s) => s.id === sectionId);
+    const item = section?.items.find((i) => i.id === itemId);
+    if (!item) return;
+    const newDone = !item.done;
     setSections((prev) =>
       prev.map((s) =>
         s.id === sectionId
-          ? { ...s, items: s.items.map((i) => (i.id === itemId ? { ...i, done: !i.done } : i)) }
+          ? { ...s, items: s.items.map((i) => (i.id === itemId ? { ...i, done: newDone } : i)) }
           : s,
       ),
     );
+    if (!supabase) return;
+    const { error } = await supabase.from("roadmap_items").update({ done: newDone }).eq("id", itemId);
+    if (error) {
+      console.error("Failed to update task", error);
+      setSections((prev) =>
+        prev.map((s) =>
+          s.id === sectionId
+            ? { ...s, items: s.items.map((i) => (i.id === itemId ? { ...i, done: !newDone } : i)) }
+            : s,
+        ),
+      );
+    }
+  };
+
+  const addItem = async (sectionId: string, label: string, priority: Priority) => {
+    if (!supabase || !label.trim()) return;
+    const { data, error } = await supabase
+      .from("roadmap_items")
+      .insert({ section_id: sectionId, label: label.trim(), priority, done: false })
+      .select("id, section_id, label, priority, done")
+      .single();
+    if (error || !data) {
+      console.error("Failed to insert task", error);
+      return;
+    }
+    setSections((prev) =>
+      prev.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              items: [
+                ...s.items,
+                { id: data.id, label: data.label, priority: data.priority as Priority, done: data.done },
+              ],
+            }
+          : s,
+      ),
+    );
+  };
+
+  const deleteItem = async (sectionId: string, itemId: string) => {
+    const snapshot = sections;
+    setSections((curr) =>
+      curr.map((s) =>
+        s.id === sectionId ? { ...s, items: s.items.filter((i) => i.id !== itemId) } : s,
+      ),
+    );
+    if (!supabase) return;
+    const { error } = await supabase.from("roadmap_items").delete().eq("id", itemId);
+    if (error) {
+      console.error("Failed to delete task", error);
+      setSections(snapshot);
+    }
   };
 
   return (
