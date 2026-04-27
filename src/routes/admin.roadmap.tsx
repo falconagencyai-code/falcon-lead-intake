@@ -16,11 +16,19 @@ import {
   Trash2,
   User,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 import { AdminCard } from "./admin/-admin-ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin/roadmap")({
   head: () => ({
