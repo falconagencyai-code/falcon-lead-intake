@@ -248,30 +248,53 @@ function RoadmapPage() {
         })}
       </div>
 
-      <div key={tab} className="animate-in fade-in duration-150">
-        {tab === "panoramica" && <PanoramicaTab sections={sections} toggle={toggle} />}
-        {tab === "clienti" && <ClientiTab />}
-        {tab === "ads" && <CampaignBoard />}
-        {tab === "gestionale" && (
-          <SingleSection section={sections.find((s) => s.id === "gestionale")!} toggle={toggle} />
-        )}
-        {tab === "prodotto" && (
-          <SingleSection section={sections.find((s) => s.id === "prodotto")!} toggle={toggle} />
-        )}
-        {tab === "obiettivi" && <ObiettiviTab />}
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] py-16 text-sm text-muted-foreground">
+          Caricamento task in corso…
+        </div>
+      ) : (
+        <div key={tab} className="animate-in fade-in duration-150">
+          {tab === "panoramica" && (
+            <PanoramicaTab sections={sections} toggle={toggle} addItem={addItem} deleteItem={deleteItem} />
+          )}
+          {tab === "clienti" && <ClientiTab />}
+          {tab === "ads" && <CampaignBoard />}
+          {tab === "gestionale" && (
+            <SingleSection
+              section={sections.find((s) => s.id === "gestionale")!}
+              toggle={toggle}
+              addItem={addItem}
+              deleteItem={deleteItem}
+            />
+          )}
+          {tab === "prodotto" && (
+            <SingleSection
+              section={sections.find((s) => s.id === "prodotto")!}
+              toggle={toggle}
+              addItem={addItem}
+              deleteItem={deleteItem}
+            />
+          )}
+          {tab === "obiettivi" && <ObiettiviTab />}
+        </div>
+      )}
     </div>
   );
 }
 
 /* ============== PANORAMICA ============== */
+type SectionActions = {
+  toggle: (sectionId: string, itemId: string) => void;
+  addItem: (sectionId: string, label: string, priority: Priority) => void;
+  deleteItem: (sectionId: string, itemId: string) => void;
+};
+
 function PanoramicaTab({
   sections,
   toggle,
-}: {
-  sections: Section[];
-  toggle: (sectionId: string, itemId: string) => void;
-}) {
+  addItem,
+  deleteItem,
+}: { sections: Section[] } & SectionActions) {
   return (
     <div className="space-y-6">
       {/* Milestones */}
@@ -297,7 +320,13 @@ function PanoramicaTab({
       {/* Sections grid */}
       <div className="grid gap-5 xl:grid-cols-2">
         {sections.map((section) => (
-          <SectionCard key={section.id} section={section} toggle={toggle} />
+          <SectionCard
+            key={section.id}
+            section={section}
+            toggle={toggle}
+            addItem={addItem}
+            deleteItem={deleteItem}
+          />
         ))}
       </div>
     </div>
