@@ -106,17 +106,24 @@ function RoadmapPage() {
         setLoading(false);
         return;
       }
-      const { data, error } = await supabase
-        .from("roadmap_items")
-        .select("id, section_id, label, priority, done")
-        .order("position");
+      const [itemsRes, milestonesRes] = await Promise.all([
+        supabase
+          .from("roadmap_items")
+          .select("id, section_id, label, priority, done")
+          .order("position"),
+        supabase
+          .from("roadmap_milestones")
+          .select("id, label, title, description, color, section_id, metric_label, position")
+          .order("position"),
+      ]);
       if (cancelled) return;
-      if (error) {
-        console.error("Failed to load roadmap_items", error);
-        setLoading(false);
-        return;
+      if (itemsRes.error) {
+        console.error("Failed to load roadmap_items", itemsRes.error);
       }
-      const rows = (data ?? []) as Array<{
+      if (milestonesRes.error) {
+        console.error("Failed to load roadmap_milestones", milestonesRes.error);
+      }
+      const rows = (itemsRes.data ?? []) as Array<{
         id: string;
         section_id: string;
         label: string;
@@ -131,6 +138,7 @@ function RoadmapPage() {
             .map((r) => ({ id: r.id, label: r.label, priority: r.priority, done: r.done })),
         })),
       );
+      setMilestones((milestonesRes.data ?? []) as Milestone[]);
       setLoading(false);
     }
     load();
