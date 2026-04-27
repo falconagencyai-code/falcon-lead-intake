@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
   Code,
@@ -13,11 +13,13 @@ import {
   GripVertical,
   MoreHorizontal,
   Plus,
+  Trash2,
   User,
   AlertTriangle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { supabase } from "@/lib/supabase";
 import { AdminCard } from "./admin/-admin-ui";
 
 export const Route = createFileRoute("/admin/roadmap")({
@@ -41,93 +43,15 @@ type Section = {
   items: ChecklistItem[];
 };
 
-const initialSections: Section[] = [
-  {
-    id: "acquisizione",
-    title: "Acquisizione Clienti",
-    icon: Target,
-    iconColor: "#00d4ff",
-    barColor: "#ef4444",
-    items: [
-      { id: "a1", label: "Follow-up 5 lead in sospeso da +7 giorni", priority: "P0", done: false },
-      { id: "a2", label: "Inviare proposta a Bianchi Srl", priority: "P0", done: false },
-      { id: "a3", label: "Attivare referral con partner", priority: "P0", done: false },
-      { id: "a4", label: "Setup form contatto sul sito", priority: "P0", done: true },
-      { id: "a5", label: "Pubblicare 2 case study sul sito", priority: "P1", done: false },
-      { id: "a6", label: "Avviare partnership con agenzia creativa", priority: "P2", done: false },
-    ],
-  },
-  {
-    id: "ads",
-    title: "Campagne Ads",
-    icon: Megaphone,
-    iconColor: "#8b5cf6",
-    barColor: "#8b5cf6",
-    items: [
-      { id: "ad1", label: "Campagna lead gen aprile Meta", priority: "P0", done: true },
-      { id: "ad2", label: "Setup pixel Facebook tutti i clienti", priority: "P0", done: true },
-      { id: "ad3", label: "Ottimizzare ROAS campagna Google", priority: "P0", done: false },
-      { id: "ad4", label: "Creare UGC content per TikTok cliente Verde", priority: "P1", done: false },
-      { id: "ad5", label: "Avviare campagna LinkedIn B2B", priority: "P2", done: false },
-    ],
-  },
-  {
-    id: "gestionale",
-    title: "Gestionale Agenzia",
-    icon: Building2,
-    iconColor: "#00d4ff",
-    barColor: "#eab308",
-    items: [
-      { id: "g1", label: "Fatturare cliente Mario Verdi (scad. 30 apr)", priority: "P0", done: false },
-      { id: "g2", label: "Setup Supabase progetto admin", priority: "P0", done: true },
-      { id: "g3", label: "Onboarding collaboratore dev", priority: "P0", done: true },
-      { id: "g4", label: "Rinnovo dominio falconagency.ai", priority: "P0", done: true },
-      { id: "g5", label: "Aggiornare listino prezzi 2026", priority: "P1", done: false },
-      { id: "g6", label: "Scrivere manuale operativo agenzia", priority: "P2", done: false },
-    ],
-  },
-  {
-    id: "prodotto",
-    title: "Sviluppo Prodotto",
-    icon: Code,
-    iconColor: "#00d4ff",
-    barColor: "#00d4ff",
-    items: [
-      { id: "p1", label: "Landing page pubblica con form", priority: "P0", done: true },
-      { id: "p2", label: "Dashboard admin base", priority: "P0", done: true },
-      { id: "p3", label: "Integrazione Supabase + RLS", priority: "P0", done: true },
-      { id: "p4", label: "Form multi-step qualificazione lead", priority: "P0", done: true },
-      { id: "p5", label: "Notifiche email automatiche nuovi lead", priority: "P0", done: false },
-      { id: "p6", label: "Sezione portfolio clienti sul sito", priority: "P1", done: false },
-      { id: "p7", label: "App companion mobile", priority: "P2", done: false },
-    ],
-  },
-  {
-    id: "clienti",
-    title: "Clienti Attivi",
-    icon: Users,
-    iconColor: "#22c55e",
-    barColor: "#22c55e",
-    items: [
-      { id: "c1", label: "Consegnato sito web cliente Esposito", priority: "P0", done: true },
-      { id: "c2", label: "Demo piattaforma AI cliente Ferrari", priority: "P0", done: true },
-      { id: "c3", label: "Revisione feedback cliente Rossi Srl", priority: "P0", done: false },
-      { id: "c4", label: "Presentazione onboarding cliente Bianchi", priority: "P1", done: false },
-    ],
-  },
-  {
-    id: "obiettivi",
-    title: "Obiettivi Q2",
-    icon: TrendingUp,
-    iconColor: "#eab308",
-    barColor: "#eab308",
-    items: [
-      { id: "o1", label: "Raggiungere €80.000 fatturato Q2", priority: "P0", done: false },
-      { id: "o2", label: "Acquisire 8 nuovi clienti (apr-giu)", priority: "P0", done: false },
-      { id: "o3", label: "Lanciare 3 servizi AI productizzati", priority: "P1", done: false },
-      { id: "o4", label: "Assumere 1 account manager", priority: "P2", done: false },
-    ],
-  },
+type SectionMeta = Omit<Section, "items">;
+
+const sectionMeta: SectionMeta[] = [
+  { id: "acquisizione", title: "Acquisizione Clienti", icon: Target, iconColor: "#00d4ff", barColor: "#ef4444" },
+  { id: "ads", title: "Campagne Ads", icon: Megaphone, iconColor: "#8b5cf6", barColor: "#8b5cf6" },
+  { id: "gestionale", title: "Gestionale Agenzia", icon: Building2, iconColor: "#00d4ff", barColor: "#eab308" },
+  { id: "prodotto", title: "Sviluppo Prodotto", icon: Code, iconColor: "#00d4ff", barColor: "#00d4ff" },
+  { id: "clienti", title: "Clienti Attivi", icon: Users, iconColor: "#22c55e", barColor: "#22c55e" },
+  { id: "obiettivi", title: "Obiettivi Q2", icon: TrendingUp, iconColor: "#eab308", barColor: "#eab308" },
 ];
 
 const priorityTone: Record<Priority, { color: string; bg: string }> = {
@@ -148,23 +72,124 @@ const tabs: { key: TabKey; label: string }[] = [
 ];
 
 function RoadmapPage() {
-  const [sections, setSections] = useState<Section[]>(initialSections);
+  const [sections, setSections] = useState<Section[]>(
+    sectionMeta.map((m) => ({ ...m, items: [] })),
+  );
+  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("panoramica");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("roadmap_items")
+        .select("id, section_id, label, priority, done")
+        .order("position");
+      if (cancelled) return;
+      if (error) {
+        console.error("Failed to load roadmap_items", error);
+        setLoading(false);
+        return;
+      }
+      const rows = (data ?? []) as Array<{
+        id: string;
+        section_id: string;
+        label: string;
+        priority: Priority;
+        done: boolean;
+      }>;
+      setSections(
+        sectionMeta.map((m) => ({
+          ...m,
+          items: rows
+            .filter((r) => r.section_id === m.id)
+            .map((r) => ({ id: r.id, label: r.label, priority: r.priority, done: r.done })),
+        })),
+      );
+      setLoading(false);
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const totals = useMemo(() => {
     const all = sections.flatMap((s) => s.items);
     const done = all.filter((i) => i.done).length;
-    return { done, total: all.length, pct: Math.round((done / all.length) * 100) };
+    const total = all.length;
+    return { done, total, pct: total === 0 ? 0 : Math.round((done / total) * 100) };
   }, [sections]);
 
-  const toggle = (sectionId: string, itemId: string) => {
+  const toggle = async (sectionId: string, itemId: string) => {
+    const section = sections.find((s) => s.id === sectionId);
+    const item = section?.items.find((i) => i.id === itemId);
+    if (!item) return;
+    const newDone = !item.done;
     setSections((prev) =>
       prev.map((s) =>
         s.id === sectionId
-          ? { ...s, items: s.items.map((i) => (i.id === itemId ? { ...i, done: !i.done } : i)) }
+          ? { ...s, items: s.items.map((i) => (i.id === itemId ? { ...i, done: newDone } : i)) }
           : s,
       ),
     );
+    if (!supabase) return;
+    const { error } = await supabase.from("roadmap_items").update({ done: newDone }).eq("id", itemId);
+    if (error) {
+      console.error("Failed to update task", error);
+      setSections((prev) =>
+        prev.map((s) =>
+          s.id === sectionId
+            ? { ...s, items: s.items.map((i) => (i.id === itemId ? { ...i, done: !newDone } : i)) }
+            : s,
+        ),
+      );
+    }
+  };
+
+  const addItem = async (sectionId: string, label: string, priority: Priority) => {
+    if (!supabase || !label.trim()) return;
+    const { data, error } = await supabase
+      .from("roadmap_items")
+      .insert({ section_id: sectionId, label: label.trim(), priority, done: false })
+      .select("id, section_id, label, priority, done")
+      .single();
+    if (error || !data) {
+      console.error("Failed to insert task", error);
+      return;
+    }
+    setSections((prev) =>
+      prev.map((s) =>
+        s.id === sectionId
+          ? {
+              ...s,
+              items: [
+                ...s.items,
+                { id: data.id, label: data.label, priority: data.priority as Priority, done: data.done },
+              ],
+            }
+          : s,
+      ),
+    );
+  };
+
+  const deleteItem = async (sectionId: string, itemId: string) => {
+    const snapshot = sections;
+    setSections((curr) =>
+      curr.map((s) =>
+        s.id === sectionId ? { ...s, items: s.items.filter((i) => i.id !== itemId) } : s,
+      ),
+    );
+    if (!supabase) return;
+    const { error } = await supabase.from("roadmap_items").delete().eq("id", itemId);
+    if (error) {
+      console.error("Failed to delete task", error);
+      setSections(snapshot);
+    }
   };
 
   return (
@@ -223,30 +248,53 @@ function RoadmapPage() {
         })}
       </div>
 
-      <div key={tab} className="animate-in fade-in duration-150">
-        {tab === "panoramica" && <PanoramicaTab sections={sections} toggle={toggle} />}
-        {tab === "clienti" && <ClientiTab />}
-        {tab === "ads" && <CampaignBoard />}
-        {tab === "gestionale" && (
-          <SingleSection section={sections.find((s) => s.id === "gestionale")!} toggle={toggle} />
-        )}
-        {tab === "prodotto" && (
-          <SingleSection section={sections.find((s) => s.id === "prodotto")!} toggle={toggle} />
-        )}
-        {tab === "obiettivi" && <ObiettiviTab />}
-      </div>
+      {loading ? (
+        <div className="flex items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] py-16 text-sm text-muted-foreground">
+          Caricamento task in corso…
+        </div>
+      ) : (
+        <div key={tab} className="animate-in fade-in duration-150">
+          {tab === "panoramica" && (
+            <PanoramicaTab sections={sections} toggle={toggle} addItem={addItem} deleteItem={deleteItem} />
+          )}
+          {tab === "clienti" && <ClientiTab />}
+          {tab === "ads" && <CampaignBoard />}
+          {tab === "gestionale" && (
+            <SingleSection
+              section={sections.find((s) => s.id === "gestionale")!}
+              toggle={toggle}
+              addItem={addItem}
+              deleteItem={deleteItem}
+            />
+          )}
+          {tab === "prodotto" && (
+            <SingleSection
+              section={sections.find((s) => s.id === "prodotto")!}
+              toggle={toggle}
+              addItem={addItem}
+              deleteItem={deleteItem}
+            />
+          )}
+          {tab === "obiettivi" && <ObiettiviTab />}
+        </div>
+      )}
     </div>
   );
 }
 
 /* ============== PANORAMICA ============== */
+type SectionActions = {
+  toggle: (sectionId: string, itemId: string) => void;
+  addItem: (sectionId: string, label: string, priority: Priority) => void;
+  deleteItem: (sectionId: string, itemId: string) => void;
+};
+
 function PanoramicaTab({
   sections,
   toggle,
-}: {
-  sections: Section[];
-  toggle: (sectionId: string, itemId: string) => void;
-}) {
+  addItem,
+  deleteItem,
+}: { sections: Section[] } & SectionActions) {
   return (
     <div className="space-y-6">
       {/* Milestones */}
@@ -272,7 +320,13 @@ function PanoramicaTab({
       {/* Sections grid */}
       <div className="grid gap-5 xl:grid-cols-2">
         {sections.map((section) => (
-          <SectionCard key={section.id} section={section} toggle={toggle} />
+          <SectionCard
+            key={section.id}
+            section={section}
+            toggle={toggle}
+            addItem={addItem}
+            deleteItem={deleteItem}
+          />
         ))}
       </div>
     </div>
@@ -327,13 +381,32 @@ function MilestoneCard({
 function SectionCard({
   section,
   toggle,
-}: {
-  section: Section;
-  toggle: (sectionId: string, itemId: string) => void;
-}) {
+  addItem,
+  deleteItem,
+}: { section: Section } & SectionActions) {
   const Icon = section.icon;
   const done = section.items.filter((i) => i.done).length;
-  const pct = Math.round((done / section.items.length) * 100);
+  const pct = section.items.length === 0 ? 0 : Math.round((done / section.items.length) * 100);
+
+  const [adding, setAdding] = useState(false);
+  const [draftLabel, setDraftLabel] = useState("");
+  const [draftPriority, setDraftPriority] = useState<Priority>("P1");
+
+  const cancelAdd = () => {
+    setAdding(false);
+    setDraftLabel("");
+    setDraftPriority("P1");
+  };
+
+  const submitAdd = () => {
+    const v = draftLabel.trim();
+    if (!v) {
+      cancelAdd();
+      return;
+    }
+    addItem(section.id, v, draftPriority);
+    cancelAdd();
+  };
 
   return (
     <AdminCard className="p-5">
@@ -395,10 +468,68 @@ function SectionCard({
               >
                 {item.priority}
               </span>
+              <button
+                onClick={() => deleteItem(section.id, item.id)}
+                aria-label="Elimina task"
+                className="opacity-0 transition group-hover:opacity-100 text-muted-foreground hover:text-red-400"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </li>
           );
         })}
       </ul>
+
+      <div className="mt-3">
+        {adding ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.18)] bg-[rgba(0,212,255,0.04)] p-2">
+            <input
+              autoFocus
+              value={draftLabel}
+              onChange={(e) => setDraftLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitAdd();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelAdd();
+                }
+              }}
+              placeholder="Nuovo task…"
+              className="flex-1 min-w-[160px] rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+            />
+            <select
+              value={draftPriority}
+              onChange={(e) => setDraftPriority(e.target.value as Priority)}
+              className="rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-2 py-1.5 text-sm text-foreground focus:outline-none"
+            >
+              <option value="P0">P0</option>
+              <option value="P1">P1</option>
+              <option value="P2">P2</option>
+            </select>
+            <button
+              onClick={submitAdd}
+              className="rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-semibold text-[#070b14] hover:bg-primary"
+            >
+              Aggiungi
+            </button>
+            <button
+              onClick={cancelAdd}
+              className="rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Annulla
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" /> Aggiungi task
+          </button>
+        )}
+      </div>
     </AdminCard>
   );
 }
@@ -406,13 +537,12 @@ function SectionCard({
 function SingleSection({
   section,
   toggle,
-}: {
-  section: Section;
-  toggle: (sectionId: string, itemId: string) => void;
-}) {
+  addItem,
+  deleteItem,
+}: { section: Section } & SectionActions) {
   return (
     <div className="grid gap-5">
-      <SectionCard section={section} toggle={toggle} />
+      <SectionCard section={section} toggle={toggle} addItem={addItem} deleteItem={deleteItem} />
     </div>
   );
 }
