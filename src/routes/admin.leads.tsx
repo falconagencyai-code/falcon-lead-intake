@@ -1144,3 +1144,115 @@ function DrawerContent({
     </div>
   );
 }
+
+// ============================================================
+// Project section (visibile solo per chiuso_vinto)
+// ============================================================
+
+const CLIENT_STATUS_OPTIONS = ["In corso", "Consegnato", "In pausa"] as const;
+
+function toDateInputValue(iso: string | null) {
+  if (!iso) return "";
+  // already YYYY-MM-DD or full date
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+  try {
+    return format(new Date(iso), "yyyy-MM-dd");
+  } catch {
+    return "";
+  }
+}
+
+function toDateTimeLocalValue(iso: string | null) {
+  if (!iso) return "";
+  try {
+    return format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
+  } catch {
+    return "";
+  }
+}
+
+function ProjectSection({ lead }: { lead: LeadRow }) {
+  const queryClient = useQueryClient();
+  const [clientStatus, setClientStatus] = useState<string>(lead.client_status ?? "In corso");
+  const [startDate, setStartDate] = useState<string>(toDateInputValue(lead.project_start_date));
+  const [nextMeeting, setNextMeeting] = useState<string>(toDateTimeLocalValue(lead.next_meeting));
+
+  useEffect(() => {
+    setClientStatus(lead.client_status ?? "In corso");
+    setStartDate(toDateInputValue(lead.project_start_date));
+    setNextMeeting(toDateTimeLocalValue(lead.next_meeting));
+  }, [lead.id]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (patch: Record<string, unknown>) => {
+      if (!supabase) throw new Error("Supabase non configurato");
+      const { error } = await supabase.from("leads").update(patch).eq("id", lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success("Progetto aggiornato");
+    },
+    onError: (e: Error) => toast.error(`Errore: ${e.message}`),
+  });
+
+  const handleStatus = (v: string) => {
+    setClientStatus(v);
+    updateMutation.mutate({ client_status: v });
+  };
+  const handleStart = (v: string) => {
+    setStartDate(v);
+    updateMutation.mutate({ project_start_date: v || null });
+  };
+  const handleMeeting = (v: string) => {
+    setNextMeeting(v);
+    updateMutation.mutate({ next_meeting: v ? new Date(v).toISOString() : null });
+  };
+
+  return (
+    <section>
+      <p className="label-section mb-3 flex items-center gap-2">
+        Progetto
+        {updateMutation.isPending && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+      </p>
+      <div className="space-y-3">
+        <div>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Status progetto
+          </label>
+          <select
+            value={clientStatus}
+            onChange={(e) => handleStatus(e.target.value)}
+            className="glass mt-1.5 h-11 w-full px-3 text-sm text-foreground outline-none"
+          >
+            {CLIENT_STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Data inizio progetto
+          </label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => handleStart(e.target.value)}
+            className="glass mt-1.5 h-11 w-full px-3 text-sm text-foreground outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Prossimo meeting
+          </label>
+          <input
+            type="datetime-local"
+            value={nextMeeting}
+            onChange={(e) => handleMeeting(e.target.value)}
+            className="glass mt-1.5 h-11 w-full px-3 text-sm text-foreground outline-none"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
