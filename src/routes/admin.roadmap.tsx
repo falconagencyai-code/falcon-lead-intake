@@ -374,6 +374,13 @@ function RoadmapPage() {
           {tab === "obiettivi" && <ObiettiviTab />}
         </div>
       )}
+
+      <MilestoneEditDialog
+        milestone={editingMilestone}
+        onClose={() => setEditingMilestone(null)}
+        onSave={saveMilestone}
+        onDelete={deleteMilestone}
+      />
     </div>
   );
 }
