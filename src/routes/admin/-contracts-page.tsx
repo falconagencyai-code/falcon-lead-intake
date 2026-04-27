@@ -236,11 +236,11 @@ function NewContractModal({ onClose, onCreated }: { onClose: () => void; onCreat
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 no-print">
-      <div className="glass max-h-[90vh] w-full max-w-2xl overflow-y-auto p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 no-print">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)] backdrop-blur-xl">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-foreground">Nuovo contratto</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <h2 className="text-2xl font-bold text-white">Nuovo contratto</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-white">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -250,7 +250,7 @@ function NewContractModal({ onClose, onCreated }: { onClose: () => void; onCreat
             <select
               value={leadId}
               onChange={(e) => onSelectLead(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 w-full rounded-md border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] px-3 text-sm text-white"
             >
               <option value="">— Nuovo cliente —</option>
               {leads.map((l) => (
