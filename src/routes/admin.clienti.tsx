@@ -182,7 +182,10 @@ function ClientiInner() {
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [proposals, setProposals] = useState(initialProposals);
+  const [proposals, setProposals] = useState<Quote[]>([]);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
+  const [activeQuoteId, setActiveQuoteId] = useState<string | null>(null);
+  const [leadOptions, setLeadOptions] = useState<LeadOption[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
   const loadClients = async () => {
@@ -204,11 +207,35 @@ function ClientiInner() {
     setLoading(false);
   };
 
+  const loadProposals = async () => {
+    if (!supabase) return;
+    setProposalsLoading(true);
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("*, leads(full_name, company)")
+      .order("created_at", { ascending: false });
+    if (error) toast.error(`Errore proposte: ${error.message}`);
+    else setProposals((data ?? []) as Quote[]);
+    setProposalsLoading(false);
+  };
+
+  const loadLeadOptions = async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("leads")
+      .select("id, full_name, company")
+      .order("created_at", { ascending: false });
+    if (!error) setLeadOptions((data ?? []) as LeadOption[]);
+  };
+
   useEffect(() => {
     loadClients();
+    loadProposals();
+    loadLeadOptions();
   }, []);
 
   const active = clients.find((c) => c.id === activeId) ?? null;
+  const activeQuote = proposals.find((q) => q.id === activeQuoteId) ?? null;
 
   const updateClient = async (
     id: string,
@@ -222,6 +249,18 @@ function ClientiInner() {
       loadClients();
     } else {
       toast.success("Cliente aggiornato");
+    }
+  };
+
+  const updateQuote = async (id: string, patch: Partial<Quote>) => {
+    if (!supabase) return;
+    setProposals((list) => list.map((q) => (q.id === id ? { ...q, ...patch } : q)));
+    const { error } = await supabase.from("quotes").update(patch).eq("id", id);
+    if (error) {
+      toast.error(`Errore: ${error.message}`);
+      loadProposals();
+    } else {
+      toast.success("Proposta aggiornata");
     }
   };
 
