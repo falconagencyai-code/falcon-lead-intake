@@ -143,7 +143,7 @@
       linear-gradient(90deg, rgba(0, 212, 255, 0.5) 1px, transparent 1px);
     background-size: 56px 56px;
     opacity: 0.06;
-    animation: circuit-drift 40s linear infinite;
+    transform: translateZ(0);
   }
   .text-glow { text-shadow: 0 0 24px rgba(0, 212, 255, 0.55), 0 0 48px rgba(0, 212, 255, 0.25); }
   .gradient-cyan { background: var(--gradient-cyan); }
@@ -234,6 +234,12 @@
 @keyframes circuit-drift {
   from { background-position: 0 0; }
   to { background-position: 0 -560px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .circuit-bg {
+    animation: circuit-drift 120s linear infinite;
+  }
 }
 
 /* Falcon: corpo che galleggia con leggera rotazione */

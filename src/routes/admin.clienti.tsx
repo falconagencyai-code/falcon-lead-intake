@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Calendar, Cpu, FileText, Plus, Receipt, Users, X } from "lucide-react";
 import { useState } from "react";
 
-import { ContractsPage } from "./admin.contracts";
-import { AIMonitorPage } from "./admin.ai-monitor";
+import { AIMonitorPage } from "./admin/-ai-monitor-page";
+import { ContractsPage } from "./admin/-contracts-page";
 import { AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
 
 export const Route = createFileRoute("/admin/clienti")({
