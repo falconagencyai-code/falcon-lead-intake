@@ -470,6 +470,7 @@ function MilestoneCard({
   description,
   progress,
   metric,
+  onEdit,
 }: {
   color: string;
   label: string;
@@ -477,9 +478,10 @@ function MilestoneCard({
   description: string;
   progress: number;
   metric: { label: string; value: string };
+  onEdit?: () => void;
 }) {
   return (
-    <AdminCard className="p-5" >
+    <AdminCard className="p-5">
       <div
         className="-m-5 mb-5 rounded-t-3xl border-l-4 p-5"
         style={{ borderColor: color, background: `${color}10` }}
@@ -492,19 +494,151 @@ function MilestoneCard({
             <h3 className="mt-2 text-lg font-bold text-foreground">{title}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{description}</p>
           </div>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Avanzamento</p>
-            <p className="mt-1 text-2xl font-black" style={{ color }}>
-              {progress}%
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">{metric.label}</p>
-            <p className="text-lg font-bold" style={{ color }}>
-              {metric.value}
-            </p>
+          <div className="flex flex-col items-end gap-2">
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                aria-label="Modifica milestone"
+                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Avanzamento</p>
+              <p className="mt-1 text-2xl font-black" style={{ color }}>
+                {progress}%
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">{metric.label}</p>
+              <p className="text-lg font-bold" style={{ color }}>
+                {metric.value}
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </AdminCard>
+  );
+}
+
+function MilestoneEditDialog({
+  milestone,
+  onClose,
+  onSave,
+  onDelete,
+}: {
+  milestone: Milestone | null;
+  onClose: () => void;
+  onSave: (m: Milestone) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [draft, setDraft] = useState<Milestone | null>(milestone);
+
+  useEffect(() => {
+    setDraft(milestone);
+  }, [milestone]);
+
+  if (!draft) return null;
+
+  const update = <K extends keyof Milestone>(key: K, value: Milestone[K]) =>
+    setDraft((d) => (d ? { ...d, [key]: value } : d));
+
+  return (
+    <Dialog open={!!milestone} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg bg-[#0b1220] text-foreground">
+        <DialogHeader>
+          <DialogTitle>Modifica milestone</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Field label="Label">
+            <input
+              value={draft.label}
+              onChange={(e) => update("label", e.target.value)}
+              className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+          </Field>
+          <Field label="Titolo">
+            <input
+              value={draft.title}
+              onChange={(e) => update("title", e.target.value)}
+              className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+          </Field>
+          <Field label="Descrizione">
+            <textarea
+              value={draft.description}
+              onChange={(e) => update("description", e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Colore">
+              <input
+                type="color"
+                value={draft.color}
+                onChange={(e) => update("color", e.target.value)}
+                className="h-10 w-full cursor-pointer rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)]"
+              />
+            </Field>
+            <Field label="Etichetta metrica">
+              <input
+                value={draft.metric_label}
+                onChange={(e) => update("metric_label", e.target.value)}
+                className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+              />
+            </Field>
+          </div>
+          <Field label="Sezione collegata">
+            <select
+              value={draft.section_id ?? ""}
+              onChange={(e) => update("section_id", e.target.value || null)}
+              className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            >
+              <option value="">Nessuna</option>
+              {sectionMeta.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <DialogFooter className="mt-2 flex flex-row items-center justify-between gap-2 sm:justify-between">
+          <button
+            onClick={() => onDelete(draft.id)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20"
+          >
+            <Trash2 className="h-4 w-4" /> Elimina
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Annulla
+            </button>
+            <button
+              onClick={() => onSave(draft)}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-[#070b14] hover:opacity-90"
+            >
+              Salva
+            </button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }
 
