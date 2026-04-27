@@ -381,13 +381,32 @@ function MilestoneCard({
 function SectionCard({
   section,
   toggle,
-}: {
-  section: Section;
-  toggle: (sectionId: string, itemId: string) => void;
-}) {
+  addItem,
+  deleteItem,
+}: { section: Section } & SectionActions) {
   const Icon = section.icon;
   const done = section.items.filter((i) => i.done).length;
-  const pct = Math.round((done / section.items.length) * 100);
+  const pct = section.items.length === 0 ? 0 : Math.round((done / section.items.length) * 100);
+
+  const [adding, setAdding] = useState(false);
+  const [draftLabel, setDraftLabel] = useState("");
+  const [draftPriority, setDraftPriority] = useState<Priority>("P1");
+
+  const cancelAdd = () => {
+    setAdding(false);
+    setDraftLabel("");
+    setDraftPriority("P1");
+  };
+
+  const submitAdd = () => {
+    const v = draftLabel.trim();
+    if (!v) {
+      cancelAdd();
+      return;
+    }
+    addItem(section.id, v, draftPriority);
+    cancelAdd();
+  };
 
   return (
     <AdminCard className="p-5">
@@ -449,10 +468,68 @@ function SectionCard({
               >
                 {item.priority}
               </span>
+              <button
+                onClick={() => deleteItem(section.id, item.id)}
+                aria-label="Elimina task"
+                className="opacity-0 transition group-hover:opacity-100 text-muted-foreground hover:text-red-400"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </li>
           );
         })}
       </ul>
+
+      <div className="mt-3">
+        {adding ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.18)] bg-[rgba(0,212,255,0.04)] p-2">
+            <input
+              autoFocus
+              value={draftLabel}
+              onChange={(e) => setDraftLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submitAdd();
+                } else if (e.key === "Escape") {
+                  e.preventDefault();
+                  cancelAdd();
+                }
+              }}
+              placeholder="Nuovo task…"
+              className="flex-1 min-w-[160px] rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+            />
+            <select
+              value={draftPriority}
+              onChange={(e) => setDraftPriority(e.target.value as Priority)}
+              className="rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-2 py-1.5 text-sm text-foreground focus:outline-none"
+            >
+              <option value="P0">P0</option>
+              <option value="P1">P1</option>
+              <option value="P2">P2</option>
+            </select>
+            <button
+              onClick={submitAdd}
+              className="rounded-lg bg-primary/90 px-3 py-1.5 text-xs font-semibold text-[#070b14] hover:bg-primary"
+            >
+              Aggiungi
+            </button>
+            <button
+              onClick={cancelAdd}
+              className="rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Annulla
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
+          >
+            <Plus className="h-3.5 w-3.5" /> Aggiungi task
+          </button>
+        )}
+      </div>
     </AdminCard>
   );
 }
@@ -460,13 +537,12 @@ function SectionCard({
 function SingleSection({
   section,
   toggle,
-}: {
-  section: Section;
-  toggle: (sectionId: string, itemId: string) => void;
-}) {
+  addItem,
+  deleteItem,
+}: { section: Section } & SectionActions) {
   return (
     <div className="grid gap-5">
-      <SectionCard section={section} toggle={toggle} />
+      <SectionCard section={section} toggle={toggle} addItem={addItem} deleteItem={deleteItem} />
     </div>
   );
 }
