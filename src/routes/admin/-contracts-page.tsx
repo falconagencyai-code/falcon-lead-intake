@@ -245,7 +245,7 @@ function NewContractModal({ onClose, onCreated }: { onClose: () => void; onCreat
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 [&_input]:border-[rgba(255,255,255,0.1)] [&_input]:bg-[rgba(255,255,255,0.05)] [&_input]:text-white [&_textarea]:border-[rgba(255,255,255,0.1)] [&_textarea]:bg-[rgba(255,255,255,0.05)] [&_textarea]:text-white">
           <Field label="Cliente esistente (opzionale)">
             <select
               value={leadId}
