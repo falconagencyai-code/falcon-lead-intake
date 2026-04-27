@@ -394,31 +394,58 @@ type SectionActions = {
 
 function PanoramicaTab({
   sections,
+  milestones,
+  onEditMilestone,
+  onAddMilestone,
   toggle,
   addItem,
   deleteItem,
-}: { sections: Section[] } & SectionActions) {
+}: {
+  sections: Section[];
+  milestones: Milestone[];
+  onEditMilestone: (m: Milestone) => void;
+  onAddMilestone: () => void;
+} & SectionActions) {
+  const computeMilestone = (m: Milestone) => {
+    if (!m.section_id) return { pct: 0, metricValue: 0 };
+    const section = sections.find((s) => s.id === m.section_id);
+    if (!section) return { pct: 0, metricValue: 0 };
+    const total = section.items.length;
+    const done = section.items.filter((i) => i.done).length;
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    const metricValue = section.items.filter((i) => i.priority === "P0" && !i.done).length;
+    return { pct, metricValue };
+  };
+
   return (
     <div className="space-y-6">
       {/* Milestones */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MilestoneCard
-          color="#ef4444"
-          label="PRIORITÀ ALTA · QUESTO MESE"
-          title="Acquisizione nuovi clienti"
-          description="Chiudere 3 nuovi contratti entro fine aprile. Attivare campagne ads e follow-up lead."
-          progress={20}
-          metric={{ label: "PO critici", value: "4" }}
-        />
-        <MilestoneCard
-          color="#f59e0b"
-          label="IN CORSO · Q2 2026"
-          title="Lancio Dashboard Admin"
-          description="Completare le sezioni admin: lead, team, contabilità, competitor, roadmap."
-          progress={60}
-          metric={{ label: "Task aperte", value: "6" }}
-        />
-      </div>
+      {milestones.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {milestones.map((m) => {
+            const { pct, metricValue } = computeMilestone(m);
+            return (
+              <MilestoneCard
+                key={m.id}
+                color={m.color}
+                label={m.label}
+                title={m.title}
+                description={m.description}
+                progress={pct}
+                metric={{ label: m.metric_label, value: String(metricValue) }}
+                onEdit={() => onEditMilestone(m)}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={onAddMilestone}
+        className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
+      >
+        <Plus className="h-4 w-4" /> Aggiungi milestone
+      </button>
 
       {/* Sections grid */}
       <div className="grid gap-5 xl:grid-cols-2">
