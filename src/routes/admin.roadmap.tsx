@@ -221,7 +221,66 @@ function RoadmapPage() {
     }
   };
 
-  return (
+  const addMilestone = async () => {
+    if (!supabase) return;
+    const nextPos = milestones.length;
+    const defaults = {
+      label: "NUOVA MILESTONE",
+      title: "Titolo milestone",
+      description: "Descrizione della milestone",
+      color: "#00d4ff",
+      section_id: null as string | null,
+      metric_label: "Task aperte",
+      position: nextPos,
+    };
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .insert(defaults)
+      .select("id, label, title, description, color, section_id, metric_label, position")
+      .single();
+    if (error || !data) {
+      console.error("Failed to insert milestone", error);
+      return;
+    }
+    const newM = data as Milestone;
+    setMilestones((prev) => [...prev, newM]);
+    setEditingMilestone(newM);
+  };
+
+  const saveMilestone = async (m: Milestone) => {
+    if (!supabase) return;
+    const { error } = await supabase
+      .from("roadmap_milestones")
+      .update({
+        label: m.label,
+        title: m.title,
+        description: m.description,
+        color: m.color,
+        section_id: m.section_id,
+        metric_label: m.metric_label,
+      })
+      .eq("id", m.id);
+    if (error) {
+      console.error("Failed to update milestone", error);
+      return;
+    }
+    setMilestones((prev) => prev.map((x) => (x.id === m.id ? m : x)));
+    setEditingMilestone(null);
+  };
+
+  const deleteMilestone = async (id: string) => {
+    if (!supabase) return;
+    const snapshot = milestones;
+    setMilestones((prev) => prev.filter((m) => m.id !== id));
+    setEditingMilestone(null);
+    const { error } = await supabase.from("roadmap_milestones").delete().eq("id", id);
+    if (error) {
+      console.error("Failed to delete milestone", error);
+      setMilestones(snapshot);
+    }
+  };
+
+
     <div className="space-y-8">
       {/* Header */}
       <header className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
