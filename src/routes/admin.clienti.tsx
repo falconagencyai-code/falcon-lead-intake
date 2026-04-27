@@ -378,40 +378,57 @@ function ClientiInner() {
       ) : (
         <AdminCard className="p-5">
           <AdminSectionTitle eyebrow="Pipeline" title="Proposte commerciali" />
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                <tr className="border-b border-[rgba(0,212,255,0.1)]">
-                  <th className="py-4">Cliente</th>
-                  <th>Servizio</th>
-                  <th>Valore</th>
-                  <th>Data invio</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {proposals.map((p) => {
-                  const tone = proposalStatusTone[p.status];
-                  return (
-                    <tr key={p.id} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
-                      <td className="py-4 font-medium">{p.client}</td>
-                      <td className="text-muted-foreground">{p.service}</td>
-                      <td className="font-semibold text-foreground">{p.value}</td>
-                      <td className="text-muted-foreground">{p.date}</td>
-                      <td>
-                        <span
-                          className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold"
-                          style={{ color: tone.color, background: tone.bg, borderColor: tone.border }}
-                        >
-                          {p.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {proposalsLoading ? (
+            <div className="flex items-center justify-center gap-3 py-10 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm">Caricamento proposte…</span>
+            </div>
+          ) : proposals.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">Nessuna proposta ancora.</p>
+          ) : (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <tr className="border-b border-[rgba(0,212,255,0.1)]">
+                    <th className="py-4">Cliente</th>
+                    <th>Servizio</th>
+                    <th>Valore</th>
+                    <th>Data invio</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {proposals.map((p) => {
+                    const tone = proposalStatusTone[p.status] ?? proposalStatusTone.Inviata;
+                    const lead = p.leads;
+                    const clientLabel = lead
+                      ? `${lead.full_name ?? "(senza nome)"}${lead.company ? ` — ${lead.company}` : ""}`
+                      : "—";
+                    return (
+                      <tr
+                        key={p.id}
+                        onClick={() => setActiveQuoteId(p.id)}
+                        className="cursor-pointer border-b border-[rgba(255,255,255,0.06)] text-foreground/90 transition hover:bg-[rgba(0,212,255,0.04)]"
+                      >
+                        <td className="py-4 font-medium">{clientLabel}</td>
+                        <td className="text-muted-foreground">{p.service ?? "—"}</td>
+                        <td className="font-semibold text-foreground">{formatEuro(p.amount)}</td>
+                        <td className="text-muted-foreground">{fmtDate(p.sent_at)}</td>
+                        <td>
+                          <span
+                            className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold"
+                            style={{ color: tone.color, background: tone.bg, borderColor: tone.border }}
+                          >
+                            {p.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </AdminCard>
       )}
 
@@ -423,20 +440,21 @@ function ClientiInner() {
         />
       )}
 
+      {activeQuote && (
+        <ProposalDrawer
+          quote={activeQuote}
+          onClose={() => setActiveQuoteId(null)}
+          onUpdate={(patch) => updateQuote(activeQuote.id, patch)}
+        />
+      )}
+
       {modalOpen && (
         <NewProposalModal
+          leads={leadOptions}
           onClose={() => setModalOpen(false)}
-          onCreate={(p) => {
-            setProposals((list) => [
-              {
-                ...p,
-                id: `p${list.length + 1}`,
-                status: "Inviata",
-                date: new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" }),
-              },
-              ...list,
-            ]);
+          onCreated={() => {
             setModalOpen(false);
+            loadProposals();
           }}
         />
       )}
