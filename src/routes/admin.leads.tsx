@@ -51,6 +51,9 @@ type LeadRow = {
   timeline: string | null;
   form_answers: Record<string, unknown> | null;
   created_at: string | null;
+  client_status: string | null;
+  project_start_date: string | null;
+  next_meeting: string | null;
 };
 
 type LeadNote = {
@@ -268,7 +271,7 @@ async function fetchLeads(): Promise<LeadRow[]> {
   const { data, error } = await supabase
     .from("leads")
     .select(
-      "id, full_name, email, phone, company, status, pipeline_stage, lost_reason, service_interest, budget_range, timeline, form_answers, created_at",
+      "id, full_name, email, phone, company, status, pipeline_stage, lost_reason, service_interest, budget_range, timeline, form_answers, created_at, client_status, project_start_date, next_meeting",
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
