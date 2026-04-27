@@ -280,7 +280,7 @@ function RoadmapPage() {
     }
   };
 
-
+  return (
     <div className="space-y-8">
       {/* Header */}
       <header className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
