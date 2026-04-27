@@ -79,10 +79,23 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: "obiettivi", label: "Obiettivi Q2" },
 ];
 
+type Milestone = {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  color: string;
+  section_id: string | null;
+  metric_label: string;
+  position: number;
+};
+
 function RoadmapPage() {
   const [sections, setSections] = useState<Section[]>(
     sectionMeta.map((m) => ({ ...m, items: [] })),
   );
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("panoramica");
 
