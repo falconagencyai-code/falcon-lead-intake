@@ -285,7 +285,7 @@ function NewContractModal({ onClose, onCreated }: { onClose: () => void; onCreat
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className="h-9 w-full rounded-md border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] px-3 text-sm text-white"
               >
                 <option>Bozza</option>
                 <option>Attivo</option>
