@@ -972,6 +972,8 @@ function DrawerContent({
           )}
         </section>
 
+        {lead.pipeline_stage === "chiuso_vinto" && <ProjectSection lead={lead} />}
+
         {/* Risposte form — profilo completo in ordine */}
         <section>
           <p className="label-section mb-3">Risposte form</p>
