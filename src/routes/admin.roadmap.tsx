@@ -16,11 +16,19 @@ import {
   Trash2,
   User,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { supabase } from "@/lib/supabase";
 import { AdminCard } from "./admin/-admin-ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/admin/roadmap")({
   head: () => ({
@@ -71,10 +79,23 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: "obiettivi", label: "Obiettivi Q2" },
 ];
 
+type Milestone = {
+  id: string;
+  label: string;
+  title: string;
+  description: string;
+  color: string;
+  section_id: string | null;
+  metric_label: string;
+  position: number;
+};
+
 function RoadmapPage() {
   const [sections, setSections] = useState<Section[]>(
     sectionMeta.map((m) => ({ ...m, items: [] })),
   );
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("panoramica");
 
@@ -85,17 +106,24 @@ function RoadmapPage() {
         setLoading(false);
         return;
       }
-      const { data, error } = await supabase
-        .from("roadmap_items")
-        .select("id, section_id, label, priority, done")
-        .order("position");
+      const [itemsRes, milestonesRes] = await Promise.all([
+        supabase
+          .from("roadmap_items")
+          .select("id, section_id, label, priority, done")
+          .order("position"),
+        supabase
+          .from("roadmap_milestones")
+          .select("id, label, title, description, color, section_id, metric_label, position")
+          .order("position"),
+      ]);
       if (cancelled) return;
-      if (error) {
-        console.error("Failed to load roadmap_items", error);
-        setLoading(false);
-        return;
+      if (itemsRes.error) {
+        console.error("Failed to load roadmap_items", itemsRes.error);
       }
-      const rows = (data ?? []) as Array<{
+      if (milestonesRes.error) {
+        console.error("Failed to load roadmap_milestones", milestonesRes.error);
+      }
+      const rows = (itemsRes.data ?? []) as Array<{
         id: string;
         section_id: string;
         label: string;
@@ -110,6 +138,7 @@ function RoadmapPage() {
             .map((r) => ({ id: r.id, label: r.label, priority: r.priority, done: r.done })),
         })),
       );
+      setMilestones((milestonesRes.data ?? []) as Milestone[]);
       setLoading(false);
     }
     load();
@@ -192,6 +221,65 @@ function RoadmapPage() {
     }
   };
 
+  const addMilestone = async () => {
+    if (!supabase) return;
+    const nextPos = milestones.length;
+    const defaults = {
+      label: "NUOVA MILESTONE",
+      title: "Titolo milestone",
+      description: "Descrizione della milestone",
+      color: "#00d4ff",
+      section_id: null as string | null,
+      metric_label: "Task aperte",
+      position: nextPos,
+    };
+    const { data, error } = await supabase
+      .from("roadmap_milestones")
+      .insert(defaults)
+      .select("id, label, title, description, color, section_id, metric_label, position")
+      .single();
+    if (error || !data) {
+      console.error("Failed to insert milestone", error);
+      return;
+    }
+    const newM = data as Milestone;
+    setMilestones((prev) => [...prev, newM]);
+    setEditingMilestone(newM);
+  };
+
+  const saveMilestone = async (m: Milestone) => {
+    if (!supabase) return;
+    const { error } = await supabase
+      .from("roadmap_milestones")
+      .update({
+        label: m.label,
+        title: m.title,
+        description: m.description,
+        color: m.color,
+        section_id: m.section_id,
+        metric_label: m.metric_label,
+      })
+      .eq("id", m.id);
+    if (error) {
+      console.error("Failed to update milestone", error);
+      return;
+    }
+    setMilestones((prev) => prev.map((x) => (x.id === m.id ? m : x)));
+    setEditingMilestone(null);
+  };
+
+  const deleteMilestone = async (id: string) => {
+    if (!supabase) return;
+    const snapshot = milestones;
+    setMilestones((prev) => prev.filter((m) => m.id !== id));
+    setEditingMilestone(null);
+    const { error } = await supabase.from("roadmap_milestones").delete().eq("id", id);
+    if (error) {
+      console.error("Failed to delete milestone", error);
+      setMilestones(snapshot);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -255,7 +343,15 @@ function RoadmapPage() {
       ) : (
         <div key={tab} className="animate-in fade-in duration-150">
           {tab === "panoramica" && (
-            <PanoramicaTab sections={sections} toggle={toggle} addItem={addItem} deleteItem={deleteItem} />
+            <PanoramicaTab
+              sections={sections}
+              milestones={milestones}
+              onEditMilestone={setEditingMilestone}
+              onAddMilestone={addMilestone}
+              toggle={toggle}
+              addItem={addItem}
+              deleteItem={deleteItem}
+            />
           )}
           {tab === "clienti" && <ClientiTab />}
           {tab === "ads" && <CampaignBoard />}
@@ -278,6 +374,13 @@ function RoadmapPage() {
           {tab === "obiettivi" && <ObiettiviTab />}
         </div>
       )}
+
+      <MilestoneEditDialog
+        milestone={editingMilestone}
+        onClose={() => setEditingMilestone(null)}
+        onSave={saveMilestone}
+        onDelete={deleteMilestone}
+      />
     </div>
   );
 }
@@ -291,31 +394,58 @@ type SectionActions = {
 
 function PanoramicaTab({
   sections,
+  milestones,
+  onEditMilestone,
+  onAddMilestone,
   toggle,
   addItem,
   deleteItem,
-}: { sections: Section[] } & SectionActions) {
+}: {
+  sections: Section[];
+  milestones: Milestone[];
+  onEditMilestone: (m: Milestone) => void;
+  onAddMilestone: () => void;
+} & SectionActions) {
+  const computeMilestone = (m: Milestone) => {
+    if (!m.section_id) return { pct: 0, metricValue: 0 };
+    const section = sections.find((s) => s.id === m.section_id);
+    if (!section) return { pct: 0, metricValue: 0 };
+    const total = section.items.length;
+    const done = section.items.filter((i) => i.done).length;
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    const metricValue = section.items.filter((i) => i.priority === "P0" && !i.done).length;
+    return { pct, metricValue };
+  };
+
   return (
     <div className="space-y-6">
       {/* Milestones */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MilestoneCard
-          color="#ef4444"
-          label="PRIORITÀ ALTA · QUESTO MESE"
-          title="Acquisizione nuovi clienti"
-          description="Chiudere 3 nuovi contratti entro fine aprile. Attivare campagne ads e follow-up lead."
-          progress={20}
-          metric={{ label: "PO critici", value: "4" }}
-        />
-        <MilestoneCard
-          color="#f59e0b"
-          label="IN CORSO · Q2 2026"
-          title="Lancio Dashboard Admin"
-          description="Completare le sezioni admin: lead, team, contabilità, competitor, roadmap."
-          progress={60}
-          metric={{ label: "Task aperte", value: "6" }}
-        />
-      </div>
+      {milestones.length > 0 && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {milestones.map((m) => {
+            const { pct, metricValue } = computeMilestone(m);
+            return (
+              <MilestoneCard
+                key={m.id}
+                color={m.color}
+                label={m.label}
+                title={m.title}
+                description={m.description}
+                progress={pct}
+                metric={{ label: m.metric_label, value: String(metricValue) }}
+                onEdit={() => onEditMilestone(m)}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={onAddMilestone}
+        className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
+      >
+        <Plus className="h-4 w-4" /> Aggiungi milestone
+      </button>
 
       {/* Sections grid */}
       <div className="grid gap-5 xl:grid-cols-2">
@@ -340,6 +470,7 @@ function MilestoneCard({
   description,
   progress,
   metric,
+  onEdit,
 }: {
   color: string;
   label: string;
@@ -347,9 +478,10 @@ function MilestoneCard({
   description: string;
   progress: number;
   metric: { label: string; value: string };
+  onEdit?: () => void;
 }) {
   return (
-    <AdminCard className="p-5" >
+    <AdminCard className="p-5">
       <div
         className="-m-5 mb-5 rounded-t-3xl border-l-4 p-5"
         style={{ borderColor: color, background: `${color}10` }}
@@ -362,19 +494,151 @@ function MilestoneCard({
             <h3 className="mt-2 text-lg font-bold text-foreground">{title}</h3>
             <p className="mt-2 text-sm text-muted-foreground">{description}</p>
           </div>
-          <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Avanzamento</p>
-            <p className="mt-1 text-2xl font-black" style={{ color }}>
-              {progress}%
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">{metric.label}</p>
-            <p className="text-lg font-bold" style={{ color }}>
-              {metric.value}
-            </p>
+          <div className="flex flex-col items-end gap-2">
+            {onEdit && (
+              <button
+                onClick={onEdit}
+                aria-label="Modifica milestone"
+                className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-[rgba(255,255,255,0.06)] hover:text-foreground"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
+            <div className="text-right">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Avanzamento</p>
+              <p className="mt-1 text-2xl font-black" style={{ color }}>
+                {progress}%
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">{metric.label}</p>
+              <p className="text-lg font-bold" style={{ color }}>
+                {metric.value}
+              </p>
+            </div>
           </div>
         </div>
       </div>
     </AdminCard>
+  );
+}
+
+function MilestoneEditDialog({
+  milestone,
+  onClose,
+  onSave,
+  onDelete,
+}: {
+  milestone: Milestone | null;
+  onClose: () => void;
+  onSave: (m: Milestone) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [draft, setDraft] = useState<Milestone | null>(milestone);
+
+  useEffect(() => {
+    setDraft(milestone);
+  }, [milestone]);
+
+  if (!draft) return null;
+
+  const update = <K extends keyof Milestone>(key: K, value: Milestone[K]) =>
+    setDraft((d) => (d ? { ...d, [key]: value } : d));
+
+  return (
+    <Dialog open={!!milestone} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg bg-[#0b1220] text-foreground">
+        <DialogHeader>
+          <DialogTitle>Modifica milestone</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Field label="Label">
+            <input
+              value={draft.label}
+              onChange={(e) => update("label", e.target.value)}
+              className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+          </Field>
+          <Field label="Titolo">
+            <input
+              value={draft.title}
+              onChange={(e) => update("title", e.target.value)}
+              className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+          </Field>
+          <Field label="Descrizione">
+            <textarea
+              value={draft.description}
+              onChange={(e) => update("description", e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Colore">
+              <input
+                type="color"
+                value={draft.color}
+                onChange={(e) => update("color", e.target.value)}
+                className="h-10 w-full cursor-pointer rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)]"
+              />
+            </Field>
+            <Field label="Etichetta metrica">
+              <input
+                value={draft.metric_label}
+                onChange={(e) => update("metric_label", e.target.value)}
+                className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+              />
+            </Field>
+          </div>
+          <Field label="Sezione collegata">
+            <select
+              value={draft.section_id ?? ""}
+              onChange={(e) => update("section_id", e.target.value || null)}
+              className="w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm focus:outline-none focus:border-primary"
+            >
+              <option value="">Nessuna</option>
+              {sectionMeta.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.title}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <DialogFooter className="mt-2 flex flex-row items-center justify-between gap-2 sm:justify-between">
+          <button
+            onClick={() => onDelete(draft.id)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-400 hover:bg-red-500/20"
+          >
+            <Trash2 className="h-4 w-4" /> Elimina
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              Annulla
+            </button>
+            <button
+              onClick={() => onSave(draft)}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-[#070b14] hover:opacity-90"
+            >
+              Salva
+            </button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </span>
+      {children}
+    </label>
   );
 }
 
