@@ -343,7 +343,15 @@ function RoadmapPage() {
       ) : (
         <div key={tab} className="animate-in fade-in duration-150">
           {tab === "panoramica" && (
-            <PanoramicaTab sections={sections} toggle={toggle} addItem={addItem} deleteItem={deleteItem} />
+            <PanoramicaTab
+              sections={sections}
+              milestones={milestones}
+              onEditMilestone={setEditingMilestone}
+              onAddMilestone={addMilestone}
+              toggle={toggle}
+              addItem={addItem}
+              deleteItem={deleteItem}
+            />
           )}
           {tab === "clienti" && <ClientiTab />}
           {tab === "ads" && <CampaignBoard />}
