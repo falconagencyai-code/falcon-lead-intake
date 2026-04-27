@@ -311,3 +311,11 @@
 .animate-pulse-glow   { animation: pulse-glow 2.5s ease-in-out infinite; }
 .animate-dot-pulse    { animation: dot-pulse 2s ease-in-out infinite; }
 .animate-shimmer      { animation: shimmer 2.2s ease-in-out infinite; }
+
+@media print {
+  body { background: white !important; }
+  .no-print { display: none !important; }
+  aside, header.no-print { display: none !important; }
+  main { margin: 0 !important; padding: 0 !important; }
+  .circuit-bg { display: none !important; }
+}
