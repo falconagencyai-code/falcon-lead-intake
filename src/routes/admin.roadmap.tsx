@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Building2,
   Code,
@@ -13,11 +13,13 @@ import {
   GripVertical,
   MoreHorizontal,
   Plus,
+  Trash2,
   User,
   AlertTriangle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { supabase } from "@/lib/supabase";
 import { AdminCard } from "./admin/-admin-ui";
 
 export const Route = createFileRoute("/admin/roadmap")({
@@ -41,93 +43,15 @@ type Section = {
   items: ChecklistItem[];
 };
 
-const initialSections: Section[] = [
-  {
-    id: "acquisizione",
-    title: "Acquisizione Clienti",
-    icon: Target,
-    iconColor: "#00d4ff",
-    barColor: "#ef4444",
-    items: [
-      { id: "a1", label: "Follow-up 5 lead in sospeso da +7 giorni", priority: "P0", done: false },
-      { id: "a2", label: "Inviare proposta a Bianchi Srl", priority: "P0", done: false },
-      { id: "a3", label: "Attivare referral con partner", priority: "P0", done: false },
-      { id: "a4", label: "Setup form contatto sul sito", priority: "P0", done: true },
-      { id: "a5", label: "Pubblicare 2 case study sul sito", priority: "P1", done: false },
-      { id: "a6", label: "Avviare partnership con agenzia creativa", priority: "P2", done: false },
-    ],
-  },
-  {
-    id: "ads",
-    title: "Campagne Ads",
-    icon: Megaphone,
-    iconColor: "#8b5cf6",
-    barColor: "#8b5cf6",
-    items: [
-      { id: "ad1", label: "Campagna lead gen aprile Meta", priority: "P0", done: true },
-      { id: "ad2", label: "Setup pixel Facebook tutti i clienti", priority: "P0", done: true },
-      { id: "ad3", label: "Ottimizzare ROAS campagna Google", priority: "P0", done: false },
-      { id: "ad4", label: "Creare UGC content per TikTok cliente Verde", priority: "P1", done: false },
-      { id: "ad5", label: "Avviare campagna LinkedIn B2B", priority: "P2", done: false },
-    ],
-  },
-  {
-    id: "gestionale",
-    title: "Gestionale Agenzia",
-    icon: Building2,
-    iconColor: "#00d4ff",
-    barColor: "#eab308",
-    items: [
-      { id: "g1", label: "Fatturare cliente Mario Verdi (scad. 30 apr)", priority: "P0", done: false },
-      { id: "g2", label: "Setup Supabase progetto admin", priority: "P0", done: true },
-      { id: "g3", label: "Onboarding collaboratore dev", priority: "P0", done: true },
-      { id: "g4", label: "Rinnovo dominio falconagency.ai", priority: "P0", done: true },
-      { id: "g5", label: "Aggiornare listino prezzi 2026", priority: "P1", done: false },
-      { id: "g6", label: "Scrivere manuale operativo agenzia", priority: "P2", done: false },
-    ],
-  },
-  {
-    id: "prodotto",
-    title: "Sviluppo Prodotto",
-    icon: Code,
-    iconColor: "#00d4ff",
-    barColor: "#00d4ff",
-    items: [
-      { id: "p1", label: "Landing page pubblica con form", priority: "P0", done: true },
-      { id: "p2", label: "Dashboard admin base", priority: "P0", done: true },
-      { id: "p3", label: "Integrazione Supabase + RLS", priority: "P0", done: true },
-      { id: "p4", label: "Form multi-step qualificazione lead", priority: "P0", done: true },
-      { id: "p5", label: "Notifiche email automatiche nuovi lead", priority: "P0", done: false },
-      { id: "p6", label: "Sezione portfolio clienti sul sito", priority: "P1", done: false },
-      { id: "p7", label: "App companion mobile", priority: "P2", done: false },
-    ],
-  },
-  {
-    id: "clienti",
-    title: "Clienti Attivi",
-    icon: Users,
-    iconColor: "#22c55e",
-    barColor: "#22c55e",
-    items: [
-      { id: "c1", label: "Consegnato sito web cliente Esposito", priority: "P0", done: true },
-      { id: "c2", label: "Demo piattaforma AI cliente Ferrari", priority: "P0", done: true },
-      { id: "c3", label: "Revisione feedback cliente Rossi Srl", priority: "P0", done: false },
-      { id: "c4", label: "Presentazione onboarding cliente Bianchi", priority: "P1", done: false },
-    ],
-  },
-  {
-    id: "obiettivi",
-    title: "Obiettivi Q2",
-    icon: TrendingUp,
-    iconColor: "#eab308",
-    barColor: "#eab308",
-    items: [
-      { id: "o1", label: "Raggiungere €80.000 fatturato Q2", priority: "P0", done: false },
-      { id: "o2", label: "Acquisire 8 nuovi clienti (apr-giu)", priority: "P0", done: false },
-      { id: "o3", label: "Lanciare 3 servizi AI productizzati", priority: "P1", done: false },
-      { id: "o4", label: "Assumere 1 account manager", priority: "P2", done: false },
-    ],
-  },
+type SectionMeta = Omit<Section, "items">;
+
+const sectionMeta: SectionMeta[] = [
+  { id: "acquisizione", title: "Acquisizione Clienti", icon: Target, iconColor: "#00d4ff", barColor: "#ef4444" },
+  { id: "ads", title: "Campagne Ads", icon: Megaphone, iconColor: "#8b5cf6", barColor: "#8b5cf6" },
+  { id: "gestionale", title: "Gestionale Agenzia", icon: Building2, iconColor: "#00d4ff", barColor: "#eab308" },
+  { id: "prodotto", title: "Sviluppo Prodotto", icon: Code, iconColor: "#00d4ff", barColor: "#00d4ff" },
+  { id: "clienti", title: "Clienti Attivi", icon: Users, iconColor: "#22c55e", barColor: "#22c55e" },
+  { id: "obiettivi", title: "Obiettivi Q2", icon: TrendingUp, iconColor: "#eab308", barColor: "#eab308" },
 ];
 
 const priorityTone: Record<Priority, { color: string; bg: string }> = {
