@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Calendar, Cpu, FileText, Plus, Receipt, Users, X } from "lucide-react";
-import { useState } from "react";
+import { Calendar, Cpu, FileText, Loader2, Plus, Receipt, Users, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { it } from "date-fns/locale";
+import { toast } from "sonner";
+
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 import { AIMonitorPage } from "./admin/-ai-monitor-page";
 import { ContractsPage } from "./admin/-contracts-page";
