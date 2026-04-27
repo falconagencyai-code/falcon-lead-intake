@@ -155,27 +155,37 @@ const proposalStatusTone: Record<ProposalStatus, { color: string; bg: string; bo
   Scaduta: { color: "var(--falcon-subtle)", bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.12)" },
 };
 
-type Proposal = {
+type Quote = {
   id: string;
-  client: string;
-  service: string;
-  value: string;
-  date: string;
+  lead_id: string;
+  service: string | null;
+  amount: number | null;
+  content: string | null;
   status: ProposalStatus;
+  rejection_reason: string | null;
+  sent_at: string | null;
+  created_at: string;
+  leads?: { full_name: string | null; company: string | null } | null;
 };
 
-const initialProposals: Proposal[] = [
-  { id: "p1", client: "Andrea Neri — Mesh AI", service: "Piattaforma AI", value: "€38.000", date: "18 Apr 2026", status: "Vista" },
-  { id: "p2", client: "Marta Villa — Studio V", service: "Sito Web", value: "€12.000", date: "15 Apr 2026", status: "Inviata" },
-  { id: "p3", client: "Davide Fontana — Flow", service: "CRM Custom", value: "€22.500", date: "10 Apr 2026", status: "Accettata" },
-];
+type LeadOption = { id: string; full_name: string | null; company: string | null };
+
+const QUOTE_STATUS_OPTIONS: ProposalStatus[] = ["Inviata", "Vista", "Accettata", "Rifiutata", "Scaduta"];
+
+function formatEuro(n: number | null) {
+  if (n == null) return "—";
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+}
 
 function ClientiInner() {
   const [tab, setTab] = useState<"clienti" | "proposte">("clienti");
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [proposals, setProposals] = useState(initialProposals);
+  const [proposals, setProposals] = useState<Quote[]>([]);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
+  const [activeQuoteId, setActiveQuoteId] = useState<string | null>(null);
+  const [leadOptions, setLeadOptions] = useState<LeadOption[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
 
   const loadClients = async () => {
@@ -197,11 +207,35 @@ function ClientiInner() {
     setLoading(false);
   };
 
+  const loadProposals = async () => {
+    if (!supabase) return;
+    setProposalsLoading(true);
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("*, leads(full_name, company)")
+      .order("created_at", { ascending: false });
+    if (error) toast.error(`Errore proposte: ${error.message}`);
+    else setProposals((data ?? []) as Quote[]);
+    setProposalsLoading(false);
+  };
+
+  const loadLeadOptions = async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("leads")
+      .select("id, full_name, company")
+      .order("created_at", { ascending: false });
+    if (!error) setLeadOptions((data ?? []) as LeadOption[]);
+  };
+
   useEffect(() => {
     loadClients();
+    loadProposals();
+    loadLeadOptions();
   }, []);
 
   const active = clients.find((c) => c.id === activeId) ?? null;
+  const activeQuote = proposals.find((q) => q.id === activeQuoteId) ?? null;
 
   const updateClient = async (
     id: string,
@@ -215,6 +249,18 @@ function ClientiInner() {
       loadClients();
     } else {
       toast.success("Cliente aggiornato");
+    }
+  };
+
+  const updateQuote = async (id: string, patch: Partial<Quote>) => {
+    if (!supabase) return;
+    setProposals((list) => list.map((q) => (q.id === id ? { ...q, ...patch } : q)));
+    const { error } = await supabase.from("quotes").update(patch).eq("id", id);
+    if (error) {
+      toast.error(`Errore: ${error.message}`);
+      loadProposals();
+    } else {
+      toast.success("Proposta aggiornata");
     }
   };
 
@@ -332,40 +378,57 @@ function ClientiInner() {
       ) : (
         <AdminCard className="p-5">
           <AdminSectionTitle eyebrow="Pipeline" title="Proposte commerciali" />
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                <tr className="border-b border-[rgba(0,212,255,0.1)]">
-                  <th className="py-4">Cliente</th>
-                  <th>Servizio</th>
-                  <th>Valore</th>
-                  <th>Data invio</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {proposals.map((p) => {
-                  const tone = proposalStatusTone[p.status];
-                  return (
-                    <tr key={p.id} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
-                      <td className="py-4 font-medium">{p.client}</td>
-                      <td className="text-muted-foreground">{p.service}</td>
-                      <td className="font-semibold text-foreground">{p.value}</td>
-                      <td className="text-muted-foreground">{p.date}</td>
-                      <td>
-                        <span
-                          className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold"
-                          style={{ color: tone.color, background: tone.bg, borderColor: tone.border }}
-                        >
-                          {p.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {proposalsLoading ? (
+            <div className="flex items-center justify-center gap-3 py-10 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm">Caricamento proposte…</span>
+            </div>
+          ) : proposals.length === 0 ? (
+            <p className="mt-4 text-sm text-muted-foreground">Nessuna proposta ancora.</p>
+          ) : (
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  <tr className="border-b border-[rgba(0,212,255,0.1)]">
+                    <th className="py-4">Cliente</th>
+                    <th>Servizio</th>
+                    <th>Valore</th>
+                    <th>Data invio</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {proposals.map((p) => {
+                    const tone = proposalStatusTone[p.status] ?? proposalStatusTone.Inviata;
+                    const lead = p.leads;
+                    const clientLabel = lead
+                      ? `${lead.full_name ?? "(senza nome)"}${lead.company ? ` — ${lead.company}` : ""}`
+                      : "—";
+                    return (
+                      <tr
+                        key={p.id}
+                        onClick={() => setActiveQuoteId(p.id)}
+                        className="cursor-pointer border-b border-[rgba(255,255,255,0.06)] text-foreground/90 transition hover:bg-[rgba(0,212,255,0.04)]"
+                      >
+                        <td className="py-4 font-medium">{clientLabel}</td>
+                        <td className="text-muted-foreground">{p.service ?? "—"}</td>
+                        <td className="font-semibold text-foreground">{formatEuro(p.amount)}</td>
+                        <td className="text-muted-foreground">{fmtDate(p.sent_at)}</td>
+                        <td>
+                          <span
+                            className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold"
+                            style={{ color: tone.color, background: tone.bg, borderColor: tone.border }}
+                          >
+                            {p.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </AdminCard>
       )}
 
@@ -377,20 +440,21 @@ function ClientiInner() {
         />
       )}
 
+      {activeQuote && (
+        <ProposalDrawer
+          quote={activeQuote}
+          onClose={() => setActiveQuoteId(null)}
+          onUpdate={(patch) => updateQuote(activeQuote.id, patch)}
+        />
+      )}
+
       {modalOpen && (
         <NewProposalModal
+          leads={leadOptions}
           onClose={() => setModalOpen(false)}
-          onCreate={(p) => {
-            setProposals((list) => [
-              {
-                ...p,
-                id: `p${list.length + 1}`,
-                status: "Inviata",
-                date: new Date().toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" }),
-              },
-              ...list,
-            ]);
+          onCreated={() => {
             setModalOpen(false);
+            loadProposals();
           }}
         />
       )}
@@ -507,16 +571,40 @@ function ClientDrawer({
 }
 
 function NewProposalModal({
+  leads,
   onClose,
-  onCreate,
+  onCreated,
 }: {
+  leads: LeadOption[];
   onClose: () => void;
-  onCreate: (p: { client: string; service: string; value: string; notes?: string }) => void;
+  onCreated: () => void;
 }) {
-  const [client, setClient] = useState("");
+  const [leadId, setLeadId] = useState("");
   const [service, setService] = useState("");
-  const [value, setValue] = useState("");
+  const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [sentAt, setSentAt] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !leadId || !service || !amount) return;
+    setSaving(true);
+    const { error } = await supabase.from("quotes").insert({
+      lead_id: leadId,
+      service,
+      amount: parseFloat(amount),
+      content: notes || null,
+      status: "Inviata",
+      sent_at: sentAt || null,
+    });
+    setSaving(false);
+    if (error) toast.error(`Errore: ${error.message}`);
+    else {
+      toast.success("Proposta creata");
+      onCreated();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
@@ -532,29 +620,45 @@ function NewProposalModal({
           </button>
         </div>
 
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!client || !service || !value) return;
-            onCreate({ client, service, value: value.startsWith("€") ? value : `€${value}`, notes });
-          }}
-        >
-          {[
-            { label: "Cliente", val: client, set: setClient, ph: "Es. Andrea Neri — Mesh AI" },
-            { label: "Servizio", val: service, set: setService, ph: "Es. Piattaforma AI" },
-            { label: "Valore", val: value, set: setValue, ph: "Es. 24.000" },
-          ].map((f) => (
-            <label key={f.label} className="block">
-              <span className="label-section">{f.label}</span>
-              <input
-                value={f.val}
-                onChange={(e) => f.set(e.target.value)}
-                placeholder={f.ph}
-                className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
-              />
-            </label>
-          ))}
+        <form className="mt-6 space-y-4" onSubmit={submit}>
+          <label className="block">
+            <span className="label-section">Cliente</span>
+            <select
+              value={leadId}
+              onChange={(e) => setLeadId(e.target.value)}
+              required
+              className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+            >
+              <option value="">Seleziona un lead…</option>
+              {leads.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.full_name ?? "(senza nome)"}{l.company ? ` — ${l.company}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="label-section">Servizio</span>
+            <input
+              value={service}
+              onChange={(e) => setService(e.target.value)}
+              required
+              placeholder="Es. Piattaforma AI"
+              className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+          </label>
+          <label className="block">
+            <span className="label-section">Importo €</span>
+            <input
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+              placeholder="Es. 24000"
+              className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+          </label>
           <label className="block">
             <span className="label-section">Note</span>
             <textarea
@@ -565,16 +669,135 @@ function NewProposalModal({
               className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
             />
           </label>
+          <label className="block">
+            <span className="label-section">Data invio</span>
+            <input
+              type="date"
+              value={sentAt}
+              onChange={(e) => setSentAt(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+          </label>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-2xl border border-[rgba(255,255,255,0.1)] px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground">
               Annulla
             </button>
-            <button type="submit" className="inline-flex items-center gap-2 rounded-2xl border border-[rgba(0,212,255,0.35)] bg-[rgba(0,212,255,0.12)] px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_24px_rgba(0,212,255,0.2)]">
-              <Plus className="h-4 w-4" /> Crea proposta
+            <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-2xl border border-[rgba(0,212,255,0.35)] bg-[rgba(0,212,255,0.12)] px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_24px_rgba(0,212,255,0.2)] disabled:opacity-50">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Crea proposta
             </button>
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+function ProposalDrawer({
+  quote,
+  onClose,
+  onUpdate,
+}: {
+  quote: Quote;
+  onClose: () => void;
+  onUpdate: (patch: Partial<Quote>) => void;
+}) {
+  const [status, setStatus] = useState<ProposalStatus>(quote.status);
+  const [rejectionReason, setRejectionReason] = useState(quote.rejection_reason ?? "");
+
+  useEffect(() => {
+    setStatus(quote.status);
+    setRejectionReason(quote.rejection_reason ?? "");
+  }, [quote.id]);
+
+  const tone = proposalStatusTone[status] ?? proposalStatusTone.Inviata;
+  const lead = quote.leads;
+  const clientLabel = lead
+    ? `${lead.full_name ?? "(senza nome)"}${lead.company ? ` — ${lead.company}` : ""}`
+    : "—";
+
+  const handleStatus = (v: ProposalStatus) => {
+    setStatus(v);
+    const patch: Partial<Quote> = { status: v };
+    if (v !== "Rifiutata") patch.rejection_reason = null;
+    onUpdate(patch);
+  };
+
+  const handleRejectionBlur = () => {
+    if (status === "Rifiutata") onUpdate({ rejection_reason: rejectionReason || null });
+  };
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <button aria-label="Chiudi" onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <aside className="relative z-50 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-[rgba(0,212,255,0.25)] bg-[rgba(7,11,20,0.97)] p-6 shadow-[0_0_60px_rgba(0,212,255,0.15)]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="label-section truncate">{clientLabel}</p>
+            <h2 className="mt-2 text-2xl font-black text-foreground truncate">{quote.service ?? "—"}</h2>
+            <p className="mt-1 text-2xl font-bold text-primary">{formatEuro(quote.amount)}</p>
+          </div>
+          <button onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground hover:text-primary">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Data invio</span>
+            <span className="text-foreground">{fmtDate(quote.sent_at)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Creata il</span>
+            <span className="text-foreground">{fmtDate(quote.created_at)}</span>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Status
+            </label>
+            <select
+              value={status}
+              onChange={(e) => handleStatus(e.target.value as ProposalStatus)}
+              className="mt-1.5 w-full rounded-2xl border px-3 py-3 text-sm font-semibold outline-none"
+              style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}
+            >
+              {QUOTE_STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {status === "Rifiutata" && (
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Motivo del rifiuto
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                onBlur={handleRejectionBlur}
+                rows={3}
+                placeholder="Scrivi il motivo…"
+                className="mt-1.5 w-full rounded-2xl border border-[rgba(248,113,113,0.3)] bg-[rgba(248,113,113,0.05)] px-3 py-3 text-sm text-foreground outline-none transition focus:border-[rgba(248,113,113,0.6)]"
+              />
+            </div>
+          )}
+
+          {quote.content && (
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Note
+              </label>
+              <p className="mt-1.5 whitespace-pre-wrap rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-3 py-3 text-sm text-foreground">
+                {quote.content}
+              </p>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

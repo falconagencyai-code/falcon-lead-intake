@@ -14,6 +14,8 @@ import {
   Clock,
   MessageSquarePlus,
   Send,
+  Plus,
+  FileText,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
@@ -974,6 +976,8 @@ function DrawerContent({
 
         {lead.pipeline_stage === "chiuso_vinto" && <ProjectSection lead={lead} />}
 
+        <ProposalsSection leadId={lead.id} />
+
         {/* Risposte form — profilo completo in ordine */}
         <section>
           <p className="label-section mb-3">Risposte form</p>
@@ -1253,6 +1257,217 @@ function ProjectSection({ lead }: { lead: LeadRow }) {
           />
         </div>
       </div>
+    </section>
+  );
+}
+
+// ============================================================
+// Proposals section (drawer lead)
+// ============================================================
+
+type Quote = {
+  id: string;
+  lead_id: string;
+  service: string | null;
+  amount: number | null;
+  content: string | null;
+  status: string | null;
+  rejection_reason: string | null;
+  sent_at: string | null;
+  created_at: string;
+};
+
+const QUOTE_STATUS_OPTIONS = ["Inviata", "Vista", "Accettata", "Rifiutata", "Scaduta"] as const;
+
+const QUOTE_STATUS_TONE: Record<string, { color: string; bg: string; border: string }> = {
+  Inviata: { color: "#7dd9ff", bg: "rgba(0,212,255,0.1)", border: "rgba(0,212,255,0.32)" },
+  Vista: { color: "#facc15", bg: "rgba(250,204,21,0.1)", border: "rgba(250,204,21,0.32)" },
+  Accettata: { color: "#34d399", bg: "rgba(52,211,153,0.1)", border: "rgba(52,211,153,0.32)" },
+  Rifiutata: { color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.32)" },
+  Scaduta: { color: "#94a3b8", bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.12)" },
+};
+
+function formatEuro(n: number | null) {
+  if (n == null) return "—";
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+}
+
+function ProposalsSection({ leadId }: { leadId: string }) {
+  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [service, setService] = useState("");
+  const [amount, setAmount] = useState("");
+  const [notes, setNotes] = useState("");
+  const [sentAt, setSentAt] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("quotes")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false });
+    if (error) toast.error(`Errore proposte: ${error.message}`);
+    else setQuotes((data ?? []) as Quote[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadId]);
+
+  const updateStatus = async (id: string, status: string) => {
+    if (!supabase) return;
+    setQuotes((list) => list.map((q) => (q.id === id ? { ...q, status } : q)));
+    const { error } = await supabase.from("quotes").update({ status }).eq("id", id);
+    if (error) {
+      toast.error(`Errore: ${error.message}`);
+      load();
+    } else {
+      toast.success("Status aggiornato");
+    }
+  };
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !service || !amount) return;
+    setSaving(true);
+    const { error } = await supabase.from("quotes").insert({
+      lead_id: leadId,
+      service,
+      amount: parseFloat(amount),
+      content: notes || null,
+      status: "Inviata",
+      sent_at: sentAt || null,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error(`Errore: ${error.message}`);
+    } else {
+      toast.success("Proposta creata");
+      setService("");
+      setAmount("");
+      setNotes("");
+      setSentAt(format(new Date(), "yyyy-MM-dd"));
+      setShowForm(false);
+      load();
+    }
+  };
+
+  return (
+    <section>
+      <p className="label-section mb-3 flex items-center gap-2">
+        <FileText className="h-3.5 w-3.5" />
+        Proposte
+      </p>
+      {loading ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3 w-3 animate-spin" /> Caricamento…
+        </div>
+      ) : quotes.length === 0 ? (
+        <p className="text-sm text-muted-foreground italic">Nessuna proposta ancora.</p>
+      ) : (
+        <div className="space-y-2">
+          {quotes.map((q) => {
+            const tone = QUOTE_STATUS_TONE[q.status ?? "Inviata"] ?? QUOTE_STATUS_TONE.Inviata;
+            return (
+              <div
+                key={q.id}
+                className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{q.service ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatEuro(q.amount)} · {q.sent_at ? format(new Date(q.sent_at), "d MMM yyyy", { locale: it }) : "—"}
+                    </p>
+                  </div>
+                  <select
+                    value={q.status ?? "Inviata"}
+                    onChange={(e) => updateStatus(q.id, e.target.value)}
+                    className="rounded-lg border px-2 py-1 text-[11px] font-semibold outline-none"
+                    style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}
+                  >
+                    {QUOTE_STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {q.content && (
+                  <p className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap">{q.content}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showForm ? (
+        <form onSubmit={handleCreate} className="mt-3 space-y-2 rounded-xl border border-[rgba(0,212,255,0.18)] bg-[rgba(0,212,255,0.04)] p-3">
+          <input
+            value={service}
+            onChange={(e) => setService(e.target.value)}
+            placeholder="Servizio"
+            className="glass h-9 w-full px-3 text-sm text-foreground outline-none"
+            required
+          />
+          <input
+            type="number"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Importo €"
+            className="glass h-9 w-full px-3 text-sm text-foreground outline-none"
+            required
+          />
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Note"
+            rows={2}
+            className="glass w-full px-3 py-2 text-sm text-foreground outline-none resize-none"
+          />
+          <input
+            type="date"
+            value={sentAt}
+            onChange={(e) => setSentAt(e.target.value)}
+            className="glass h-9 w-full px-3 text-sm text-foreground outline-none"
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Annulla
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(0,212,255,0.4)] bg-[rgba(0,212,255,0.12)] px-3 py-1.5 text-xs font-semibold text-primary hover:bg-[rgba(0,212,255,0.2)] disabled:opacity-40"
+            >
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              Salva
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          onClick={() => setShowForm(true)}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.06)] px-3 py-1.5 text-xs font-semibold text-primary hover:bg-[rgba(0,212,255,0.12)]"
+        >
+          <Plus className="h-3 w-3" /> Nuova proposta
+        </button>
+      )}
     </section>
   );
 }
