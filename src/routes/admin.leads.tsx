@@ -14,6 +14,8 @@ import {
   Clock,
   MessageSquarePlus,
   Send,
+  Plus,
+  FileText,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
@@ -973,6 +975,8 @@ function DrawerContent({
         </section>
 
         {lead.pipeline_stage === "chiuso_vinto" && <ProjectSection lead={lead} />}
+
+        <ProposalsSection leadId={lead.id} />
 
         {/* Risposte form — profilo completo in ordine */}
         <section>
