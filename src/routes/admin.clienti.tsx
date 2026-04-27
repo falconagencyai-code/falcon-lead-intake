@@ -155,20 +155,27 @@ const proposalStatusTone: Record<ProposalStatus, { color: string; bg: string; bo
   Scaduta: { color: "var(--falcon-subtle)", bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.12)" },
 };
 
-type Proposal = {
+type Quote = {
   id: string;
-  client: string;
-  service: string;
-  value: string;
-  date: string;
+  lead_id: string;
+  service: string | null;
+  amount: number | null;
+  content: string | null;
   status: ProposalStatus;
+  rejection_reason: string | null;
+  sent_at: string | null;
+  created_at: string;
+  leads?: { full_name: string | null; company: string | null } | null;
 };
 
-const initialProposals: Proposal[] = [
-  { id: "p1", client: "Andrea Neri — Mesh AI", service: "Piattaforma AI", value: "€38.000", date: "18 Apr 2026", status: "Vista" },
-  { id: "p2", client: "Marta Villa — Studio V", service: "Sito Web", value: "€12.000", date: "15 Apr 2026", status: "Inviata" },
-  { id: "p3", client: "Davide Fontana — Flow", service: "CRM Custom", value: "€22.500", date: "10 Apr 2026", status: "Accettata" },
-];
+type LeadOption = { id: string; full_name: string | null; company: string | null };
+
+const QUOTE_STATUS_OPTIONS: ProposalStatus[] = ["Inviata", "Vista", "Accettata", "Rifiutata", "Scaduta"];
+
+function formatEuro(n: number | null) {
+  if (n == null) return "—";
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+}
 
 function ClientiInner() {
   const [tab, setTab] = useState<"clienti" | "proposte">("clienti");
