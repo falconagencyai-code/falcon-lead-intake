@@ -571,16 +571,40 @@ function ClientDrawer({
 }
 
 function NewProposalModal({
+  leads,
   onClose,
-  onCreate,
+  onCreated,
 }: {
+  leads: LeadOption[];
   onClose: () => void;
-  onCreate: (p: { client: string; service: string; value: string; notes?: string }) => void;
+  onCreated: () => void;
 }) {
-  const [client, setClient] = useState("");
+  const [leadId, setLeadId] = useState("");
   const [service, setService] = useState("");
-  const [value, setValue] = useState("");
+  const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [sentAt, setSentAt] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supabase || !leadId || !service || !amount) return;
+    setSaving(true);
+    const { error } = await supabase.from("quotes").insert({
+      lead_id: leadId,
+      service,
+      amount: parseFloat(amount),
+      content: notes || null,
+      status: "Inviata",
+      sent_at: sentAt || null,
+    });
+    setSaving(false);
+    if (error) toast.error(`Errore: ${error.message}`);
+    else {
+      toast.success("Proposta creata");
+      onCreated();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
@@ -596,29 +620,45 @@ function NewProposalModal({
           </button>
         </div>
 
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (!client || !service || !value) return;
-            onCreate({ client, service, value: value.startsWith("€") ? value : `€${value}`, notes });
-          }}
-        >
-          {[
-            { label: "Cliente", val: client, set: setClient, ph: "Es. Andrea Neri — Mesh AI" },
-            { label: "Servizio", val: service, set: setService, ph: "Es. Piattaforma AI" },
-            { label: "Valore", val: value, set: setValue, ph: "Es. 24.000" },
-          ].map((f) => (
-            <label key={f.label} className="block">
-              <span className="label-section">{f.label}</span>
-              <input
-                value={f.val}
-                onChange={(e) => f.set(e.target.value)}
-                placeholder={f.ph}
-                className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
-              />
-            </label>
-          ))}
+        <form className="mt-6 space-y-4" onSubmit={submit}>
+          <label className="block">
+            <span className="label-section">Cliente</span>
+            <select
+              value={leadId}
+              onChange={(e) => setLeadId(e.target.value)}
+              required
+              className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+            >
+              <option value="">Seleziona un lead…</option>
+              {leads.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.full_name ?? "(senza nome)"}{l.company ? ` — ${l.company}` : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="label-section">Servizio</span>
+            <input
+              value={service}
+              onChange={(e) => setService(e.target.value)}
+              required
+              placeholder="Es. Piattaforma AI"
+              className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+          </label>
+          <label className="block">
+            <span className="label-section">Importo €</span>
+            <input
+              type="number"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+              placeholder="Es. 24000"
+              className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+          </label>
           <label className="block">
             <span className="label-section">Note</span>
             <textarea
@@ -629,16 +669,135 @@ function NewProposalModal({
               className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
             />
           </label>
+          <label className="block">
+            <span className="label-section">Data invio</span>
+            <input
+              type="date"
+              value={sentAt}
+              onChange={(e) => setSentAt(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-[rgba(0,212,255,0.18)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+          </label>
           <div className="flex justify-end gap-2 pt-2">
             <button type="button" onClick={onClose} className="rounded-2xl border border-[rgba(255,255,255,0.1)] px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground">
               Annulla
             </button>
-            <button type="submit" className="inline-flex items-center gap-2 rounded-2xl border border-[rgba(0,212,255,0.35)] bg-[rgba(0,212,255,0.12)] px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_24px_rgba(0,212,255,0.2)]">
-              <Plus className="h-4 w-4" /> Crea proposta
+            <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-2xl border border-[rgba(0,212,255,0.35)] bg-[rgba(0,212,255,0.12)] px-5 py-2.5 text-sm font-semibold text-primary shadow-[0_0_24px_rgba(0,212,255,0.2)] disabled:opacity-50">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              Crea proposta
             </button>
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+function ProposalDrawer({
+  quote,
+  onClose,
+  onUpdate,
+}: {
+  quote: Quote;
+  onClose: () => void;
+  onUpdate: (patch: Partial<Quote>) => void;
+}) {
+  const [status, setStatus] = useState<ProposalStatus>(quote.status);
+  const [rejectionReason, setRejectionReason] = useState(quote.rejection_reason ?? "");
+
+  useEffect(() => {
+    setStatus(quote.status);
+    setRejectionReason(quote.rejection_reason ?? "");
+  }, [quote.id]);
+
+  const tone = proposalStatusTone[status] ?? proposalStatusTone.Inviata;
+  const lead = quote.leads;
+  const clientLabel = lead
+    ? `${lead.full_name ?? "(senza nome)"}${lead.company ? ` — ${lead.company}` : ""}`
+    : "—";
+
+  const handleStatus = (v: ProposalStatus) => {
+    setStatus(v);
+    const patch: Partial<Quote> = { status: v };
+    if (v !== "Rifiutata") patch.rejection_reason = null;
+    onUpdate(patch);
+  };
+
+  const handleRejectionBlur = () => {
+    if (status === "Rifiutata") onUpdate({ rejection_reason: rejectionReason || null });
+  };
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end">
+      <button aria-label="Chiudi" onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <aside className="relative z-50 flex h-full w-full max-w-md flex-col overflow-y-auto border-l border-[rgba(0,212,255,0.25)] bg-[rgba(7,11,20,0.97)] p-6 shadow-[0_0_60px_rgba(0,212,255,0.15)]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="label-section truncate">{clientLabel}</p>
+            <h2 className="mt-2 text-2xl font-black text-foreground truncate">{quote.service ?? "—"}</h2>
+            <p className="mt-1 text-2xl font-bold text-primary">{formatEuro(quote.amount)}</p>
+          </div>
+          <button onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[rgba(0,212,255,0.2)] text-muted-foreground hover:text-primary">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-6 space-y-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Data invio</span>
+            <span className="text-foreground">{fmtDate(quote.sent_at)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Creata il</span>
+            <span className="text-foreground">{fmtDate(quote.created_at)}</span>
+          </div>
+
+          <div>
+            <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Status
+            </label>
+            <select
+              value={status}
+              onChange={(e) => handleStatus(e.target.value as ProposalStatus)}
+              className="mt-1.5 w-full rounded-2xl border px-3 py-3 text-sm font-semibold outline-none"
+              style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}
+            >
+              {QUOTE_STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {status === "Rifiutata" && (
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Motivo del rifiuto
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                onBlur={handleRejectionBlur}
+                rows={3}
+                placeholder="Scrivi il motivo…"
+                className="mt-1.5 w-full rounded-2xl border border-[rgba(248,113,113,0.3)] bg-[rgba(248,113,113,0.05)] px-3 py-3 text-sm text-foreground outline-none transition focus:border-[rgba(248,113,113,0.6)]"
+              />
+            </div>
+          )}
+
+          {quote.content && (
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Note
+              </label>
+              <p className="mt-1.5 whitespace-pre-wrap rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-3 py-3 text-sm text-foreground">
+                {quote.content}
+              </p>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }
