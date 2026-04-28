@@ -288,6 +288,12 @@ function ContabilitaPage() {
     loadAll();
   };
 
+  const deleteOt = async (id: string) => {
+    if (!supabase || !confirm("Eliminare questa spesa una tantum?")) return;
+    await supabase.from("one_time_expenses").delete().eq("id", id);
+    loadAll();
+  };
+
   const periodoLabel = (() => {
     const from = new Date(periodFrom);
     const to = new Date(periodTo);
