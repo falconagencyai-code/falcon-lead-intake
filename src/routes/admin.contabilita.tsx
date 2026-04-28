@@ -845,6 +845,7 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
   const [frequency, setFrequency] = useState<"mensile" | "annuale">(initial?.frequency ?? "mensile");
   const [category, setCategory] = useState(initial?.category ?? "");
   const [active, setActive] = useState<boolean>(initial?.active ?? true);
+  const [paidBy, setPaidBy] = useState<Partner>((initial?.paid_by as Partner) ?? "pat");
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
