@@ -1358,3 +1358,101 @@ function ConfirmDialog({
   );
 }
 
+function OneTimeExpenseModal({ initial, onClose, onSaved }: { initial?: OneTimeExpense | null; onClose: () => void; onSaved: () => void }) {
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [category, setCategory] = useState(initial?.category ?? "Collaboratore");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10));
+  const [paidBy, setPaidBy] = useState<Partner>((initial?.paid_by as Partner) ?? "pat");
+  const [note, setNote] = useState(initial?.note ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const onSave = async () => {
+    if (!supabase || !amount || !date) return;
+    setSaving(true);
+    const payload = {
+      description: description || null,
+      category: category || null,
+      amount: parseFloat(amount),
+      date,
+      paid_by: paidBy,
+      note: note || null,
+    };
+    if (initial) {
+      await supabase.from("one_time_expenses").update(payload).eq("id", initial.id);
+    } else {
+      await supabase.from("one_time_expenses").insert(payload);
+    }
+    setSaving(false);
+    onSaved();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">{initial ? "Modifica spesa" : "Nuova spesa una tantum"}</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="mt-6 space-y-4">
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Descrizione</span>
+            <input value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} placeholder="Es. Pagamento collaboratore" />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Categoria</span>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
+                <option value="Collaboratore">Collaboratore</option>
+                <option value="Consulenza">Consulenza</option>
+                <option value="Attrezzatura">Attrezzatura</option>
+                <option value="Trasferta">Trasferta</option>
+                <option value="Altro">Altro</option>
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Importo (€)</span>
+              <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
+            </label>
+          </div>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Data</span>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} required />
+          </label>
+          <div>
+            <span className="mb-1 block text-sm text-muted-foreground">Gestito da</span>
+            <div className="inline-flex w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] p-1">
+              {(["pat", "stefano"] as Partner[]).map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => setPaidBy(h)}
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition",
+                    paidBy === h
+                      ? h === "pat"
+                        ? "bg-cyan-950 text-cyan-400 shadow-[inset_0_0_18px_rgba(0,212,255,0.18)]"
+                        : "bg-amber-950 text-amber-400 shadow-[inset_0_0_18px_rgba(251,191,36,0.18)]"
+                      : "text-muted-foreground hover:text-white",
+                  )}
+                >
+                  {partnerLabel[h]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Note (opzionale)</span>
+            <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} />
+          </label>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-xl border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-muted-foreground hover:text-white">Annulla</button>
+          <button onClick={onSave} disabled={saving || !amount || !date} className="rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50">
+            {saving ? "Salvataggio…" : "Salva"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
