@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Clock,
   DollarSign,
+  Percent,
   Plus,
   Trash2,
   TrendingDown,
