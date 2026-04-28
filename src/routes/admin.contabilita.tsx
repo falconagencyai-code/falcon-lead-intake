@@ -491,11 +491,12 @@ function ContabilitaPage() {
           </div>
         </div>
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[920px] text-left text-sm">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               <tr className="border-b border-[rgba(0,212,255,0.1)]">
                 <th className="py-4">Data</th>
                 <th>Tipo</th>
+                <th>Gestito da</th>
                 <th>Categoria</th>
                 <th>Descrizione</th>
                 <th>Cliente</th>
@@ -506,12 +507,14 @@ function ContabilitaPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && filteredTx.length === 0 && (
-                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Nessuna transazione</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Nessuna transazione</td></tr>
               )}
-              {filteredTx.map((tx) => (
+              {filteredTx.map((tx) => {
+                const handler = (tx.paid_by ?? "agenzia") as Handler;
+                return (
                 <tr key={tx.id} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
                   <td className="py-4 text-muted-foreground">{new Date(tx.date).toLocaleDateString("it-IT")}</td>
                   <td>
@@ -522,6 +525,14 @@ function ContabilitaPage() {
                         : "border-[rgba(248,113,113,0.32)] bg-[rgba(248,113,113,0.1)] text-red-400"
                     )}>
                       {tx.type}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={cn(
+                      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                      handlerBadgeClass[handler],
+                    )}>
+                      {handlerLabel[handler]}
                     </span>
                   </td>
                   <td className="text-muted-foreground">{tx.category ?? "—"}</td>
@@ -539,7 +550,8 @@ function ContabilitaPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
