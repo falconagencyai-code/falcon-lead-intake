@@ -111,8 +111,18 @@ const handlerLabel: Record<Handler, string> = {
 
 const handlerBadgeClass: Record<Handler, string> = {
   agenzia: "border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.05)] text-muted-foreground",
-  pat: "border-[rgba(0,212,255,0.32)] bg-[rgba(0,212,255,0.1)] text-primary",
-  stefano: "border-[rgba(251,191,36,0.32)] bg-[rgba(251,191,36,0.1)] text-amber-300",
+  pat: "border-cyan-800 bg-cyan-950 text-cyan-400",
+  stefano: "border-amber-800 bg-amber-950 text-amber-400",
+};
+
+const partnerBadgeClass: Record<Partner, string> = {
+  pat: "border-cyan-800 bg-cyan-950 text-cyan-400",
+  stefano: "border-amber-800 bg-amber-950 text-amber-400",
+};
+
+const partnerLabel: Record<Partner, string> = {
+  pat: "Pat",
+  stefano: "Stefano",
 };
 
 // =============== PAGE ===============
