@@ -758,19 +758,21 @@ function TransactionModal({ leads, initial, onClose, onSaved }: { leads: LeadOpt
     const payload = {
       type,
       amount: parseFloat(amount),
-      category: category || null,
+      category: category?.trim() || "Altro",
       date,
-      description: description || null,
+      description: description?.trim() || null,
       lead_id: leadId || null,
-      invoice_number: invoiceNumber || null,
+      invoice_number: invoiceNumber?.trim() || null,
       paid_by: paidBy,
     };
-    if (initial) {
-      await supabase.from("transactions").update(payload).eq("id", initial.id);
-    } else {
-      await supabase.from("transactions").insert(payload);
-    }
+    const { error } = initial
+      ? await supabase.from("transactions").update(payload).eq("id", initial.id)
+      : await supabase.from("transactions").insert(payload);
     setSaving(false);
+    if (error) {
+      alert("Errore salvataggio transazione: " + error.message);
+      return;
+    }
     onSaved();
   };
 
