@@ -89,6 +89,18 @@ const monthNames = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set
 const inputClass =
   "w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] px-3 py-2 text-sm text-white outline-none focus:border-primary";
 
+const handlerLabel: Record<Handler, string> = {
+  agenzia: "Agenzia",
+  pat: "Pat",
+  stefano: "Stefano",
+};
+
+const handlerBadgeClass: Record<Handler, string> = {
+  agenzia: "border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.05)] text-muted-foreground",
+  pat: "border-[rgba(0,212,255,0.32)] bg-[rgba(0,212,255,0.1)] text-primary",
+  stefano: "border-[rgba(251,191,36,0.32)] bg-[rgba(251,191,36,0.1)] text-amber-300",
+};
+
 // =============== PAGE ===============
 
 function ContabilitaPage() {
