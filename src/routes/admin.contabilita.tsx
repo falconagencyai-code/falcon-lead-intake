@@ -690,3 +690,313 @@ function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved:
     </div>
   );
 }
+
+// =============== DIVISORIA ===============
+
+type Partner = "pat" | "stefano";
+
+interface PartnerPayment {
+  id: string;
+  paid_by: Partner;
+  description: string;
+  amount: number;
+  date: string;
+  category: string | null;
+  settled: boolean;
+  created_at?: string;
+}
+
+function DivisoriaModal({ onClose }: { onClose: () => void }) {
+  const [payments, setPayments] = useState<PartnerPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const load = async () => {
+    if (!supabase) return;
+    setLoading(true);
+    const { data } = await supabase
+      .from("partner_payments")
+      .select("*")
+      .eq("settled", false)
+      .order("date", { ascending: false });
+    setPayments((data as PartnerPayment[]) ?? []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const patPayments = payments.filter((p) => p.paid_by === "pat");
+  const stePayments = payments.filter((p) => p.paid_by === "stefano");
+  const patTotal = patPayments.reduce((s, p) => s + Number(p.amount), 0);
+  const steTotal = stePayments.reduce((s, p) => s + Number(p.amount), 0);
+  const combined = patTotal + steTotal;
+  const fairShare = combined / 2;
+  const diff = Math.abs(patTotal - steTotal) / 2;
+
+  let banner: { tone: "balanced" | "owes"; debtor?: string; creditor?: string; amount?: number } = {
+    tone: "balanced",
+  };
+  if (combined === 0) banner = { tone: "balanced" };
+  else if (patTotal > steTotal) banner = { tone: "owes", debtor: "STEFANO", creditor: "PAT", amount: diff };
+  else if (steTotal > patTotal) banner = { tone: "owes", debtor: "PAT", creditor: "STEFANO", amount: diff };
+
+  const settleAll = async () => {
+    if (!supabase || payments.length === 0) return;
+    if (!window.confirm("Segnare tutti i pagamenti come saldati?")) return;
+    await supabase.from("partner_payments").update({ settled: true }).eq("settled", false);
+    await load();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#070b14]/95 backdrop-blur-xl">
+      <div className="mx-auto max-w-7xl p-4 md:p-8">
+        {/* Header */}
+        <div className="flex flex-col gap-4 border-b border-[rgba(255,255,255,0.08)] pb-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="rounded-2xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.08)] p-3">
+              <Scale className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">Divisoria</h2>
+              <p className="text-sm text-muted-foreground">Pareggiamento spese tra soci</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setShowAdd(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary"
+            >
+              <Plus className="h-4 w-4" /> Aggiungi pagamento
+            </button>
+            <button
+              onClick={settleAll}
+              disabled={payments.length === 0}
+              className="rounded-xl border border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.08)] px-4 py-2 text-sm font-semibold text-emerald-400 disabled:opacity-50"
+            >
+              Segna tutto come saldato
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-xl border border-[rgba(255,255,255,0.12)] p-2 text-muted-foreground hover:text-white"
+              aria-label="Chiudi"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Two columns */}
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <PartnerColumn
+            name="PAT"
+            total={patTotal}
+            payments={patPayments}
+            accent="cyan"
+            loading={loading}
+          />
+          <PartnerColumn
+            name="STEFANO"
+            total={steTotal}
+            payments={stePayments}
+            accent="amber"
+            loading={loading}
+          />
+        </div>
+
+        {/* Settlement banner */}
+        <div className="mt-8">
+          {banner.tone === "balanced" ? (
+            <div className="rounded-3xl border border-[rgba(34,197,94,0.35)] bg-[rgba(34,197,94,0.08)] p-8 text-center shadow-[0_0_60px_rgba(34,197,94,0.15)]">
+              <p className="text-xs uppercase tracking-[0.3em] text-emerald-400/80">Stato</p>
+              <p className="mt-3 text-4xl font-black tracking-tight text-emerald-400 md:text-5xl">
+                IN PAREGGIO ✓
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Totale combinato: <span className="font-semibold text-white">{eur(combined)}</span> · Quota equa: {eur(fairShare)}
+              </p>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "rounded-3xl border p-8 text-center",
+                banner.debtor === "PAT"
+                  ? "border-[rgba(251,191,36,0.4)] bg-[rgba(251,191,36,0.08)] shadow-[0_0_60px_rgba(251,191,36,0.18)]"
+                  : "border-[rgba(0,212,255,0.4)] bg-[rgba(0,212,255,0.08)] shadow-[0_0_60px_rgba(0,212,255,0.18)]",
+              )}
+            >
+              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Saldo da regolare</p>
+              <p className="mt-4 text-2xl font-bold text-white md:text-3xl">
+                <span className={banner.debtor === "PAT" ? "text-amber-400" : "text-primary"}>{banner.debtor}</span>{" "}
+                deve a{" "}
+                <span className={banner.creditor === "PAT" ? "text-primary" : "text-amber-400"}>{banner.creditor}</span>
+              </p>
+              <p className="mt-4 text-6xl font-black tracking-tight text-white md:text-7xl">
+                {eur(banner.amount ?? 0)}
+              </p>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Totale combinato {eur(combined)} · Quota equa {eur(fairShare)}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showAdd && (
+        <AddPartnerPaymentModal
+          onClose={() => setShowAdd(false)}
+          onSaved={async () => {
+            setShowAdd(false);
+            await load();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function PartnerColumn({
+  name,
+  total,
+  payments,
+  accent,
+  loading,
+}: {
+  name: string;
+  total: number;
+  payments: PartnerPayment[];
+  accent: "cyan" | "amber";
+  loading: boolean;
+}) {
+  const isCyan = accent === "cyan";
+  const border = isCyan ? "border-[rgba(0,212,255,0.3)]" : "border-[rgba(251,191,36,0.3)]";
+  const glow = isCyan
+    ? "shadow-[0_0_40px_rgba(0,212,255,0.12)]"
+    : "shadow-[0_0_40px_rgba(251,191,36,0.12)]";
+  const text = isCyan ? "text-primary" : "text-amber-400";
+  const chipBg = isCyan ? "bg-[rgba(0,212,255,0.08)]" : "bg-[rgba(251,191,36,0.08)]";
+
+  return (
+    <div className={cn("rounded-3xl border bg-[rgba(255,255,255,0.02)] p-6", border, glow)}>
+      <div className={cn("flex items-center justify-between rounded-2xl px-4 py-3", chipBg)}>
+        <h3 className={cn("text-2xl font-black tracking-tight md:text-3xl", text)}>{name}</h3>
+        <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+          {payments.length} pagamenti
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-2">
+        {loading ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Caricamento…</p>
+        ) : payments.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">Nessun pagamento</p>
+        ) : (
+          payments.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-3 py-2.5 text-sm"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-white">{p.description}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {new Date(p.date).toLocaleDateString("it-IT")}
+                  {p.category && <> · {p.category}</>}
+                </p>
+              </div>
+              <span className={cn("whitespace-nowrap font-bold", text)}>{eur(Number(p.amount))}</span>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className={cn("mt-5 flex items-center justify-between rounded-2xl border px-4 py-3", border, chipBg)}>
+        <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Totale pagato</span>
+        <span className={cn("text-2xl font-black tracking-tight", text)}>{eur(total)}</span>
+      </div>
+    </div>
+  );
+}
+
+function AddPartnerPaymentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [paidBy, setPaidBy] = useState<Partner>("pat");
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [category, setCategory] = useState("Software");
+  const [saving, setSaving] = useState(false);
+
+  const onSave = async () => {
+    if (!supabase || !description || !amount) return;
+    setSaving(true);
+    await supabase.from("partner_payments").insert({
+      paid_by: paidBy,
+      description,
+      amount: parseFloat(amount),
+      date,
+      category,
+      settled: false,
+    });
+    setSaving(false);
+    onSaved();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Aggiungi pagamento</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-white">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="mt-6 space-y-4">
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Pagato da</span>
+            <select value={paidBy} onChange={(e) => setPaidBy(e.target.value as Partner)} className={inputClass}>
+              <option value="pat">Pat</option>
+              <option value="stefano">Stefano</option>
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Descrizione</span>
+            <input value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} placeholder="Es. Abbonamento Figma" />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Importo (€)</span>
+              <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Data</span>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+            </label>
+          </div>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Categoria</span>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
+              <option>Software</option>
+              <option>Marketing</option>
+              <option>Hosting</option>
+              <option>Operativo</option>
+              <option>Altro</option>
+            </select>
+          </label>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-xl border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-muted-foreground hover:text-white">
+            Annulla
+          </button>
+          <button
+            onClick={onSave}
+            disabled={saving || !description || !amount}
+            className="rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50"
+          >
+            {saving ? "Salvataggio…" : "Salva"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
