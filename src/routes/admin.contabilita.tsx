@@ -67,6 +67,8 @@ interface FixedExpense {
   category: string | null;
   active: boolean;
   paid_by?: Partner | null;
+  /** Per "mensile": giorno del mese (1-31). Per "annuale": data ISO YYYY-MM-DD. */
+  due_date: string | null;
 }
 
 interface OneTimeExpense {
@@ -436,6 +438,7 @@ function ContabilitaPage() {
                 <th className="w-[120px] whitespace-nowrap px-4 py-3">Categoria</th>
                 <th className="w-[100px] whitespace-nowrap px-4 py-3 text-right">Importo</th>
                 <th className="w-[100px] whitespace-nowrap px-4 py-3">Frequenza</th>
+                <th className="w-[120px] whitespace-nowrap px-4 py-3">Scadenza</th>
                 <th className="w-[120px] whitespace-nowrap px-4 py-3 text-right">Quota mensile</th>
                 <th className="w-[110px] whitespace-nowrap px-4 py-3 text-right">Per partner (÷2)</th>
                 <th className="w-[110px] whitespace-nowrap px-4 py-3">Gestito da</th>
@@ -445,20 +448,26 @@ function ContabilitaPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && fixedExpenses.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
+                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
               )}
               {fixedExpenses.map((fx) => {
                 const monthly = fx.frequency === "annuale" ? Number(fx.amount) / 12 : Number(fx.amount);
                 const fxPaidBy = (fx.paid_by as Partner | null | undefined) ?? null;
+                const dueLabel = fx.due_date
+                  ? fx.frequency === "mensile"
+                    ? `Giorno ${fx.due_date}`
+                    : new Date(fx.due_date).toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" })
+                  : "—";
                 return (
                   <tr key={fx.id} className="group border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
                     <td className="px-4 py-3 font-medium">{fx.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{fx.category ?? "—"}</td>
                     <td className="px-4 py-3 text-right">{eur(Number(fx.amount))}</td>
                     <td className="px-4 py-3 text-muted-foreground capitalize">{fx.frequency}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{dueLabel}</td>
                     <td className="px-4 py-3 text-right font-semibold text-primary">{eur(monthly)}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{eur(monthly / 2)}</td>
                     <td className="px-4 py-3">
@@ -497,7 +506,7 @@ function ContabilitaPage() {
             {fixedExpenses.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-[rgba(0,212,255,0.2)] text-sm font-bold text-foreground">
-                  <td colSpan={4} className="px-4 py-3 text-right">Totale mensile complessivo:</td>
+                  <td colSpan={5} className="px-4 py-3 text-right">Totale mensile complessivo:</td>
                   <td className="px-4 py-3 text-right text-primary">{eur(totFissoMese)}</td>
                   <td className="px-4 py-3 text-right text-primary">{eur(totFissoMese / 2)}</td>
                   <td colSpan={3} className="px-4 py-3"></td>
@@ -846,11 +855,22 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
   const [category, setCategory] = useState(initial?.category ?? "");
   const [active, setActive] = useState<boolean>(initial?.active ?? true);
   const [paidBy, setPaidBy] = useState<Partner>((initial?.paid_by as Partner) ?? "pat");
+  const [dueDay, setDueDay] = useState<string>(() => {
+    if (initial?.frequency === "mensile" && initial.due_date) return initial.due_date;
+    return "1";
+  });
+  const [dueDate, setDueDate] = useState<string>(() => {
+    if (initial?.frequency === "annuale" && initial.due_date) return initial.due_date;
+    return new Date().toISOString().slice(0, 10);
+  });
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
     if (!supabase || !name || !amount) return;
     setSaving(true);
+    const due_date = frequency === "mensile"
+      ? String(Math.min(31, Math.max(1, parseInt(dueDay || "1", 10) || 1)))
+      : dueDate;
     const payload = {
       name,
       amount: parseFloat(amount),
@@ -858,6 +878,7 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
       category: category || null,
       active,
       paid_by: paidBy,
+      due_date,
     };
     if (initial) {
       await supabase.from("fixed_expenses").update(payload).eq("id", initial.id);
@@ -897,6 +918,17 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
             <span className="mb-1 block text-muted-foreground">Categoria</span>
             <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Affitto" />
           </label>
+          {frequency === "mensile" ? (
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Giorno del mese (1-31)</span>
+              <input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} className={inputClass} placeholder="Es. 15" />
+            </label>
+          ) : (
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Data scadenza annuale</span>
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
+            </label>
+          )}
           <div>
             <span className="mb-1 block text-sm text-muted-foreground">Gestito da</span>
             <div className="inline-flex w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] p-1">
