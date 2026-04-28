@@ -1,283 +1,326 @@
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  ChevronLeft,
-  ChevronRight,
   Clock,
-  Cpu,
-  Download,
   DollarSign,
-  Eye,
-  Megaphone,
-  MoreHorizontal,
-  Pencil,
+  Plus,
+  Trash2,
   TrendingDown,
   TrendingUp,
+  User,
   Users,
-  Wrench,
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
+  AreaChart,
   CartesianGrid,
-  Cell,
-  ComposedChart,
-  Legend,
-  Line,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { AdminBadge, AdminCard, AdminKpi, AdminSectionTitle, IconButton } from "./admin/-admin-ui";
+import { AdminCard, AdminKpi, AdminSectionTitle } from "./admin/-admin-ui";
 
 export const Route = createFileRoute("/admin/contabilita")({
   head: () => ({
     meta: [
       { title: "Falcon Admin — Contabilità" },
-      { name: "description", content: "Contabilità Falcon Agency: entrate, uscite, transazioni e categorie." },
+      { name: "description", content: "Contabilità Falcon Agency: entrate, uscite, transazioni e spese fisse." },
     ],
   }),
   component: ContabilitaPage,
 });
 
-// =============== MOCK DATA ===============
-
-const cashFlow = [
-  { month: "Jan", entrate: 38000, uscite: 26500 },
-  { month: "Feb", entrate: 42500, uscite: 28900 },
-  { month: "Mar", entrate: 51000, uscite: 33200 },
-  { month: "Apr", entrate: 47500, uscite: 31100 },
-  { month: "Mag", entrate: 58000, uscite: 36800 },
-  { month: "Giu", entrate: 62300, uscite: 38750 },
-];
-
-const expenseBreakdown = [
-  { name: "Stipendi & collaboratori", value: 45, amount: 17440, color: "#1a2870" },
-  { name: "Software & tools", value: 18, amount: 6975, color: "#00d4ff" },
-  { name: "Marketing", value: 12, amount: 4650, color: "#8b5cf6" },
-  { name: "Consulenze esterne", value: 10, amount: 3875, color: "#f59e0b" },
-  { name: "Infrastruttura", value: 8, amount: 3100, color: "#22c55e" },
-  { name: "Altro", value: 7, amount: 2710, color: "#6677aa" },
-];
+// =============== TYPES ===============
 
 type TxType = "entrata" | "uscita";
-type TxStatus = "Pagato" | "In attesa" | "Scaduto" | "Programmato";
 
 interface Transaction {
   id: string;
-  date: string;
-  description: string;
-  category: string;
-  party: string;
-  amount: number;
   type: TxType;
-  status: TxStatus;
+  category: string | null;
+  amount: number;
+  description: string | null;
+  date: string;
+  lead_id: string | null;
+  invoice_number: string | null;
+  created_at?: string;
+  leads?: { full_name: string | null; company: string | null } | null;
 }
 
-const transactions: Transaction[] = [
-  { id: "TX-0142", date: "23 Giu", description: "Fattura — Piattaforma AI", category: "Fattura cliente", party: "Aurora Labs", amount: 12000, type: "entrata", status: "Pagato" },
-  { id: "TX-0141", date: "22 Giu", description: "Stipendio Dev Senior", category: "Stipendio", party: "Marco R.", amount: 3200, type: "uscita", status: "Pagato" },
-  { id: "TX-0140", date: "21 Giu", description: "Fattura — Sito Web", category: "Fattura cliente", party: "Nova Retail", amount: 3500, type: "entrata", status: "Pagato" },
-  { id: "TX-0139", date: "20 Giu", description: "Google Ads — Q2", category: "Marketing", party: "Google Ireland", amount: 1500, type: "uscita", status: "Pagato" },
-  { id: "TX-0138", date: "19 Giu", description: "Claude API — uso mensile", category: "Software", party: "Anthropic", amount: 280, type: "uscita", status: "Pagato" },
-  { id: "TX-0137", date: "18 Giu", description: "Fattura — Automazione CRM", category: "Fattura cliente", party: "Zenith Group", amount: 8000, type: "entrata", status: "In attesa" },
-  { id: "TX-0136", date: "17 Giu", description: "Figma — team plan", category: "Software", party: "Figma Inc.", amount: 45, type: "uscita", status: "Pagato" },
-  { id: "TX-0135", date: "16 Giu", description: "Commercialista — Q2", category: "Consulenza", party: "Studio Conti", amount: 400, type: "uscita", status: "Pagato" },
-  { id: "TX-0134", date: "15 Giu", description: "Fattura — Brand Identity", category: "Fattura cliente", party: "Orbit Studio", amount: 4200, type: "entrata", status: "Pagato" },
-  { id: "TX-0133", date: "14 Giu", description: "AWS — infra production", category: "Infrastruttura", party: "Amazon Web Services", amount: 220, type: "uscita", status: "Pagato" },
-  { id: "TX-0132", date: "13 Giu", description: "Fattura — Consulenza AI", category: "Fattura cliente", party: "Atlas Partners", amount: 2800, type: "entrata", status: "Scaduto" },
-  { id: "TX-0131", date: "12 Giu", description: "Notion — workspace", category: "Software", party: "Notion Labs", amount: 16, type: "uscita", status: "Pagato" },
-  { id: "TX-0130", date: "11 Giu", description: "Zoom — pro plan", category: "Software", party: "Zoom Inc.", amount: 15, type: "uscita", status: "Pagato" },
-  { id: "TX-0129", date: "10 Giu", description: "Stipendio Designer", category: "Stipendio", party: "Bianca S.", amount: 2600, type: "uscita", status: "Pagato" },
-  { id: "TX-0128", date: "09 Giu", description: "Fattura — E-commerce setup", category: "Fattura cliente", party: "Mesh AI", amount: 6400, type: "entrata", status: "Pagato" },
-  { id: "TX-0127", date: "08 Giu", description: "Meta Ads — campagna lead", category: "Marketing", party: "Meta Platforms", amount: 980, type: "uscita", status: "Pagato" },
-  { id: "TX-0126", date: "07 Giu", description: "Fattura — Maintenance", category: "Fattura cliente", party: "Nova Retail", amount: 1800, type: "entrata", status: "Programmato" },
-  { id: "TX-0125", date: "06 Giu", description: "Linear — team", category: "Software", party: "Linear Orbit", amount: 32, type: "uscita", status: "Pagato" },
-];
+interface FixedExpense {
+  id: string;
+  name: string;
+  amount: number;
+  frequency: "mensile" | "annuale";
+  category: string | null;
+  active: boolean;
+}
 
-const monthlyRecap = [
-  { month: "Gennaio", entrate: 38000, uscite: 26500 },
-  { month: "Febbraio", entrate: 42500, uscite: 28900 },
-  { month: "Marzo", entrate: 51000, uscite: 33200 },
-  { month: "Aprile", entrate: 47500, uscite: 31100 },
-  { month: "Maggio", entrate: 58000, uscite: 36800 },
-  { month: "Giugno", entrate: 62300, uscite: 38750 },
-];
-
-const expenseCategories = [
-  { name: "Stipendi & Collaboratori", icon: Users, spent: 17440, budget: 18000, trend: 4.2, color: "#1a2870" },
-  { name: "Software & Tools", icon: Cpu, spent: 875, budget: 800, trend: 9.1, color: "#00d4ff" },
-  { name: "Marketing", icon: Megaphone, spent: 2480, budget: 3000, trend: -6.4, color: "#8b5cf6" },
-  { name: "Consulenze", icon: Wrench, spent: 3875, budget: 4000, trend: 2.1, color: "#f59e0b" },
-  { name: "Infrastruttura", icon: Cpu, spent: 1080, budget: 1000, trend: 11.5, color: "#22c55e" },
-  { name: "Varie", icon: MoreHorizontal, spent: 320, budget: 500, trend: -12.0, color: "#6677aa" },
-];
+interface LeadOption {
+  id: string;
+  full_name: string | null;
+  company: string | null;
+}
 
 // =============== HELPERS ===============
 
 const eur = (n: number) =>
   new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 
-const categoryTone: Record<string, { color: string; bg: string; border: string }> = {
-  "Fattura cliente": { color: "#34d399", bg: "rgba(52,211,153,0.1)", border: "rgba(52,211,153,0.3)" },
-  Stipendio: { color: "#60a5fa", bg: "rgba(96,165,250,0.1)", border: "rgba(96,165,250,0.3)" },
-  Software: { color: "var(--falcon-cyan)", bg: "rgba(0,212,255,0.1)", border: "rgba(0,212,255,0.3)" },
-  Marketing: { color: "#a78bfa", bg: "rgba(167,139,250,0.1)", border: "rgba(167,139,250,0.3)" },
-  Consulenza: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)" },
-  Infrastruttura: { color: "#22c55e", bg: "rgba(34,197,94,0.1)", border: "rgba(34,197,94,0.3)" },
-};
-
-function CategoryBadge({ category }: { category: string }) {
-  const tone = categoryTone[category] ?? { color: "#6677aa", bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.12)" };
-  return (
-    <span
-      className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
-      style={{ color: tone.color, background: tone.bg, borderColor: tone.border }}
-    >
-      {category}
-    </span>
-  );
-}
-
 const tooltipStyle = {
-  background: "rgba(7,11,20,0.95)",
-  border: "1px solid rgba(0,212,255,0.25)",
+  background: "#070b14",
+  border: "1px solid rgba(0,212,255,0.2)",
   borderRadius: 14,
   backdropFilter: "blur(14px)",
 };
 
+const monthNames = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+
+const inputClass =
+  "w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] px-3 py-2 text-sm text-white outline-none focus:border-primary";
+
 // =============== PAGE ===============
 
-type TabKey = "Tutte" | "Entrate" | "Uscite" | "In attesa";
-const tabs: TabKey[] = ["Tutte", "Entrate", "Uscite", "In attesa"];
-const PAGE_SIZE = 10;
-
 function ContabilitaPage() {
-  const [tab, setTab] = useState<TabKey>("Tutte");
-  const [period, setPeriod] = useState("Questo mese");
-  const [page, setPage] = useState(1);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
+  const [leads, setLeads] = useState<LeadOption[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showTxModal, setShowTxModal] = useState(false);
+  const [showFxModal, setShowFxModal] = useState(false);
+  const [filterType, setFilterType] = useState<"all" | TxType>("all");
+  const now = new Date();
+  const [filterMonth, setFilterMonth] = useState<string>(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
 
-  const filtered = useMemo(() => {
-    if (tab === "Tutte") return transactions;
-    if (tab === "Entrate") return transactions.filter((t) => t.type === "entrata");
-    if (tab === "Uscite") return transactions.filter((t) => t.type === "uscita");
-    return transactions.filter((t) => t.status === "In attesa" || t.status === "Scaduto");
-  }, [tab]);
+  const loadAll = async () => {
+    if (!supabase) return;
+    setLoading(true);
+    const [{ data: tx }, { data: fx }, { data: ld }] = await Promise.all([
+      supabase.from("transactions").select("*, leads(full_name, company)").order("date", { ascending: false }),
+      supabase.from("fixed_expenses").select("*").order("created_at", { ascending: false }),
+      supabase.from("leads").select("id, full_name, company").eq("pipeline_stage", "chiuso_vinto"),
+    ]);
+    setTransactions((tx as Transaction[]) ?? []);
+    setFixedExpenses((fx as FixedExpense[]) ?? []);
+    setLeads((ld as LeadOption[]) ?? []);
+    setLoading(false);
+  };
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  useEffect(() => {
+    loadAll();
+  }, []);
+
+  // KPI computation — current month
+  const kpi = useMemo(() => {
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const inMonth = (d: string) => {
+      const dt = new Date(d);
+      return dt.getFullYear() === y && dt.getMonth() === m;
+    };
+    const entrateMese = transactions
+      .filter((t) => t.type === "entrata" && inMonth(t.date))
+      .reduce((s, t) => s + Number(t.amount || 0), 0);
+    const usciteTxMese = transactions
+      .filter((t) => t.type === "uscita" && inMonth(t.date))
+      .reduce((s, t) => s + Number(t.amount || 0), 0);
+    const usciteFisseMese = fixedExpenses
+      .filter((f) => f.active)
+      .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
+    const usciteMese = usciteTxMese + usciteFisseMese;
+    const utile = entrateMese - usciteMese;
+    const inAttesa = transactions.filter((t) => t.type === "entrata" && !t.invoice_number).length;
+    return {
+      entrateMese,
+      usciteMese,
+      utile,
+      quotaPat: utile / 2,
+      quotaSocio: utile / 2,
+      inAttesa,
+    };
+  }, [transactions, fixedExpenses]);
+
+  // Chart — last 6 months
+  const cashFlow = useMemo(() => {
+    const buckets: { key: string; month: string; entrate: number; uscite: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      buckets.push({
+        key: `${d.getFullYear()}-${d.getMonth()}`,
+        month: monthNames[d.getMonth()],
+        entrate: 0,
+        uscite: 0,
+      });
+    }
+    transactions.forEach((t) => {
+      const dt = new Date(t.date);
+      const key = `${dt.getFullYear()}-${dt.getMonth()}`;
+      const b = buckets.find((x) => x.key === key);
+      if (b) {
+        if (t.type === "entrata") b.entrate += Number(t.amount || 0);
+        else b.uscite += Number(t.amount || 0);
+      }
+    });
+    const usciteFisseMese = fixedExpenses
+      .filter((f) => f.active)
+      .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
+    buckets.forEach((b) => (b.uscite += usciteFisseMese));
+    return buckets;
+  }, [transactions, fixedExpenses]);
+
+  const totFissoMese = fixedExpenses
+    .filter((f) => f.active)
+    .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
+
+  const filteredTx = useMemo(() => {
+    return transactions.filter((t) => {
+      if (filterType !== "all" && t.type !== filterType) return false;
+      if (filterMonth) {
+        const dt = new Date(t.date);
+        const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+        if (key !== filterMonth) return false;
+      }
+      return true;
+    });
+  }, [transactions, filterType, filterMonth]);
+
+  const deleteTx = async (id: string) => {
+    if (!supabase || !confirm("Eliminare questa transazione?")) return;
+    await supabase.from("transactions").delete().eq("id", id);
+    loadAll();
+  };
+
+  const deleteFx = async (id: string) => {
+    if (!supabase || !confirm("Eliminare questa spesa fissa?")) return;
+    await supabase.from("fixed_expenses").delete().eq("id", id);
+    loadAll();
+  };
 
   return (
     <div className="space-y-8">
       <header>
         <p className="label-section">Falcon Agency</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-5xl">
-          Contabilità <span className="text-primary text-glow">Giugno</span>
+          Contabilità <span className="text-primary text-glow">{monthNames[now.getMonth()]}</span>
         </h1>
       </header>
 
       {/* KPI ROW */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminKpi icon={TrendingUp} title="Entrate totali" value="€62.300" meta="mese corrente" tone="green" />
-        <AdminKpi icon={TrendingDown} title="Uscite totali" value="€38.750" meta="mese corrente" tone="orange" />
-        <AdminCard className="glass-hover p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Utile netto</p>
-              <p className="mt-3 text-3xl font-black text-foreground text-glow">€23.550</p>
-              <span className="mt-2 inline-flex items-center rounded-full border border-[rgba(52,211,153,0.32)] bg-[rgba(52,211,153,0.1)] px-2.5 py-0.5 text-xs font-semibold text-emerald-300">
-                +38% margine
-              </span>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[rgba(0,212,255,0.16)] bg-[rgba(255,255,255,0.04)] text-primary shadow-[0_0_24px_rgba(0,212,255,0.25)]">
-              <DollarSign className="h-6 w-6" />
-            </div>
-          </div>
-        </AdminCard>
-        <AdminCard className="glass-hover p-5">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Fatture in attesa</p>
-              <p className="mt-3 text-3xl font-black text-foreground text-glow">€9.200</p>
-              <p className="mt-2 text-sm text-amber-400">3 fatture scadute</p>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[rgba(245,158,11,0.25)] bg-[rgba(245,158,11,0.08)] text-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.18)]">
-              <Clock className="h-6 w-6" />
-            </div>
-          </div>
-        </AdminCard>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <AdminKpi icon={TrendingUp} title="Entrate totali" value={eur(kpi.entrateMese)} meta="mese corrente" tone="green" />
+        <AdminKpi icon={TrendingDown} title="Uscite totali" value={eur(kpi.usciteMese)} meta="mese corrente + fisse" tone="orange" />
+        <AdminKpi icon={DollarSign} title="Utile netto" value={eur(kpi.utile)} meta="entrate − uscite" tone="cyan" />
+        <AdminKpi icon={User} title="Quota Pat" value={eur(kpi.quotaPat)} meta="50% utile" tone="cyan" />
+        <AdminKpi icon={User} title="Quota Socio" value={eur(kpi.quotaSocio)} meta="50% utile" tone="cyan" />
+        <AdminKpi icon={Clock} title="Fatture in attesa" value={String(kpi.inAttesa)} meta="entrate senza n° fattura" tone="orange" />
       </section>
 
-      {/* CHARTS ROW */}
-      <section className="grid gap-5 xl:grid-cols-[65fr_35fr]">
-        <AdminCard className="min-h-[400px] p-5">
-          <AdminSectionTitle eyebrow="Cash flow" title="Flusso di cassa — ultimi 6 mesi" />
-          <div className="mt-6 h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={cashFlow} margin={{ left: -18, right: 14, top: 12 }}>
-                <defs>
-                  <linearGradient id="entrateFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#00d4ff" stopOpacity={0.02} />
-                  </linearGradient>
-                  <linearGradient id="usciteFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ef4444" stopOpacity={0.32} />
-                    <stop offset="95%" stopColor="#ef4444" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="rgba(0,212,255,0.08)" vertical={false} />
-                <XAxis dataKey="month" stroke="var(--falcon-subtle)" tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--falcon-subtle)" tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => eur(v)} />
-                <Legend wrapperStyle={{ paddingTop: 12, color: "var(--falcon-subtle)" }} />
-                <Area type="monotone" dataKey="entrate" stroke="#00d4ff" fill="url(#entrateFill)" strokeWidth={3} name="Entrate" />
-                <Area type="monotone" dataKey="uscite" stroke="#ef4444" fill="url(#usciteFill)" strokeWidth={3} name="Uscite" />
-                <Line type="monotone" dataKey="entrate" stroke="#00d4ff" strokeWidth={3} dot={false} legendType="none" />
-                <Line type="monotone" dataKey="uscite" stroke="#ef4444" strokeWidth={3} dot={false} legendType="none" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </AdminCard>
+      {/* CASH FLOW CHART */}
+      <AdminCard className="p-5">
+        <AdminSectionTitle eyebrow="Cash flow" title="Entrate vs Uscite — ultimi 6 mesi" />
+        <div className="mt-6 h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={cashFlow} margin={{ left: -10, right: 14, top: 12 }}>
+              <defs>
+                <linearGradient id="entFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="#00d4ff" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="uscFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.32} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="rgba(0,212,255,0.08)" vertical={false} />
+              <XAxis dataKey="month" stroke="var(--falcon-subtle)" tickLine={false} axisLine={false} />
+              <YAxis stroke="var(--falcon-subtle)" tickLine={false} axisLine={false} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => eur(v)} />
+              <Area type="monotone" dataKey="entrate" stroke="#00d4ff" fill="url(#entFill)" strokeWidth={3} name="Entrate" />
+              <Area type="monotone" dataKey="uscite" stroke="#f59e0b" fill="url(#uscFill)" strokeWidth={3} name="Uscite" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </AdminCard>
 
-        <AdminCard className="min-h-[400px] p-5">
-          <AdminSectionTitle eyebrow="Categorie" title="Breakdown uscite" />
-          <div className="mt-4 grid grid-cols-[1fr_1.1fr] items-center gap-4">
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={expenseBreakdown} innerRadius={52} outerRadius={86} paddingAngle={3} dataKey="value">
-                    {expenseBreakdown.map((entry) => (
-                      <Cell key={entry.name} fill={entry.color} stroke="rgba(255,255,255,0.06)" />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => `${v}%`} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="space-y-2">
-              {expenseBreakdown.map((entry) => (
-                <div key={entry.name} className="flex items-start justify-between gap-2 text-xs">
-                  <span className="flex items-start gap-2 text-muted-foreground">
-                    <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: entry.color }} />
-                    <span className="leading-tight">
-                      {entry.name}
-                      <span className="block text-[10px] text-muted-foreground/70">{eur(entry.amount)}</span>
-                    </span>
-                  </span>
-                  <span className="font-semibold text-foreground">{entry.value}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </AdminCard>
-      </section>
+      {/* FIXED EXPENSES */}
+      <AdminCard className="p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <AdminSectionTitle eyebrow="Ricorrenti" title="Spese fisse & abbonamenti" />
+          <button
+            onClick={() => setShowFxModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.08)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.14)]"
+          >
+            <Plus className="h-4 w-4" /> Aggiungi spesa fissa
+          </button>
+        </div>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[820px] text-left text-sm">
+            <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <tr className="border-b border-[rgba(0,212,255,0.1)]">
+                <th className="py-4">Nome</th>
+                <th>Categoria</th>
+                <th className="text-right">Importo</th>
+                <th>Frequenza</th>
+                <th className="text-right">Quota mensile</th>
+                <th className="text-right">Per partner (÷2)</th>
+                <th>Stato</th>
+                <th className="text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+              )}
+              {!loading && fixedExpenses.length === 0 && (
+                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
+              )}
+              {fixedExpenses.map((fx) => {
+                const monthly = fx.frequency === "annuale" ? Number(fx.amount) / 12 : Number(fx.amount);
+                return (
+                  <tr key={fx.id} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
+                    <td className="py-4 font-medium">{fx.name}</td>
+                    <td className="text-muted-foreground">{fx.category ?? "—"}</td>
+                    <td className="text-right">{eur(Number(fx.amount))}</td>
+                    <td className="text-muted-foreground capitalize">{fx.frequency}</td>
+                    <td className="text-right font-semibold text-primary">{eur(monthly)}</td>
+                    <td className="text-right text-muted-foreground">{eur(monthly / 2)}</td>
+                    <td>
+                      <span className={cn(
+                        "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                        fx.active
+                          ? "border-[rgba(52,211,153,0.32)] bg-[rgba(52,211,153,0.1)] text-emerald-300"
+                          : "border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.05)] text-muted-foreground"
+                      )}>
+                        {fx.active ? "Attivo" : "Inattivo"}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <button onClick={() => deleteFx(fx.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {fixedExpenses.length > 0 && (
+              <tfoot>
+                <tr className="border-t-2 border-[rgba(0,212,255,0.2)] text-sm font-bold text-foreground">
+                  <td colSpan={4} className="py-4 text-right">Totale mensile complessivo:</td>
+                  <td className="text-right text-primary">{eur(totFissoMese)}</td>
+                  <td className="text-right text-primary">{eur(totFissoMese / 2)}</td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </AdminCard>
 
       {/* TRANSACTIONS */}
       <AdminCard className="p-5">
@@ -285,219 +328,253 @@ function ContabilitaPage() {
           <AdminSectionTitle eyebrow="Movimenti" title="Transazioni" />
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex rounded-2xl border border-[rgba(0,212,255,0.14)] bg-[rgba(255,255,255,0.03)] p-1">
-              {tabs.map((t) => (
+              {(["all", "entrata", "uscita"] as const).map((t) => (
                 <button
                   key={t}
-                  onClick={() => {
-                    setTab(t);
-                    setPage(1);
-                  }}
+                  onClick={() => setFilterType(t)}
                   className={cn(
-                    "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
-                    tab === t
+                    "rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition",
+                    filterType === t
                       ? "bg-[rgba(0,212,255,0.12)] text-primary shadow-[inset_0_0_18px_rgba(0,212,255,0.16)]"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {t}
+                  {t === "all" ? "Tutte" : t === "entrata" ? "Entrate" : "Uscite"}
                 </button>
               ))}
             </div>
-            <select
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
+            <input
+              type="month"
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
               className="rounded-xl border border-[rgba(0,212,255,0.14)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+            />
+            <button
+              onClick={() => setShowTxModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.08)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.14)]"
             >
-              <option>Questo mese</option>
-              <option>Trimestre</option>
-              <option>Anno</option>
-            </select>
-            <button className="btn-ghost inline-flex items-center gap-2 text-xs">
-              <Download className="h-3.5 w-3.5" /> Esporta CSV
+              <Plus className="h-4 w-4" /> Aggiungi transazione
             </button>
           </div>
         </div>
-
         <div className="mt-5 overflow-x-auto">
           <table className="w-full min-w-[920px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               <tr className="border-b border-[rgba(0,212,255,0.1)]">
-                <th className="py-4">#</th>
-                <th>Data</th>
-                <th>Descrizione</th>
+                <th className="py-4">Data</th>
+                <th>Tipo</th>
                 <th>Categoria</th>
-                <th>Cliente / Fornitore</th>
+                <th>Descrizione</th>
+                <th>Cliente</th>
                 <th className="text-right">Importo</th>
-                <th>Stato</th>
+                <th>Fattura n°</th>
                 <th className="text-right">Azioni</th>
               </tr>
             </thead>
             <tbody>
-              {paginated.map((tx) => (
+              {loading && (
+                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+              )}
+              {!loading && filteredTx.length === 0 && (
+                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Nessuna transazione</td></tr>
+              )}
+              {filteredTx.map((tx) => (
                 <tr key={tx.id} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
-                  <td className="py-4 text-xs text-muted-foreground">{tx.id}</td>
-                  <td className="text-muted-foreground">{tx.date}</td>
+                  <td className="py-4 text-muted-foreground">{new Date(tx.date).toLocaleDateString("it-IT")}</td>
                   <td>
-                    <span className="flex items-center gap-2 font-medium">
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: tx.type === "entrata" ? "#22c55e" : "#ef4444" }}
-                      />
-                      {tx.description}
+                    <span className={cn(
+                      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize",
+                      tx.type === "entrata"
+                        ? "border-[rgba(52,211,153,0.32)] bg-[rgba(52,211,153,0.1)] text-emerald-300"
+                        : "border-[rgba(248,113,113,0.32)] bg-[rgba(248,113,113,0.1)] text-red-400"
+                    )}>
+                      {tx.type}
                     </span>
                   </td>
-                  <td><CategoryBadge category={tx.category} /></td>
-                  <td className="text-muted-foreground">{tx.party}</td>
-                  <td className={cn("text-right font-semibold", tx.type === "entrata" ? "text-emerald-300" : "text-red-400")}>
-                    {tx.type === "entrata" ? "+" : "−"}{eur(tx.amount)}
+                  <td className="text-muted-foreground">{tx.category ?? "—"}</td>
+                  <td className="font-medium">{tx.description ?? "—"}</td>
+                  <td className="text-muted-foreground">
+                    {tx.leads?.full_name ?? tx.leads?.company ?? "—"}
                   </td>
-                  <td><AdminBadge status={tx.status === "Pagato" ? "Attivo" : tx.status === "Scaduto" ? "Scaduto" : tx.status === "In attesa" ? "In valutazione" : "Bozza"}>{tx.status}</AdminBadge></td>
-                  <td>
-                    <div className="flex justify-end gap-2">
-                      <IconButton><Eye className="h-4 w-4" /></IconButton>
-                      <IconButton><Pencil className="h-4 w-4" /></IconButton>
-                      <IconButton><Download className="h-4 w-4" /></IconButton>
-                    </div>
+                  <td className={cn("text-right font-semibold", tx.type === "entrata" ? "text-emerald-300" : "text-red-400")}>
+                    {tx.type === "entrata" ? "+" : "−"}{eur(Number(tx.amount))}
+                  </td>
+                  <td className="text-muted-foreground">{tx.invoice_number ?? "—"}</td>
+                  <td className="text-right">
+                    <button onClick={() => deleteTx(tx.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      </AdminCard>
 
-        <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            {filtered.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} di {filtered.length}
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={safePage === 1}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[rgba(0,212,255,0.14)] bg-[rgba(255,255,255,0.04)] text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-40"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="font-semibold text-foreground">
-              {safePage} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safePage === totalPages}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[rgba(0,212,255,0.14)] bg-[rgba(255,255,255,0.04)] text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-40"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+      {showTxModal && (
+        <TransactionModal
+          leads={leads}
+          onClose={() => setShowTxModal(false)}
+          onSaved={() => { setShowTxModal(false); loadAll(); }}
+        />
+      )}
+      {showFxModal && (
+        <FixedExpenseModal
+          onClose={() => setShowFxModal(false)}
+          onSaved={() => { setShowFxModal(false); loadAll(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// =============== MODALS ===============
+
+function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; onClose: () => void; onSaved: () => void }) {
+  const [type, setType] = useState<TxType>("entrata");
+  const [amount, setAmount] = useState("");
+  const [category, setCategory] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [description, setDescription] = useState("");
+  const [leadId, setLeadId] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const onSave = async () => {
+    if (!supabase || !amount) return;
+    setSaving(true);
+    await supabase.from("transactions").insert({
+      type,
+      amount: parseFloat(amount),
+      category: category || null,
+      date,
+      description: description || null,
+      lead_id: leadId || null,
+      invoice_number: invoiceNumber || null,
+    });
+    setSaving(false);
+    onSaved();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Nuova transazione</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="mt-6 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Tipo</span>
+              <select value={type} onChange={(e) => setType(e.target.value as TxType)} className={inputClass}>
+                <option value="entrata">Entrata</option>
+                <option value="uscita">Uscita</option>
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Importo (€)</span>
+              <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
+            </label>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Categoria</span>
+              <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Stipendio" />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Data</span>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+            </label>
+          </div>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Descrizione</span>
+            <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Cliente (opzionale)</span>
+            <select value={leadId} onChange={(e) => setLeadId(e.target.value)} className={inputClass}>
+              <option value="">— Nessun cliente —</option>
+              {leads.map((l) => (
+                <option key={l.id} value={l.id}>{l.full_name ?? l.company ?? l.id}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Numero fattura (opzionale)</span>
+            <input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} className={inputClass} />
+          </label>
         </div>
-      </AdminCard>
+        <div className="mt-6 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-xl border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-muted-foreground hover:text-white">Annulla</button>
+          <button onClick={onSave} disabled={saving || !amount} className="rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50">
+            {saving ? "Salvataggio…" : "Salva"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      {/* MONTHLY RECAP */}
-      <AdminCard className="p-5">
-        <AdminSectionTitle eyebrow="Riepilogo" title="Performance mensile" />
-        <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-              <tr className="border-b border-[rgba(0,212,255,0.1)]">
-                <th className="py-4">Mese</th>
-                <th className="text-right">Entrate</th>
-                <th className="text-right">Uscite</th>
-                <th className="text-right">Utile</th>
-                <th className="text-right">Margine</th>
-              </tr>
-            </thead>
-            <tbody>
-              {monthlyRecap.map((row) => {
-                const utile = row.entrate - row.uscite;
-                const margine = (utile / row.entrate) * 100;
-                return (
-                  <tr key={row.month} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
-                    <td className="py-3.5 font-medium">{row.month}</td>
-                    <td className="text-right text-emerald-300">{eur(row.entrate)}</td>
-                    <td className="text-right text-red-400">{eur(row.uscite)}</td>
-                    <td className={cn("text-right font-semibold", utile >= 0 ? "text-emerald-300" : "text-red-400")}>
-                      {eur(utile)}
-                    </td>
-                    <td className="text-right text-muted-foreground">{margine.toFixed(1)}%</td>
-                  </tr>
-                );
-              })}
-              {(() => {
-                const totEntrate = monthlyRecap.reduce((a, r) => a + r.entrate, 0);
-                const totUscite = monthlyRecap.reduce((a, r) => a + r.uscite, 0);
-                const totUtile = totEntrate - totUscite;
-                const totMargine = (totUtile / totEntrate) * 100;
-                return (
-                  <tr className="border-t-2 border-primary/60 text-foreground">
-                    <td className="py-4 text-sm font-bold uppercase tracking-wider text-primary">Totale YTD</td>
-                    <td className="text-right font-bold text-emerald-300">{eur(totEntrate)}</td>
-                    <td className="text-right font-bold text-red-400">{eur(totUscite)}</td>
-                    <td className="text-right font-bold text-emerald-300">{eur(totUtile)}</td>
-                    <td className="text-right font-bold text-foreground">{totMargine.toFixed(1)}%</td>
-                  </tr>
-                );
-              })()}
-            </tbody>
-          </table>
-        </div>
-      </AdminCard>
+function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState("");
+  const [amount, setAmount] = useState("");
+  const [frequency, setFrequency] = useState<"mensile" | "annuale">("mensile");
+  const [category, setCategory] = useState("");
+  const [saving, setSaving] = useState(false);
 
-      {/* CATEGORY CARDS */}
-      <section>
-        <AdminSectionTitle eyebrow="Budget" title="Categorie di spesa" />
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {expenseCategories.map((cat) => {
-            const Icon = cat.icon;
-            const pct = Math.min(150, (cat.spent / cat.budget) * 100);
-            const overBudget = cat.spent > cat.budget;
-            const trendUp = cat.trend >= 0;
-            return (
-              <AdminCard key={cat.name} className="glass-hover p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="flex h-10 w-10 items-center justify-center rounded-xl border border-[rgba(0,212,255,0.16)] bg-[rgba(255,255,255,0.04)]"
-                      style={{ color: cat.color }}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">{cat.name}</p>
-                      <p className="text-xs text-muted-foreground">Budget {eur(cat.budget)}</p>
-                    </div>
-                  </div>
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-                      trendUp
-                        ? "border-[rgba(248,113,113,0.3)] bg-[rgba(248,113,113,0.1)] text-red-400"
-                        : "border-[rgba(52,211,153,0.3)] bg-[rgba(52,211,153,0.1)] text-emerald-300",
-                    )}
-                  >
-                    {trendUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                    {Math.abs(cat.trend).toFixed(1)}%
-                  </span>
-                </div>
-                <div className="mt-4 flex items-baseline justify-between">
-                  <p className="text-2xl font-black text-foreground">{eur(cat.spent)}</p>
-                  <p className={cn("text-xs font-semibold", overBudget ? "text-red-400" : "text-muted-foreground")}>
-                    {((cat.spent / cat.budget) * 100).toFixed(0)}% del budget
-                  </p>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.05)]">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${Math.min(100, pct)}%`,
-                      background: overBudget ? "#ef4444" : `linear-gradient(90deg, ${cat.color}, var(--falcon-cyan))`,
-                      boxShadow: overBudget ? "0 0 12px rgba(239,68,68,0.5)" : "0 0 12px rgba(0,212,255,0.3)",
-                    }}
-                  />
-                </div>
-              </AdminCard>
-            );
-          })}
+  const onSave = async () => {
+    if (!supabase || !name || !amount) return;
+    setSaving(true);
+    await supabase.from("fixed_expenses").insert({
+      name,
+      amount: parseFloat(amount),
+      frequency,
+      category: category || null,
+      active: true,
+    });
+    setSaving(false);
+    onSaved();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Nuova spesa fissa</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
         </div>
-      </section>
+        <div className="mt-6 space-y-4">
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Nome</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Es. Figma, Ufficio" />
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Importo (€)</span>
+              <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Frequenza</span>
+              <select value={frequency} onChange={(e) => setFrequency(e.target.value as "mensile" | "annuale")} className={inputClass}>
+                <option value="mensile">Mensile</option>
+                <option value="annuale">Annuale</option>
+              </select>
+            </label>
+          </div>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Categoria</span>
+            <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Affitto" />
+          </label>
+        </div>
+        <div className="mt-6 flex justify-end gap-3">
+          <button onClick={onClose} className="rounded-xl border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-muted-foreground hover:text-white">Annulla</button>
+          <button onClick={onSave} disabled={saving || !name || !amount} className="rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50">
+            {saving ? "Salvataggio…" : "Salva"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
