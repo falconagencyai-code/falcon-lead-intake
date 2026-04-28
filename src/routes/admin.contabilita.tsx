@@ -659,7 +659,7 @@ function ContabilitaPage() {
                   </td>
                   <td className="text-muted-foreground">{tx.invoice_number ?? "—"}</td>
                   <td className="text-right">
-                    <div className="inline-flex items-center gap-1.5">
+                    <div className="inline-flex items-center gap-1.5 opacity-0 transition group-hover:opacity-100">
                       <button onClick={() => setEditingTx(tx)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
                         <Pencil className="h-4 w-4" />
                       </button>
