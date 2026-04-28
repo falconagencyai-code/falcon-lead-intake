@@ -451,10 +451,10 @@ function ContabilitaPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && fixedExpenses.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
+                <tr><td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
               )}
               {fixedExpenses.map((fx) => {
                 const monthly = fx.frequency === "annuale" ? Number(fx.amount) / 12 : Number(fx.amount);
