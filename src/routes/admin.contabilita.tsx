@@ -72,6 +72,9 @@ interface FixedExpense {
   paid_by?: Partner | null;
   /** Per "mensile": giorno del mese (1-31). Per "annuale": data ISO YYYY-MM-DD. */
   due_date: string | null;
+  /** Data di inizio dell'abbonamento (ISO YYYY-MM-DD). Obbligatoria. */
+  start_date: string;
+  created_at?: string;
 }
 
 interface OneTimeExpense {
@@ -437,6 +440,7 @@ function ContabilitaPage() {
                 <th className="w-[120px] whitespace-nowrap px-4 py-3">Categoria</th>
                 <th className="w-[100px] whitespace-nowrap px-4 py-3 text-right">Importo</th>
                 <th className="w-[100px] whitespace-nowrap px-4 py-3">Frequenza</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3">Attivo dal</th>
                 <th className="w-[120px] whitespace-nowrap px-4 py-3">Scadenza</th>
                 <th className="w-[120px] whitespace-nowrap px-4 py-3 text-right">Quota mensile</th>
                 <th className="w-[110px] whitespace-nowrap px-4 py-3 text-right">Per partner (÷2)</th>
@@ -447,10 +451,10 @@ function ContabilitaPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && fixedExpenses.length === 0 && (
-                <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
+                <tr><td colSpan={11} className="px-4 py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
               )}
               {fixedExpenses.map((fx) => {
                 const monthly = fx.frequency === "annuale" ? Number(fx.amount) / 12 : Number(fx.amount);
@@ -466,6 +470,11 @@ function ContabilitaPage() {
                     <td className="px-4 py-3 text-muted-foreground">{fx.category ?? "—"}</td>
                     <td className="px-4 py-3 text-right">{eur(Number(fx.amount))}</td>
                     <td className="px-4 py-3 text-muted-foreground capitalize">{fx.frequency}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                      {fx.start_date
+                        ? new Date(fx.start_date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+                        : "—"}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{dueLabel}</td>
                     <td className="px-4 py-3 text-right font-semibold text-primary">{eur(monthly)}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{eur(monthly / 2)}</td>
@@ -505,7 +514,7 @@ function ContabilitaPage() {
             {fixedExpenses.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-[rgba(0,212,255,0.2)] text-sm font-bold text-foreground">
-                  <td colSpan={5} className="px-4 py-3 text-right">Totale mensile complessivo:</td>
+                  <td colSpan={6} className="px-4 py-3 text-right">Totale mensile complessivo:</td>
                   <td className="px-4 py-3 text-right text-primary">{eur(totFissoMese)}</td>
                   <td className="px-4 py-3 text-right text-primary">{eur(totFissoMese / 2)}</td>
                   <td colSpan={3} className="px-4 py-3"></td>
@@ -862,10 +871,11 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
     if (initial?.frequency === "annuale" && initial.due_date) return initial.due_date;
     return new Date().toISOString().slice(0, 10);
   });
+  const [startDate, setStartDate] = useState<string>(initial?.start_date ?? new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
-    if (!supabase || !name || !amount) return;
+    if (!supabase || !name || !amount || !startDate) return;
     setSaving(true);
     const due_date = frequency === "mensile"
       ? String(Math.min(31, Math.max(1, parseInt(dueDay || "1", 10) || 1)))
@@ -878,6 +888,7 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
       active,
       paid_by: paidBy,
       due_date,
+      start_date: startDate,
     };
     if (initial) {
       await supabase.from("fixed_expenses").update(payload).eq("id", initial.id);
@@ -916,6 +927,16 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Categoria</span>
             <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Affitto" />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Data inizio abbonamento *</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={inputClass}
+              required
+            />
           </label>
           {frequency === "mensile" ? (
             <label className="block text-sm">
@@ -957,7 +978,7 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button onClick={onClose} className="rounded-xl border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-muted-foreground hover:text-white">Annulla</button>
-          <button onClick={onSave} disabled={saving || !name || !amount} className="rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50">
+          <button onClick={onSave} disabled={saving || !name || !amount || !startDate} className="rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50">
             {saving ? "Salvataggio…" : "Salva"}
           </button>
         </div>
@@ -1053,7 +1074,10 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
     const dates: string[] = [];
     txs.forEach((t) => t.date && dates.push(t.date));
     oneTime.forEach((o) => o.date && dates.push(o.date));
-    fixed.forEach((f: any) => f.created_at && dates.push(String(f.created_at).slice(0, 10)));
+    fixed.forEach((f: any) => {
+      const d = f.start_date ?? f.created_at;
+      if (d) dates.push(String(d).slice(0, 10));
+    });
     if (dates.length === 0) return today;
     return dates.sort()[0];
   }, [txs, oneTime, fixed, today]);
@@ -1065,8 +1089,12 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
   // ---------- COMPONENTE 1 — Abbonamenti (pro-rated) ----------
   const subscriptionRows = useMemo(() => {
     return fixed.map((f: any) => {
-      const created = f.created_at ? String(f.created_at).slice(0, 10) : periodStart;
-      const startDate = created > periodStart ? created : periodStart;
+      const subStart = f.start_date
+        ? String(f.start_date).slice(0, 10)
+        : f.created_at
+          ? String(f.created_at).slice(0, 10)
+          : periodStart;
+      const startDate = subStart > periodStart ? subStart : periodStart;
       const days = daysBetween(startDate, today);
       const elapsed = f.frequency === "annuale" ? days / 365 : days / 30;
       const prorated = Number(f.amount || 0) * elapsed;
