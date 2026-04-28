@@ -508,6 +508,64 @@ function ContabilitaPage() {
         </div>
       </AdminCard>
 
+      {/* ONE TIME EXPENSES */}
+      <AdminCard className="p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <AdminSectionTitle eyebrow="Variabili" title="Spese Una Tantum" subtitle="Collaboratori, spese occasionali" />
+          <button
+            onClick={() => setShowOtModal(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.08)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.14)]"
+          >
+            <Plus className="h-4 w-4" /> Aggiungi spesa
+          </button>
+        </div>
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              <tr className="border-b border-[rgba(0,212,255,0.1)]">
+                <th className="py-4">Data</th>
+                <th>Descrizione</th>
+                <th>Categoria</th>
+                <th className="text-right">Importo</th>
+                <th>Gestito da</th>
+                <th className="text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+              )}
+              {!loading && oneTimeExpenses.length === 0 && (
+                <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Nessuna spesa una tantum</td></tr>
+              )}
+              {oneTimeExpenses.map((ot) => (
+                <tr key={ot.id} className="group border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
+                  <td className="py-4 text-muted-foreground">{new Date(ot.date).toLocaleDateString("it-IT")}</td>
+                  <td className="font-medium">{ot.description ?? "—"}</td>
+                  <td className="text-muted-foreground">{ot.category ?? "—"}</td>
+                  <td className="text-right font-semibold text-red-400">−{eur(Number(ot.amount))}</td>
+                  <td>
+                    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", partnerBadgeClass[ot.paid_by])}>
+                      {partnerLabel[ot.paid_by]}
+                    </span>
+                  </td>
+                  <td className="text-right">
+                    <div className="inline-flex items-center gap-1.5 opacity-0 transition group-hover:opacity-100">
+                      <button onClick={() => setEditingOt(ot)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => deleteOt(ot.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive" aria-label="Elimina">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </AdminCard>
+
       {/* TRANSACTIONS */}
       <AdminCard className="p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
