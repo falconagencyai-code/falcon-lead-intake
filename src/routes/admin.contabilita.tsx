@@ -1682,7 +1682,7 @@ function PartnerSummary({
         <div>
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Netto</p>
           <p className={cn("mt-1 text-base font-bold tabular-nums", netto < 0 ? "text-red-400" : "text-white")}>
-            {netto < 0 ? `−${eur(Math.abs(netto))}` : eur(netto)}
+            {netto < 0 ? `-${eur(Math.abs(netto))}` : eur(netto)}
           </p>
         </div>
       </div>
