@@ -721,23 +721,29 @@ function TransactionModal({ leads, initial, onClose, onSaved }: { leads: LeadOpt
   );
 }
 
-function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [frequency, setFrequency] = useState<"mensile" | "annuale">("mensile");
-  const [category, setCategory] = useState("");
+function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpense | null; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [frequency, setFrequency] = useState<"mensile" | "annuale">(initial?.frequency ?? "mensile");
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [active, setActive] = useState<boolean>(initial?.active ?? true);
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
     if (!supabase || !name || !amount) return;
     setSaving(true);
-    await supabase.from("fixed_expenses").insert({
+    const payload = {
       name,
       amount: parseFloat(amount),
       frequency,
       category: category || null,
-      active: true,
-    });
+      active,
+    };
+    if (initial) {
+      await supabase.from("fixed_expenses").update(payload).eq("id", initial.id);
+    } else {
+      await supabase.from("fixed_expenses").insert(payload);
+    }
     setSaving(false);
     onSaved();
   };
@@ -746,7 +752,7 @@ function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved:
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Nuova spesa fissa</h2>
+          <h2 className="text-2xl font-bold text-white">{initial ? "Modifica spesa fissa" : "Nuova spesa fissa"}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
         </div>
         <div className="mt-6 space-y-4">
@@ -770,6 +776,10 @@ function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved:
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Categoria</span>
             <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Affitto" />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 rounded border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] accent-primary" />
+            Attivo (incluso nei calcoli)
           </label>
         </div>
         <div className="mt-6 flex justify-end gap-3">
