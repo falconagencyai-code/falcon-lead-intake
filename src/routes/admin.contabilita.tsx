@@ -335,11 +335,7 @@ function ContabilitaPage() {
       </header>
 
       {showDivisoria && (
-        <DivisoriaModal
-          onClose={() => setShowDivisoria(false)}
-          periodFrom={periodFrom}
-          periodTo={periodTo}
-        />
+        <DivisoriaModal onClose={() => setShowDivisoria(false)} />
       )}
 
       {/* PERIOD SELECTOR */}
