@@ -818,7 +818,6 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
 
 // =============== DIVISORIA ===============
 
-type Partner = "pat" | "stefano";
 type SettlementDirection = "pat_to_stefano" | "stefano_to_pat";
 
 interface SettlementEvent {
