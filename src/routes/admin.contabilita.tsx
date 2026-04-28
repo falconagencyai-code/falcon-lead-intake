@@ -704,6 +704,19 @@ function ContabilitaPage() {
           onSaved={() => { setEditingFx(null); loadAll(); }}
         />
       )}
+      {showOtModal && (
+        <OneTimeExpenseModal
+          onClose={() => setShowOtModal(false)}
+          onSaved={() => { setShowOtModal(false); loadAll(); }}
+        />
+      )}
+      {editingOt && (
+        <OneTimeExpenseModal
+          initial={editingOt}
+          onClose={() => setEditingOt(null)}
+          onSaved={() => { setEditingOt(null); loadAll(); }}
+        />
+      )}
     </div>
   );
 }
