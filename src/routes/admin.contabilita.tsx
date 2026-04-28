@@ -301,7 +301,7 @@ function ContabilitaPage() {
 
       {/* CASH FLOW CHART */}
       <AdminCard className="p-5">
-        <AdminSectionTitle eyebrow="Cash flow" title="Entrate vs Uscite — ultimi 6 mesi" />
+        <AdminSectionTitle eyebrow="Cash flow" title="Entrate vs Uscite — periodo selezionato" />
         <div className="mt-6 h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={cashFlow} margin={{ left: -10, right: 14, top: 12 }}>
