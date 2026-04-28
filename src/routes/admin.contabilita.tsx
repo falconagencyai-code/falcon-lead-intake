@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Area,
   AreaChart,
@@ -798,8 +799,13 @@ function DivisoriaModal({
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#070b14]">
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex flex-col bg-[#070b14]"
+      style={{ height: "100vh", width: "100vw" }}
+    >
       {/* HEADER — fixed top */}
       <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.06)]">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
@@ -900,7 +906,8 @@ function DivisoriaModal({
           }}
         />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
