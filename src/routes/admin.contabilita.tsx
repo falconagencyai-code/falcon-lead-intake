@@ -130,13 +130,16 @@ const partnerLabel: Record<Partner, string> = {
 function ContabilitaPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [fixedExpenses, setFixedExpenses] = useState<FixedExpense[]>([]);
+  const [oneTimeExpenses, setOneTimeExpenses] = useState<OneTimeExpense[]>([]);
   const [leads, setLeads] = useState<LeadOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showTxModal, setShowTxModal] = useState(false);
   const [showFxModal, setShowFxModal] = useState(false);
+  const [showOtModal, setShowOtModal] = useState(false);
   const [showDivisoria, setShowDivisoria] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [editingFx, setEditingFx] = useState<FixedExpense | null>(null);
+  const [editingOt, setEditingOt] = useState<OneTimeExpense | null>(null);
   const [filterType, setFilterType] = useState<"all" | TxType>("all");
   const now = new Date();
   const todayIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
