@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Clock,
   DollarSign,
+  Paperclip,
   Percent,
   Plus,
   Scale,
@@ -9,6 +10,8 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
+  Undo2,
+  Upload,
   User,
   Users,
   X,
@@ -335,11 +338,7 @@ function ContabilitaPage() {
       </header>
 
       {showDivisoria && (
-        <DivisoriaModal
-          onClose={() => setShowDivisoria(false)}
-          periodFrom={periodFrom}
-          periodTo={periodTo}
-        />
+        <DivisoriaModal onClose={() => setShowDivisoria(false)} />
       )}
 
       {/* PERIOD SELECTOR */}
@@ -973,30 +972,45 @@ type SettlementDirection = "pat_to_stefano" | "stefano_to_pat";
 
 interface SettlementEvent {
   id: string;
-  direction: SettlementDirection;
+  direction: SettlementDirection | string;
   net_amount: number;
-  settlement_date: string;
+  pat_balance: number | null;
+  stefano_balance: number | null;
+  settled_at: string;
+  period_start: string | null;
+  period_end: string | null;
   reversed: boolean;
   reversed_at: string | null;
   note: string | null;
+  receipt_url: string | null;
   created_at?: string;
 }
 
-function DivisoriaModal({
-  onClose,
-  periodFrom,
-  periodTo,
-}: {
-  onClose: () => void;
-  periodFrom: string;
-  periodTo: string;
-}) {
+const RECEIPTS_BUCKET = "settlement-receipts";
+
+const isoDay = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const daysBetween = (a: string, b: string) => {
+  const ms = new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime();
+  return Math.max(0, Math.floor(ms / 86400000));
+};
+
+const fmtDateIt = (d: string) =>
+  new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+function DivisoriaModal({ onClose }: { onClose: () => void }) {
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [fixed, setFixed] = useState<FixedExpense[]>([]);
   const [oneTime, setOneTime] = useState<OneTimeExpense[]>([]);
   const [events, setEvents] = useState<SettlementEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
+
+  // Modal step state for "Registra saldo"
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   // Lock body scroll while open
   useEffect(() => {
@@ -1011,22 +1025,13 @@ function DivisoriaModal({
     if (!supabase) return;
     setLoading(true);
     const [tx, fe, ot, se] = await Promise.all([
-      supabase
-        .from("transactions")
-        .select("*")
-        .gte("date", periodFrom)
-        .lte("date", periodTo)
-        .order("date", { ascending: false }),
+      supabase.from("transactions").select("*").order("date", { ascending: false }),
       supabase.from("fixed_expenses").select("*").eq("active", true),
-      supabase
-        .from("one_time_expenses")
-        .select("*")
-        .gte("date", periodFrom)
-        .lte("date", periodTo),
+      supabase.from("one_time_expenses").select("*").order("date", { ascending: false }),
       supabase
         .from("settlement_events")
         .select("*")
-        .order("settlement_date", { ascending: false })
+        .order("settled_at", { ascending: false })
         .order("created_at", { ascending: false }),
     ]);
     setTxs((tx.data as Transaction[]) ?? []);
@@ -1038,102 +1043,164 @@ function DivisoriaModal({
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodFrom, periodTo]);
+  }, []);
 
-  // ---------- Calcolo balance ----------
-  // Months span (for fixed expenses)
-  const monthsSpan = (() => {
-    const f = new Date(periodFrom);
-    const t = new Date(periodTo);
-    if (isNaN(f.getTime()) || isNaN(t.getTime())) return 1;
-    return Math.max(1, (t.getFullYear() - f.getFullYear()) * 12 + (t.getMonth() - f.getMonth()) + 1);
-  })();
+  const today = isoDay(new Date());
 
-  const sumTx = (handler: Partner, type: TxType) =>
-    txs
-      .filter((t) => (t.paid_by ?? "agenzia") === handler && t.type === type)
-      .reduce((s, t) => s + Number(t.amount || 0), 0);
+  // ---------- periodStart: ultimo settlement non stornato, oppure data più vecchia ----------
+  const lastSettlement = events.find((e) => !e.reversed) ?? null;
+  const oldestDate = useMemo(() => {
+    const dates: string[] = [];
+    txs.forEach((t) => t.date && dates.push(t.date));
+    oneTime.forEach((o) => o.date && dates.push(o.date));
+    fixed.forEach((f: any) => f.created_at && dates.push(String(f.created_at).slice(0, 10)));
+    if (dates.length === 0) return today;
+    return dates.sort()[0];
+  }, [txs, oneTime, fixed, today]);
 
-  const sumOneTime = (handler: Partner) =>
-    oneTime
-      .filter((o) => o.paid_by === handler)
-      .reduce((s, o) => s + Number(o.amount || 0), 0);
+  const periodStart = lastSettlement?.settled_at?.slice(0, 10) ?? oldestDate;
+  const cycleDays = daysBetween(periodStart, today);
+  const isFirstCycle = !lastSettlement;
 
-  const sumFixed = (handler: Partner) =>
-    fixed
-      .filter((f) => (f.paid_by as Partner | null | undefined) === handler)
-      .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)) * monthsSpan, 0);
+  // ---------- COMPONENTE 1 — Abbonamenti (pro-rated) ----------
+  const subscriptionRows = useMemo(() => {
+    return fixed.map((f: any) => {
+      const created = f.created_at ? String(f.created_at).slice(0, 10) : periodStart;
+      const startDate = created > periodStart ? created : periodStart;
+      const days = daysBetween(startDate, today);
+      const elapsed = f.frequency === "annuale" ? days / 365 : days / 30;
+      const prorated = Number(f.amount || 0) * elapsed;
+      const paidBy = (f.paid_by as Partner | null) ?? null;
+      let delta = 0;
+      if (paidBy === "pat") delta = prorated / 2;
+      else if (paidBy === "stefano") delta = -prorated / 2;
+      return { id: f.id, name: f.name, amount: Number(f.amount || 0), frequency: f.frequency, paidBy, prorated, delta, startDate, days };
+    });
+  }, [fixed, periodStart, today]);
 
-  const patTxUscite = sumTx("pat", "uscita");
-  const patEntrate = sumTx("pat", "entrata");
-  const patUscite = patTxUscite + sumOneTime("pat") + sumFixed("pat");
+  const subTotal = subscriptionRows.reduce((s, r) => s + r.delta, 0);
 
-  const stefanoTxUscite = sumTx("stefano", "uscita");
-  const stefanoEntrate = sumTx("stefano", "entrata");
-  const stefanoUscite = stefanoTxUscite + sumOneTime("stefano") + sumFixed("stefano");
+  // ---------- COMPONENTE 2 — Spese una tantum ----------
+  const oneTimeRows = useMemo(() => {
+    return oneTime
+      .filter((o) => o.date >= periodStart)
+      .map((o) => {
+        const amt = Number(o.amount || 0);
+        const delta = o.paid_by === "pat" ? amt / 2 : -amt / 2;
+        return { ...o, delta };
+      });
+  }, [oneTime, periodStart]);
 
-  const patNetto = patUscite - patEntrate;
-  const stefanoNetto = stefanoUscite - stefanoEntrate;
-  const totaleNetto = patNetto + stefanoNetto;
-  const fairShare = totaleNetto / 2;
+  const oneTimeTotal = oneTimeRows.reduce((s, r) => s + r.delta, 0);
 
-  // patDeve > 0 → Pat ha pagato più del dovuto → Stefano deve a Pat
-  const patSurplus = patNetto - fairShare;
+  // ---------- COMPONENTE 3 — Transazioni ----------
+  const txRows = useMemo(() => {
+    return txs
+      .filter((t) => t.date >= periodStart && (t.paid_by === "pat" || t.paid_by === "stefano"))
+      .map((t) => {
+        const amt = Number(t.amount || 0);
+        let delta = 0;
+        if (t.type === "uscita") delta = t.paid_by === "pat" ? amt / 2 : -amt / 2;
+        else delta = t.paid_by === "pat" ? -amt / 2 : amt / 2;
+        return { ...t, delta };
+      });
+  }, [txs, periodStart]);
 
-  // Aggiusta con i settlement non stornati
-  const settledPatToStefano = events
-    .filter((e) => !e.reversed && e.direction === "pat_to_stefano")
-    .reduce((s, e) => s + Number(e.net_amount || 0), 0);
-  const settledStefanoToPat = events
-    .filter((e) => !e.reversed && e.direction === "stefano_to_pat")
-    .reduce((s, e) => s + Number(e.net_amount || 0), 0);
+  const txTotal = txRows.reduce((s, r) => s + r.delta, 0);
 
-  // patSurplus residuo: ogni pagamento da Stefano a Pat lo riduce; ogni pagamento da Pat a Stefano lo aumenta
-  const balanceAdjusted = patSurplus - settledStefanoToPat + settledPatToStefano;
+  // ---------- patDelta finale ----------
+  const patDelta = subTotal + oneTimeTotal + txTotal;
 
   let direction: SettlementDirection | null = null;
-  let amountDue = 0;
-  if (Math.abs(balanceAdjusted) >= 0.01) {
-    if (balanceAdjusted > 0) {
-      direction = "stefano_to_pat";
-      amountDue = balanceAdjusted;
-    } else {
-      direction = "pat_to_stefano";
-      amountDue = -balanceAdjusted;
-    }
+  let netAmount = 0;
+  if (Math.abs(patDelta) >= 0.01) {
+    direction = patDelta > 0 ? "stefano_to_pat" : "pat_to_stefano";
+    netAmount = Math.abs(patDelta);
   }
 
-  const directionLabel = (d: SettlementDirection, amt: number) =>
-    d === "stefano_to_pat"
-      ? `Stefano deve a Pat ${eur(amt)}`
-      : `Pat deve a Stefano ${eur(amt)}`;
+  // ---------- Card socio: Anticipato / Ricevuto / Netto (solo periodo corrente) ----------
+  const partnerStats = (partner: Partner) => {
+    let anticipato = 0;
+    let ricevuto = 0;
+    // fixed expenses pro-rated
+    subscriptionRows.forEach((r) => {
+      if (r.paidBy === partner) anticipato += r.prorated;
+    });
+    // one-time
+    oneTimeRows.forEach((r) => {
+      if (r.paid_by === partner) anticipato += Number(r.amount || 0);
+    });
+    // transactions
+    txRows.forEach((t) => {
+      if (t.paid_by === partner) {
+        if (t.type === "uscita") anticipato += Number(t.amount || 0);
+        else ricevuto += Number(t.amount || 0);
+      }
+    });
+    return { anticipato, ricevuto, netto: anticipato - ricevuto };
+  };
 
-  const directionArrow = (d: SettlementDirection) =>
+  const patStats = partnerStats("pat");
+  const stefanoStats = partnerStats("stefano");
+
+  const directionArrow = (d: string) =>
     d === "stefano_to_pat" ? "Stefano → Pat" : "Pat → Stefano";
 
-  const today = new Date().toISOString().slice(0, 10);
+  const deltaLabel = (delta: number) => {
+    if (Math.abs(delta) < 0.01) return "—";
+    return delta > 0
+      ? `→ Stefano deve ${eur(delta)}`
+      : `→ Pat deve ${eur(-delta)}`;
+  };
 
+  // ---------- Conferma definitiva ----------
   const confirmRegister = async () => {
     if (!supabase || !direction) return;
+    setSubmitting(true);
+
+    let receiptUrl: string | null = null;
+    if (receiptFile) {
+      const ext = receiptFile.name.split(".").pop() || "bin";
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const up = await supabase.storage.from(RECEIPTS_BUCKET).upload(path, receiptFile, {
+        contentType: receiptFile.type || undefined,
+        upsert: false,
+      });
+      if (up.error) {
+        // Bucket potrebbe non esistere o non essere pubblico — avvisa ma non bloccare
+        // eslint-disable-next-line no-alert
+        alert(
+          `Errore upload allegato: ${up.error.message}\n\nAssicurati che il bucket "${RECEIPTS_BUCKET}" esista e sia pubblico.\nIl saldo verrà comunque registrato senza allegato.`,
+        );
+      } else {
+        const { data: pub } = supabase.storage.from(RECEIPTS_BUCKET).getPublicUrl(path);
+        receiptUrl = pub.publicUrl;
+      }
+    }
+
     await supabase.from("settlement_events").insert({
+      settled_at: today,
+      pat_balance: Number(patDelta.toFixed(2)),
+      stefano_balance: Number((-patDelta).toFixed(2)),
+      net_amount: Number(netAmount.toFixed(2)),
       direction,
-      net_amount: Number(amountDue.toFixed(2)),
-      settlement_date: today,
+      note: noteText.trim() || null,
+      receipt_url: receiptUrl,
+      period_start: periodStart,
+      period_end: today,
       reversed: false,
     });
-    setConfirmStep(0);
+
+    setSubmitting(false);
+    setReceiptFile(null);
+    setNoteText("");
+    setStep(0);
     await load();
   };
 
   const reverseEvent = async (id: string) => {
     if (!supabase) return;
-    if (
-      !window.confirm(
-        "Confermi lo storno di questo saldo? L'importo tornerà nel bilancio.",
-      )
-    )
-      return;
+    if (!window.confirm("Confermi lo storno di questo saldo? L'importo tornerà nel bilancio.")) return;
     await supabase
       .from("settlement_events")
       .update({ reversed: true, reversed_at: new Date().toISOString() })
@@ -1141,25 +1208,19 @@ function DivisoriaModal({
     await load();
   };
 
-  const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
-
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex flex-col bg-[#070b14]"
-      style={{ height: "100vh", width: "100vw" }}
-    >
+    <div className="fixed inset-0 z-[100] flex flex-col bg-[#070b14]" style={{ height: "100vh", width: "100vw" }}>
       {/* HEADER */}
       <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.06)]">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-4">
           <Scale className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold tracking-tight text-white">Divisoria</h2>
           <div className="ml-auto flex items-center gap-2">
-            {direction && (
+            {direction && !loading && (
               <button
-                onClick={() => setConfirmStep(1)}
+                onClick={() => setStep(1)}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.08)] px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.14)]"
               >
                 Registra saldo
@@ -1178,160 +1239,306 @@ function DivisoriaModal({
 
       {/* BODY */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl space-y-8 p-6">
-          {/* AUTO summary — 2 partner columns */}
-          <div className="rounded-2xl border border-[rgba(0,212,255,0.08)] bg-[rgba(255,255,255,0.02)]">
-            <div className="grid grid-cols-1 divide-y divide-[rgba(255,255,255,0.06)] md:grid-cols-2 md:divide-x md:divide-y-0">
-              <PartnerSummary
-                name="PAT"
-                accent="cyan"
-                uscite={patUscite}
-                entrate={patEntrate}
-                netto={patNetto}
-              />
-              <PartnerSummary
-                name="STEFANO"
-                accent="amber"
-                uscite={stefanoUscite}
-                entrate={stefanoEntrate}
-                netto={stefanoNetto}
-              />
-            </div>
-            <div className="border-t border-[rgba(255,255,255,0.08)] px-5 py-4">
-              <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Bilancio corrente
-                </span>
-                {loading ? (
-                  <span className="text-sm text-muted-foreground">Caricamento…</span>
-                ) : direction ? (
-                  <div className="flex items-center gap-3 text-sm md:text-base">
-                    <span className="text-muted-foreground">{directionArrow(direction)}</span>
-                    <span className="text-2xl font-black tracking-tight text-primary md:text-3xl">
-                      {eur(amountDue)}
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-sm font-semibold text-emerald-400">In pareggio ✓</span>
-                )}
+        <div className="mx-auto max-w-6xl space-y-8 p-6">
+          {loading ? (
+            <p className="py-12 text-center text-sm text-muted-foreground">Caricamento…</p>
+          ) : (
+            <>
+              {/* CARD SOCI */}
+              <div className="rounded-2xl border border-[rgba(0,212,255,0.08)] bg-[rgba(255,255,255,0.02)]">
+                <div className="grid grid-cols-1 divide-y divide-[rgba(255,255,255,0.06)] md:grid-cols-2 md:divide-x md:divide-y-0">
+                  <PartnerSummary name="PAT" accent="cyan" anticipato={patStats.anticipato} ricevuto={patStats.ricevuto} netto={patStats.netto} />
+                  <PartnerSummary name="STEFANO" accent="amber" anticipato={stefanoStats.anticipato} ricevuto={stefanoStats.ricevuto} netto={stefanoStats.netto} />
+                </div>
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Calcolato sul periodo selezionato — fixed expenses considerate nei KPI principali (split 50/50).
-              </p>
-            </div>
-          </div>
 
-          {/* STORICO SALDI */}
-          <div>
-            <div className="mb-3 flex items-baseline justify-between">
-              <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                Storico saldi
-              </h3>
-              <span className="text-[11px] text-muted-foreground">
-                {events.length} evento{events.length === 1 ? "" : "i"}
-              </span>
-            </div>
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.06)]">
-              {loading ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">Caricamento…</p>
-              ) : events.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  Nessun saldo registrato
-                </p>
-              ) : (
-                <ul className="divide-y divide-[rgba(255,255,255,0.06)]">
-                  {events.map((e) => (
-                    <li
-                      key={e.id}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3 text-sm",
-                        e.reversed && "opacity-50",
-                      )}
-                    >
-                      <span className="w-24 shrink-0 text-xs tabular-nums text-muted-foreground">
-                        {fmtDate(e.settlement_date)}
+              {/* CONTATORE CICLO */}
+              <div className="flex items-center justify-between rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-5 py-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    {isFirstCycle ? "Primo ciclo" : "Ciclo corrente"}
+                  </p>
+                  <p className="mt-1 text-sm text-white/90">
+                    {isFirstCycle
+                      ? `Dal ${fmtDateIt(periodStart)} (data più vecchia)`
+                      : `Dal ${fmtDateIt(periodStart)}`}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-black tracking-tight text-primary tabular-nums">{cycleDays}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">giorni</p>
+                </div>
+              </div>
+
+              {/* SEZIONE 1 — ABBONAMENTI */}
+              <BalanceSection
+                title="Abbonamenti"
+                hint={`Ciclo: ${cycleDays} giorni — pro-rated`}
+                rows={subscriptionRows.length}
+                subtotal={subTotal}
+              >
+                {subscriptionRows.length === 0 ? (
+                  <EmptyRow text="Nessun abbonamento attivo" />
+                ) : (
+                  subscriptionRows.map((r) => (
+                    <RowLine key={r.id}>
+                      <span className="min-w-0 flex-1 truncate text-white/90">{r.name}</span>
+                      <span className="w-32 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                        {eur(r.amount)} / {r.frequency === "annuale" ? "anno" : "mese"}
                       </span>
-                      <span className="min-w-0 flex-1 text-white/90">
-                        {directionArrow(e.direction)}
-                      </span>
-                      <span className="shrink-0 font-semibold tabular-nums text-white">
-                        {eur(Number(e.net_amount))}
-                      </span>
+                      <PartnerBadge p={r.paidBy} />
+                      <span className="w-44 shrink-0 text-right text-sm tabular-nums text-white">{deltaLabel(r.delta)}</span>
+                    </RowLine>
+                  ))
+                )}
+              </BalanceSection>
+
+              {/* SEZIONE 2 — SPESE UNA TANTUM */}
+              <BalanceSection
+                title="Spese una tantum"
+                hint={`dal ${fmtDateIt(periodStart)}`}
+                rows={oneTimeRows.length}
+                subtotal={oneTimeTotal}
+              >
+                {oneTimeRows.length === 0 ? (
+                  <EmptyRow text="Nessuna spesa una tantum nel periodo" />
+                ) : (
+                  oneTimeRows.map((r) => (
+                    <RowLine key={r.id}>
+                      <span className="min-w-0 flex-1 truncate text-white/90">{r.description ?? "—"}</span>
+                      <span className="w-24 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{eur(Number(r.amount))}</span>
+                      <PartnerBadge p={r.paid_by} />
+                      <span className="w-44 shrink-0 text-right text-sm tabular-nums text-white">{deltaLabel(r.delta)}</span>
+                    </RowLine>
+                  ))
+                )}
+              </BalanceSection>
+
+              {/* SEZIONE 3 — TRANSAZIONI */}
+              <BalanceSection
+                title="Transazioni"
+                hint={`dal ${fmtDateIt(periodStart)}`}
+                rows={txRows.length}
+                subtotal={txTotal}
+              >
+                {txRows.length === 0 ? (
+                  <EmptyRow text="Nessuna transazione nel periodo" />
+                ) : (
+                  txRows.map((t) => (
+                    <RowLine key={t.id}>
+                      <span className="min-w-0 flex-1 truncate text-white/90">{t.description ?? "—"}</span>
+                      <span className="w-24 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{eur(Number(t.amount))}</span>
                       <span
                         className={cn(
-                          "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                          e.reversed
-                            ? "border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] text-muted-foreground"
-                            : "border-[rgba(52,211,153,0.32)] bg-[rgba(52,211,153,0.1)] text-emerald-300",
+                          "inline-flex w-20 shrink-0 justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                          t.type === "entrata"
+                            ? "border-emerald-800 bg-emerald-950 text-emerald-400"
+                            : "border-red-900 bg-red-950 text-red-400",
                         )}
                       >
-                        {e.reversed ? "Stornato" : "Registrato"}
+                        {t.type}
                       </span>
-                      <button
-                        onClick={() => !e.reversed && reverseEvent(e.id)}
-                        disabled={e.reversed}
-                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(255,255,255,0.08)] text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[rgba(255,255,255,0.08)] disabled:hover:text-muted-foreground"
-                        aria-label="Storna saldo"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
+                      <PartnerBadge p={t.paid_by as Partner} />
+                      <span className="w-44 shrink-0 text-right text-sm tabular-nums text-white">{deltaLabel(t.delta)}</span>
+                    </RowLine>
+                  ))
+                )}
+              </BalanceSection>
+
+              {/* BILANCIO NETTO */}
+              <div className="rounded-2xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.04)] px-6 py-5">
+                <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                    Bilancio netto
+                  </span>
+                  {direction ? (
+                    <div className="flex items-center gap-3 text-sm md:text-base">
+                      <span className="text-muted-foreground">{directionArrow(direction)}</span>
+                      <span className="text-3xl font-black tracking-tight text-primary md:text-4xl">{eur(netAmount)}</span>
+                    </div>
+                  ) : (
+                    <span className="text-base font-semibold text-emerald-400">In pareggio ✓</span>
+                  )}
+                </div>
+              </div>
+
+              {/* STORICO SALDI */}
+              <div>
+                <div className="mb-3 flex items-baseline justify-between">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Storico saldi</h3>
+                  <span className="text-[11px] text-muted-foreground">
+                    {events.length} evento{events.length === 1 ? "" : "i"}
+                  </span>
+                </div>
+                <div className="rounded-2xl border border-[rgba(255,255,255,0.06)]">
+                  {events.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-muted-foreground">Nessun saldo registrato</p>
+                  ) : (
+                    <ul className="divide-y divide-[rgba(255,255,255,0.06)]">
+                      {events.map((e) => (
+                        <li
+                          key={e.id}
+                          className={cn(
+                            "flex flex-wrap items-center gap-3 px-4 py-3 text-sm",
+                            e.reversed && "opacity-50",
+                          )}
+                        >
+                          <span className="w-24 shrink-0 text-xs tabular-nums text-muted-foreground">{fmtDateIt(e.settled_at)}</span>
+                          <span
+                            className={cn(
+                              "min-w-0 flex-1 text-white/90",
+                              e.reversed && "line-through",
+                            )}
+                          >
+                            {directionArrow(e.direction)} <span className="font-semibold text-white">{eur(Number(e.net_amount))}</span>
+                            {e.period_start && e.period_end && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                · dal {fmtDateIt(e.period_start)} al {fmtDateIt(e.period_end)}
+                              </span>
+                            )}
+                            {e.note && <span className="ml-2 text-xs italic text-muted-foreground">— {e.note}</span>}
+                          </span>
+                          {e.receipt_url && (
+                            <a
+                              href={e.receipt_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(0,212,255,0.3)] text-primary transition hover:bg-[rgba(0,212,255,0.1)]"
+                              aria-label="Apri ricevuta"
+                            >
+                              <Paperclip className="h-3.5 w-3.5" />
+                            </a>
+                          )}
+                          <span
+                            className={cn(
+                              "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                              e.reversed
+                                ? "border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] text-muted-foreground"
+                                : "border-[rgba(52,211,153,0.32)] bg-[rgba(52,211,153,0.1)] text-emerald-300",
+                            )}
+                          >
+                            {e.reversed ? "Stornato" : "Registrato"}
+                          </span>
+                          {!e.reversed && (
+                            <button
+                              onClick={() => reverseEvent(e.id)}
+                              className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-[rgba(255,255,255,0.08)] px-2 text-[11px] text-muted-foreground transition hover:border-destructive hover:text-destructive"
+                              aria-label="Storna saldo"
+                            >
+                              <Undo2 className="h-3 w-3" /> Storna
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* CONFIRM STEP 1 */}
-      {confirmStep === 1 && direction && (
+      {/* STEP 1 — Riepilogo */}
+      {step === 1 && direction && (
         <ConfirmDialog
-          title="Registra saldo"
+          title="Step 1 di 3 — Riepilogo"
           body={
-            <>
-              <p className="text-sm text-muted-foreground">
-                Stai per registrare un saldo tra i soci.
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">
+                Periodo dal <span className="text-white">{fmtDateIt(periodStart)}</span> al <span className="text-white">{fmtDateIt(today)}</span> ({cycleDays} giorni)
               </p>
-              <div className="mt-4 rounded-xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)] p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Bilancio attuale
-                </p>
-                <p className="mt-1 text-lg font-bold text-primary">
-                  {directionLabel(direction, amountDue)}
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">Data: {fmtDate(today)}</p>
+              <MiniRow label="Abbonamenti" value={subTotal} />
+              <MiniRow label="Spese una tantum" value={oneTimeTotal} />
+              <MiniRow label="Transazioni" value={txTotal} />
+              <div className="border-t border-[rgba(255,255,255,0.08)] pt-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Bilancio netto</span>
+                  <span className="text-lg font-bold text-primary">{directionArrow(direction)} {eur(netAmount)}</span>
+                </div>
               </div>
-            </>
+            </div>
           }
           cancelLabel="Annulla"
           confirmLabel="Continua →"
-          onCancel={() => setConfirmStep(0)}
-          onConfirm={() => setConfirmStep(2)}
+          onCancel={() => setStep(0)}
+          onConfirm={() => setStep(2)}
         />
       )}
 
-      {/* CONFIRM STEP 2 */}
-      {confirmStep === 2 && direction && (
+      {/* STEP 2 — Allegato e nota */}
+      {step === 2 && direction && (
         <ConfirmDialog
-          title="Conferma definitiva"
+          title="Step 2 di 3 — Allegato e nota"
           body={
-            <>
-              <p className="text-sm text-muted-foreground">
-                Questa azione è reversibile ma richiede conferma.
-              </p>
-              <div className="mt-4 rounded-xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)] p-4 text-center">
-                <p className="text-base font-bold text-white">
-                  {directionLabel(direction, amountDue)}
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">in data {fmtDate(today)}</p>
+            <div className="space-y-4 text-sm">
+              <div>
+                <span className="mb-1 block text-muted-foreground">Allegato (immagine o PDF, opzionale)</span>
+                <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-xs text-muted-foreground transition hover:border-primary hover:text-white">
+                  <Upload className="h-4 w-4" />
+                  {receiptFile ? receiptFile.name : "Scegli file…"}
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                {receiptFile && (
+                  <button
+                    onClick={() => setReceiptFile(null)}
+                    className="mt-2 text-[11px] text-muted-foreground underline hover:text-destructive"
+                  >
+                    Rimuovi allegato
+                  </button>
+                )}
               </div>
-            </>
+              <label className="block">
+                <span className="mb-1 block text-muted-foreground">Nota (opzionale)</span>
+                <textarea
+                  rows={3}
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  className={inputClass}
+                  placeholder="Es. Bonifico ricevuto / Pagamento effettuato in data…"
+                />
+              </label>
+            </div>
           }
-          cancelLabel="Annulla"
-          confirmLabel="Conferma saldo ✓"
-          onCancel={() => setConfirmStep(0)}
-          onConfirm={confirmRegister}
+          cancelLabel="Indietro"
+          confirmLabel="Continua →"
+          onCancel={() => setStep(1)}
+          onConfirm={() => setStep(3)}
+        />
+      )}
+
+      {/* STEP 3 — Conferma definitiva */}
+      {step === 3 && direction && (
+        <ConfirmDialog
+          title="Step 3 di 3 — Conferma"
+          body={
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">Stai per registrare il seguente saldo:</p>
+              <div className="rounded-xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)] p-4 text-center">
+                <p className="text-lg font-bold text-primary">{directionArrow(direction)} {eur(netAmount)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  periodo {fmtDateIt(periodStart)} → {fmtDateIt(today)}
+                </p>
+                {receiptFile && (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    📎 {receiptFile.name}
+                  </p>
+                )}
+                {noteText.trim() && (
+                  <p className="mt-1 text-[11px] italic text-muted-foreground">"{noteText.trim()}"</p>
+                )}
+              </div>
+            </div>
+          }
+          cancelLabel="Indietro"
+          confirmLabel={submitting ? "Registrazione…" : "Conferma saldo ✓"}
+          onCancel={() => !submitting && setStep(2)}
+          onConfirm={() => !submitting && confirmRegister()}
         />
       )}
     </div>,
@@ -1339,17 +1546,110 @@ function DivisoriaModal({
   );
 }
 
+// ----- Sub-components Divisoria -----
+
+function BalanceSection({
+  title,
+  hint,
+  rows,
+  subtotal,
+  children,
+}: {
+  title: string;
+  hint: string;
+  rows: number;
+  subtotal: number;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]">
+      <div className="flex items-baseline justify-between border-b border-[rgba(255,255,255,0.06)] px-5 py-3">
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-white">{title}</h3>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
+        </div>
+        <span className="text-[11px] text-muted-foreground">{rows} voc{rows === 1 ? "e" : "i"}</span>
+      </div>
+      <ul className="divide-y divide-[rgba(255,255,255,0.04)]">{children}</ul>
+      <div className="flex items-center justify-between border-t border-[rgba(255,255,255,0.08)] px-5 py-3">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Subtotale</span>
+        <span
+          className={cn(
+            "text-sm font-bold tabular-nums",
+            Math.abs(subtotal) < 0.01
+              ? "text-muted-foreground"
+              : subtotal > 0
+                ? "text-cyan-300"
+                : "text-amber-300",
+          )}
+        >
+          {Math.abs(subtotal) < 0.01
+            ? "—"
+            : subtotal > 0
+              ? `→ Stefano deve ${eur(subtotal)}`
+              : `→ Pat deve ${eur(-subtotal)}`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function RowLine({ children }: { children: ReactNode }) {
+  return <li className="flex items-center gap-3 px-5 py-2.5 text-sm">{children}</li>;
+}
+
+function EmptyRow({ text }: { text: string }) {
+  return <li className="px-5 py-4 text-center text-xs text-muted-foreground">{text}</li>;
+}
+
+function PartnerBadge({ p }: { p: Partner | null }) {
+  if (!p) {
+    return (
+      <span className="inline-flex w-20 shrink-0 justify-center rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        —
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        "inline-flex w-20 shrink-0 justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        partnerBadgeClass[p],
+      )}
+    >
+      {partnerLabel[p]}
+    </span>
+  );
+}
+
+function MiniRow({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-3 py-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span
+        className={cn(
+          "text-sm font-semibold tabular-nums",
+          Math.abs(value) < 0.01 ? "text-muted-foreground" : value > 0 ? "text-cyan-300" : "text-amber-300",
+        )}
+      >
+        {Math.abs(value) < 0.01 ? "—" : value > 0 ? `+${eur(value)}` : `−${eur(-value)}`}
+      </span>
+    </div>
+  );
+}
+
+
 function PartnerSummary({
   name,
   accent,
-  uscite,
-  entrate,
+  anticipato,
+  ricevuto,
   netto,
 }: {
   name: string;
   accent: "cyan" | "amber";
-  uscite: number;
-  entrate: number;
+  anticipato: number;
+  ricevuto: number;
   netto: number;
 }) {
   const accentClass = accent === "cyan" ? "text-primary" : "text-amber-300";
@@ -1363,16 +1663,18 @@ function PartnerSummary({
       </div>
       <div className="mt-4 grid grid-cols-3 gap-3">
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Uscite</p>
-          <p className="mt-1 text-base font-bold text-red-400 tabular-nums">{eur(uscite)}</p>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Anticipato</p>
+          <p className="mt-1 text-base font-bold text-red-400 tabular-nums">{eur(anticipato)}</p>
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Entrate</p>
-          <p className="mt-1 text-base font-bold text-emerald-300 tabular-nums">{eur(entrate)}</p>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ricevuto</p>
+          <p className="mt-1 text-base font-bold text-emerald-300 tabular-nums">{eur(ricevuto)}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Netto</p>
-          <p className={cn("mt-1 text-base font-bold tabular-nums", accentClass)}>{eur(netto)}</p>
+          <p className={cn("mt-1 text-base font-bold tabular-nums", netto < 0 ? "text-red-400" : accentClass)}>
+            {eur(netto)}
+          </p>
         </div>
       </div>
     </div>
