@@ -436,9 +436,14 @@ function ContabilitaPage() {
                       </span>
                     </td>
                     <td className="text-right">
-                      <button onClick={() => deleteFx(fx.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-1.5">
+                        <button onClick={() => setEditingFx(fx)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => deleteFx(fx.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive" aria-label="Elimina">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
