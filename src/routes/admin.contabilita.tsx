@@ -1642,14 +1642,14 @@ function MiniRow({ label, value }: { label: string; value: number }) {
 function PartnerSummary({
   name,
   accent,
-  uscite,
-  entrate,
+  anticipato,
+  ricevuto,
   netto,
 }: {
   name: string;
   accent: "cyan" | "amber";
-  uscite: number;
-  entrate: number;
+  anticipato: number;
+  ricevuto: number;
   netto: number;
 }) {
   const accentClass = accent === "cyan" ? "text-primary" : "text-amber-300";
@@ -1663,16 +1663,18 @@ function PartnerSummary({
       </div>
       <div className="mt-4 grid grid-cols-3 gap-3">
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Uscite</p>
-          <p className="mt-1 text-base font-bold text-red-400 tabular-nums">{eur(uscite)}</p>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Anticipato</p>
+          <p className="mt-1 text-base font-bold text-red-400 tabular-nums">{eur(anticipato)}</p>
         </div>
         <div>
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Entrate</p>
-          <p className="mt-1 text-base font-bold text-emerald-300 tabular-nums">{eur(entrate)}</p>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Ricevuto</p>
+          <p className="mt-1 text-base font-bold text-emerald-300 tabular-nums">{eur(ricevuto)}</p>
         </div>
         <div>
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Netto</p>
-          <p className={cn("mt-1 text-base font-bold tabular-nums", accentClass)}>{eur(netto)}</p>
+          <p className={cn("mt-1 text-base font-bold tabular-nums", netto < 0 ? "text-red-400" : accentClass)}>
+            {eur(netto)}
+          </p>
         </div>
       </div>
     </div>
