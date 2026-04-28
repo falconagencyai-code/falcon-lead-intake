@@ -1742,19 +1742,21 @@ function OneTimeExpenseModal({ initial, onClose, onSaved }: { initial?: OneTimeE
     if (!supabase || !amount || !date) return;
     setSaving(true);
     const payload = {
-      description: description || null,
-      category: category || null,
+      description: description?.trim() || null,
+      category: category?.trim() || "Altro",
       amount: parseFloat(amount),
       date,
       paid_by: paidBy,
-      note: note || null,
+      note: note?.trim() || null,
     };
-    if (initial) {
-      await supabase.from("one_time_expenses").update(payload).eq("id", initial.id);
-    } else {
-      await supabase.from("one_time_expenses").insert(payload);
-    }
+    const { error } = initial
+      ? await supabase.from("one_time_expenses").update(payload).eq("id", initial.id)
+      : await supabase.from("one_time_expenses").insert(payload);
     setSaving(false);
+    if (error) {
+      alert("Errore salvataggio spesa: " + error.message);
+      return;
+    }
     onSaved();
   };
 
