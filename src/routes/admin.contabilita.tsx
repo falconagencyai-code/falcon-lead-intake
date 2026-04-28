@@ -240,12 +240,32 @@ function ContabilitaPage() {
     loadAll();
   };
 
+  const periodoLabel = (() => {
+    const from = new Date(periodFrom);
+    const to = new Date(periodTo);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return "";
+    const mesi = ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+    const isFirstDay = from.getDate() === 1;
+    const lastDay = new Date(to.getFullYear(), to.getMonth() + 1, 0).getDate();
+    const isLastDay = to.getDate() === lastDay;
+    const sameYear = from.getFullYear() === to.getFullYear();
+    const sameMonth = sameYear && from.getMonth() === to.getMonth();
+    if (isFirstDay && isLastDay && sameMonth) {
+      return `${mesi[from.getMonth()]} ${from.getFullYear()}`;
+    }
+    if (isFirstDay && isLastDay && sameYear && from.getMonth() === 0 && to.getMonth() === 11) {
+      return `${from.getFullYear()}`;
+    }
+    const fmt = (d: Date) => `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+    return `${fmt(from)} → ${fmt(to)}`;
+  })();
+
   return (
     <div className="space-y-8">
       <header>
         <p className="label-section">Falcon Agency</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-5xl">
-          Contabilità
+          Contabilità <span className="text-primary text-glow">— {periodoLabel}</span>
         </h1>
       </header>
 
