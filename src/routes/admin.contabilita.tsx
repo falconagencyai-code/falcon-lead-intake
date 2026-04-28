@@ -438,27 +438,38 @@ function ContabilitaPage() {
                 <th>Frequenza</th>
                 <th className="text-right">Quota mensile</th>
                 <th className="text-right">Per partner (÷2)</th>
+                <th>Gestito da</th>
                 <th>Stato</th>
                 <th className="text-right">Azioni</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && fixedExpenses.length === 0 && (
-                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
               )}
               {fixedExpenses.map((fx) => {
                 const monthly = fx.frequency === "annuale" ? Number(fx.amount) / 12 : Number(fx.amount);
+                const fxPaidBy = (fx.paid_by as Partner | null | undefined) ?? null;
                 return (
-                  <tr key={fx.id} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
+                  <tr key={fx.id} className="group border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
                     <td className="py-4 font-medium">{fx.name}</td>
                     <td className="text-muted-foreground">{fx.category ?? "—"}</td>
                     <td className="text-right">{eur(Number(fx.amount))}</td>
                     <td className="text-muted-foreground capitalize">{fx.frequency}</td>
                     <td className="text-right font-semibold text-primary">{eur(monthly)}</td>
                     <td className="text-right text-muted-foreground">{eur(monthly / 2)}</td>
+                    <td>
+                      {fxPaidBy ? (
+                        <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", partnerBadgeClass[fxPaidBy])}>
+                          {partnerLabel[fxPaidBy]}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </td>
                     <td>
                       <span className={cn(
                         "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
@@ -470,7 +481,7 @@ function ContabilitaPage() {
                       </span>
                     </td>
                     <td className="text-right">
-                      <div className="inline-flex items-center gap-1.5">
+                      <div className="inline-flex items-center gap-1.5 opacity-0 transition group-hover:opacity-100">
                         <button onClick={() => setEditingFx(fx)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
                           <Pencil className="h-4 w-4" />
                         </button>
@@ -489,7 +500,7 @@ function ContabilitaPage() {
                   <td colSpan={4} className="py-4 text-right">Totale mensile complessivo:</td>
                   <td className="text-right text-primary">{eur(totFissoMese)}</td>
                   <td className="text-right text-primary">{eur(totFissoMese / 2)}</td>
-                  <td colSpan={2}></td>
+                  <td colSpan={3}></td>
                 </tr>
               </tfoot>
             )}
