@@ -280,7 +280,13 @@ function ContabilitaPage() {
         </button>
       </header>
 
-      {showDivisoria && <DivisoriaModal onClose={() => setShowDivisoria(false)} />}
+      {showDivisoria && (
+        <DivisoriaModal
+          onClose={() => setShowDivisoria(false)}
+          periodFrom={periodFrom}
+          periodTo={periodTo}
+        />
+      )}
 
       {/* PERIOD SELECTOR */}
       <AdminCard className="p-4">
