@@ -511,7 +511,10 @@ function ContabilitaPage() {
       {/* ONE TIME EXPENSES */}
       <AdminCard className="p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <AdminSectionTitle eyebrow="Variabili" title="Spese Una Tantum" subtitle="Collaboratori, spese occasionali" />
+          <div>
+            <AdminSectionTitle eyebrow="Variabili" title="Spese Una Tantum" />
+            <p className="mt-1 text-sm text-muted-foreground">Collaboratori, spese occasionali</p>
+          </div>
           <button
             onClick={() => setShowOtModal(true)}
             className="inline-flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.08)] px-4 py-2 text-sm font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.14)]"
