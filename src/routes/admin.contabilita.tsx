@@ -1155,8 +1155,8 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
   const anticipatoNettoStefano = stefanoBase.anticipato - stefanoBase.ricevuto;
   const totaleNetto = anticipatoNettoPat + anticipatoNettoStefano;
   const quotaDovuta = totaleNetto / 2;
-  const patStats = { ...patBase, netto: quotaDovuta - anticipatoNettoPat };
-  const stefanoStats = { ...stefanoBase, netto: quotaDovuta - anticipatoNettoStefano };
+  const patStats = { ...patBase, netto: patDelta };
+  const stefanoStats = { ...stefanoBase, netto: -patDelta };
 
 
 
