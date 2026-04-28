@@ -470,6 +470,11 @@ function ContabilitaPage() {
                     <td className="px-4 py-3 text-muted-foreground">{fx.category ?? "—"}</td>
                     <td className="px-4 py-3 text-right">{eur(Number(fx.amount))}</td>
                     <td className="px-4 py-3 text-muted-foreground capitalize">{fx.frequency}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                      {fx.start_date
+                        ? new Date(fx.start_date).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
+                        : "—"}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{dueLabel}</td>
                     <td className="px-4 py-3 text-right font-semibold text-primary">{eur(monthly)}</td>
                     <td className="px-4 py-3 text-right text-muted-foreground">{eur(monthly / 2)}</td>
