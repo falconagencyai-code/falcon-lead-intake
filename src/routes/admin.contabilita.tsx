@@ -875,17 +875,19 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
       name,
       amount: parseFloat(amount),
       frequency,
-      category: category || null,
+      category: category?.trim() || "Altro",
       active,
       paid_by: paidBy,
       start_date: startDate,
     };
-    if (initial) {
-      await supabase.from("fixed_expenses").update(payload).eq("id", initial.id);
-    } else {
-      await supabase.from("fixed_expenses").insert(payload);
-    }
+    const { error } = initial
+      ? await supabase.from("fixed_expenses").update(payload).eq("id", initial.id)
+      : await supabase.from("fixed_expenses").insert(payload);
     setSaving(false);
+    if (error) {
+      alert("Errore salvataggio spesa fissa: " + error.message);
+      return;
+    }
     onSaved();
   };
 
