@@ -857,6 +857,7 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
       frequency,
       category: category || null,
       active,
+      paid_by: paidBy,
     };
     if (initial) {
       await supabase.from("fixed_expenses").update(payload).eq("id", initial.id);
