@@ -961,6 +961,7 @@ function DivisoriaModal({
 }) {
   const [txs, setTxs] = useState<Transaction[]>([]);
   const [fixed, setFixed] = useState<FixedExpense[]>([]);
+  const [oneTime, setOneTime] = useState<OneTimeExpense[]>([]);
   const [events, setEvents] = useState<SettlementEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
@@ -977,7 +978,7 @@ function DivisoriaModal({
   const load = async () => {
     if (!supabase) return;
     setLoading(true);
-    const [tx, fe, se] = await Promise.all([
+    const [tx, fe, ot, se] = await Promise.all([
       supabase
         .from("transactions")
         .select("*")
@@ -986,6 +987,11 @@ function DivisoriaModal({
         .order("date", { ascending: false }),
       supabase.from("fixed_expenses").select("*").eq("active", true),
       supabase
+        .from("one_time_expenses")
+        .select("*")
+        .gte("date", periodFrom)
+        .lte("date", periodTo),
+      supabase
         .from("settlement_events")
         .select("*")
         .order("settlement_date", { ascending: false })
@@ -993,6 +999,7 @@ function DivisoriaModal({
     ]);
     setTxs((tx.data as Transaction[]) ?? []);
     setFixed((fe.data as FixedExpense[]) ?? []);
+    setOneTime((ot.data as OneTimeExpense[]) ?? []);
     setEvents((se.data as SettlementEvent[]) ?? []);
     setLoading(false);
   };
@@ -1003,15 +1010,36 @@ function DivisoriaModal({
   }, [periodFrom, periodTo]);
 
   // ---------- Calcolo balance ----------
-  const sumBy = (handler: Partner, type: TxType) =>
+  // Months span (for fixed expenses)
+  const monthsSpan = (() => {
+    const f = new Date(periodFrom);
+    const t = new Date(periodTo);
+    if (isNaN(f.getTime()) || isNaN(t.getTime())) return 1;
+    return Math.max(1, (t.getFullYear() - f.getFullYear()) * 12 + (t.getMonth() - f.getMonth()) + 1);
+  })();
+
+  const sumTx = (handler: Partner, type: TxType) =>
     txs
       .filter((t) => (t.paid_by ?? "agenzia") === handler && t.type === type)
       .reduce((s, t) => s + Number(t.amount || 0), 0);
 
-  const patUscite = sumBy("pat", "uscita");
-  const patEntrate = sumBy("pat", "entrata");
-  const stefanoUscite = sumBy("stefano", "uscita");
-  const stefanoEntrate = sumBy("stefano", "entrata");
+  const sumOneTime = (handler: Partner) =>
+    oneTime
+      .filter((o) => o.paid_by === handler)
+      .reduce((s, o) => s + Number(o.amount || 0), 0);
+
+  const sumFixed = (handler: Partner) =>
+    fixed
+      .filter((f) => (f.paid_by as Partner | null | undefined) === handler)
+      .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)) * monthsSpan, 0);
+
+  const patTxUscite = sumTx("pat", "uscita");
+  const patEntrate = sumTx("pat", "entrata");
+  const patUscite = patTxUscite + sumOneTime("pat") + sumFixed("pat");
+
+  const stefanoTxUscite = sumTx("stefano", "uscita");
+  const stefanoEntrate = sumTx("stefano", "entrata");
+  const stefanoUscite = stefanoTxUscite + sumOneTime("stefano") + sumFixed("stefano");
 
   const patNetto = patUscite - patEntrate;
   const stefanoNetto = stefanoUscite - stefanoEntrate;
