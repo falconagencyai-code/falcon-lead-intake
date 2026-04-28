@@ -179,17 +179,22 @@ function ContabilitaPage() {
     };
   }, [transactions, fixedExpenses, periodFrom, periodTo, monthsInPeriod]);
 
-  // Chart — last 6 months
+  // Chart — months within selected period
   const cashFlow = useMemo(() => {
+    const from = new Date(periodFrom);
+    const to = new Date(periodTo);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return [];
     const buckets: { key: string; month: string; entrate: number; uscite: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+    const end = new Date(to.getFullYear(), to.getMonth(), 1);
+    while (cursor <= end) {
       buckets.push({
-        key: `${d.getFullYear()}-${d.getMonth()}`,
-        month: monthNames[d.getMonth()],
+        key: `${cursor.getFullYear()}-${cursor.getMonth()}`,
+        month: `${monthNames[cursor.getMonth()]} ${String(cursor.getFullYear()).slice(2)}`,
         entrate: 0,
         uscite: 0,
       });
+      cursor.setMonth(cursor.getMonth() + 1);
     }
     transactions.forEach((t) => {
       const dt = new Date(t.date);
@@ -205,7 +210,7 @@ function ContabilitaPage() {
       .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
     buckets.forEach((b) => (b.uscite += usciteFisseMese));
     return buckets;
-  }, [transactions, fixedExpenses]);
+  }, [transactions, fixedExpenses, periodFrom, periodTo]);
 
   const totFissoMese = fixedExpenses
     .filter((f) => f.active)
