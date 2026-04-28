@@ -799,53 +799,47 @@ function DivisoriaModal({
     new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
 
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-[#070b14]/98 backdrop-blur-xl"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="mx-auto max-w-5xl p-4 md:p-8">
-        <div className="rounded-3xl border border-[rgba(0,212,255,0.1)] bg-[#070b14] shadow-[0_0_80px_rgba(0,0,0,0.6)]">
-          {/* HEADER — single row */}
-          <div className="flex items-center gap-4 border-b border-[rgba(255,255,255,0.06)] px-6 py-4">
-            <Scale className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold tracking-tight text-white">Divisoria</h2>
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                onClick={() => setShowAdd(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.06)] px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-[rgba(0,212,255,0.12)]"
-              >
-                <Plus className="h-3.5 w-3.5" /> Aggiungi
-              </button>
-              <button
-                onClick={settleAll}
-                disabled={payments.length === 0}
-                className="rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-white disabled:opacity-40"
-              >
-                Saldo
-              </button>
-              <button
-                onClick={onClose}
-                className="rounded-lg p-1.5 text-muted-foreground transition hover:text-white"
-                aria-label="Chiudi"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#070b14]">
+      {/* HEADER — fixed top */}
+      <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.06)]">
+        <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
+          <Scale className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold tracking-tight text-white">Divisoria</h2>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setShowAdd(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.06)] px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-[rgba(0,212,255,0.12)]"
+            >
+              <Plus className="h-3.5 w-3.5" /> Aggiungi
+            </button>
+            <button
+              onClick={settleAll}
+              disabled={payments.length === 0}
+              className="rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-white disabled:opacity-40"
+            >
+              Saldo
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-muted-foreground transition hover:text-white"
+              aria-label="Chiudi"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
+        </div>
+      </div>
 
+      {/* BODY — scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-5xl p-6">
           {/* AUTO section — 3 cols */}
-          <div className="px-6 pt-6">
+          <div>
             <div className="rounded-2xl border border-[rgba(0,212,255,0.08)] bg-[rgba(255,255,255,0.02)]">
               <div className="grid grid-cols-1 divide-y divide-[rgba(255,255,255,0.05)] md:grid-cols-3 md:divide-x md:divide-y-0">
                 <AutoCell label="Entrate agenzia" value={entrate} />
                 <AutoCell label="Uscite totali" value={totaleUscite} />
-                <AutoCell
-                  label="Quota per socio"
-                  value={quotaPerSocio}
-                  accent
-                />
+                <AutoCell label="Quota per socio" value={quotaPerSocio} accent />
               </div>
             </div>
             <p className="mt-2 px-1 text-[11px] text-muted-foreground">
@@ -855,7 +849,7 @@ function DivisoriaModal({
           </div>
 
           {/* MANUAL section — two thin columns */}
-          <div className="grid gap-8 px-6 pt-8 md:grid-cols-2">
+          <div className="mt-8 grid gap-8 md:grid-cols-2">
             <PartnerList
               name="Pat"
               total={patPagato}
@@ -873,7 +867,7 @@ function DivisoriaModal({
           </div>
 
           {/* SETTLEMENT banner */}
-          <div className="px-6 py-6">
+          <div className="mt-8">
             {totalePagato === 0 ? (
               <div className="rounded-xl border-l-2 border-l-[rgba(0,212,255,0.6)] bg-[rgba(0,212,255,0.04)] px-5 py-3 text-sm text-muted-foreground">
                 Nessun pagamento manuale registrato
