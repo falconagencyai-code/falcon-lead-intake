@@ -863,23 +863,12 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
   const [category, setCategory] = useState(initial?.category ?? "");
   const [active, setActive] = useState<boolean>(initial?.active ?? true);
   const [paidBy, setPaidBy] = useState<Partner>((initial?.paid_by as Partner) ?? "pat");
-  const [dueDay, setDueDay] = useState<string>(() => {
-    if (initial?.frequency === "mensile" && initial.due_date) return initial.due_date;
-    return "1";
-  });
-  const [dueDate, setDueDate] = useState<string>(() => {
-    if (initial?.frequency === "annuale" && initial.due_date) return initial.due_date;
-    return new Date().toISOString().slice(0, 10);
-  });
   const [startDate, setStartDate] = useState<string>(initial?.start_date ?? new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
     if (!supabase || !name || !amount || !startDate) return;
     setSaving(true);
-    const due_date = frequency === "mensile"
-      ? String(Math.min(31, Math.max(1, parseInt(dueDay || "1", 10) || 1)))
-      : dueDate;
     const payload = {
       name,
       amount: parseFloat(amount),
@@ -887,7 +876,6 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
       category: category || null,
       active,
       paid_by: paidBy,
-      due_date,
       start_date: startDate,
     };
     if (initial) {
@@ -938,17 +926,6 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
               required
             />
           </label>
-          {frequency === "mensile" ? (
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Giorno del mese (1-31)</span>
-              <input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} className={inputClass} placeholder="Es. 15" />
-            </label>
-          ) : (
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Data scadenza annuale</span>
-              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
-            </label>
-          )}
           <div>
             <span className="mb-1 block text-sm text-muted-foreground">Gestito da</span>
             <div className="inline-flex w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] p-1">
