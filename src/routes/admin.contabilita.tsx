@@ -43,6 +43,7 @@ export const Route = createFileRoute("/admin/contabilita")({
 
 type TxType = "entrata" | "uscita";
 type Handler = "agenzia" | "pat" | "stefano";
+type Partner = "pat" | "stefano";
 
 interface Transaction {
   id: string;
@@ -65,6 +66,18 @@ interface FixedExpense {
   frequency: "mensile" | "annuale";
   category: string | null;
   active: boolean;
+  paid_by?: Partner | null;
+}
+
+interface OneTimeExpense {
+  id: string;
+  description: string | null;
+  category: string | null;
+  amount: number;
+  date: string;
+  paid_by: Partner;
+  note: string | null;
+  created_at?: string;
 }
 
 interface LeadOption {
