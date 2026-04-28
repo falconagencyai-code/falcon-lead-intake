@@ -67,6 +67,8 @@ interface FixedExpense {
   category: string | null;
   active: boolean;
   paid_by?: Partner | null;
+  /** Per "mensile": giorno del mese (1-31). Per "annuale": data ISO YYYY-MM-DD. */
+  due_date: string | null;
 }
 
 interface OneTimeExpense {
