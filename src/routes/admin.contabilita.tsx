@@ -911,6 +911,17 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
             <span className="mb-1 block text-muted-foreground">Categoria</span>
             <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Affitto" />
           </label>
+          {frequency === "mensile" ? (
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Giorno del mese (1-31)</span>
+              <input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} className={inputClass} placeholder="Es. 15" />
+            </label>
+          ) : (
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Data scadenza annuale</span>
+              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
+            </label>
+          )}
           <div>
             <span className="mb-1 block text-sm text-muted-foreground">Gestito da</span>
             <div className="inline-flex w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] p-1">
