@@ -629,7 +629,7 @@ function ContabilitaPage() {
               {filteredTx.map((tx) => {
                 const handler = (tx.paid_by ?? "agenzia") as Handler;
                 return (
-                <tr key={tx.id} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
+                <tr key={tx.id} className="group border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
                   <td className="py-4 text-muted-foreground">{new Date(tx.date).toLocaleDateString("it-IT")}</td>
                   <td>
                     <span className={cn(
