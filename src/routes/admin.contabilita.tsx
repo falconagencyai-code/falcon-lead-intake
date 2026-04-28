@@ -1151,13 +1151,13 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
 
   const patBase = partnerStats("pat");
   const stefanoBase = partnerStats("stefano");
-  // Spese totali condivise = somma di quanto entrambi hanno anticipato (al netto di ciò che hanno ricevuto in restituzione)
-  const speseTotali = (patBase.anticipato - patBase.ricevuto) + (stefanoBase.anticipato - stefanoBase.ricevuto);
-  const quotaPro = speseTotali / 2;
-  // Netto = quanto il socio ha effettivamente sborsato meno la sua quota di competenza
-  // Positivo = gli spetta, Negativo = deve dare
-  const patStats = { ...patBase, netto: (patBase.anticipato - patBase.ricevuto) - quotaPro };
-  const stefanoStats = { ...stefanoBase, netto: (stefanoBase.anticipato - stefanoBase.ricevuto) - quotaPro };
+  const anticipatoNettoPat = patBase.anticipato - patBase.ricevuto;
+  const anticipatoNettoStefano = stefanoBase.anticipato - stefanoBase.ricevuto;
+  const totaleNetto = anticipatoNettoPat + anticipatoNettoStefano;
+  const quotaDovuta = totaleNetto / 2;
+  const patStats = { ...patBase, netto: quotaDovuta - anticipatoNettoPat };
+  const stefanoStats = { ...stefanoBase, netto: quotaDovuta - anticipatoNettoStefano };
+
 
 
   const directionArrow = (d: string) =>
