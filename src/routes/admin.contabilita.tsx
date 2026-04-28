@@ -497,10 +497,10 @@ function ContabilitaPage() {
             {fixedExpenses.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-[rgba(0,212,255,0.2)] text-sm font-bold text-foreground">
-                  <td colSpan={4} className="py-4 text-right">Totale mensile complessivo:</td>
-                  <td className="text-right text-primary">{eur(totFissoMese)}</td>
-                  <td className="text-right text-primary">{eur(totFissoMese / 2)}</td>
-                  <td colSpan={3}></td>
+                  <td colSpan={4} className="px-4 py-3 text-right">Totale mensile complessivo:</td>
+                  <td className="px-4 py-3 text-right text-primary">{eur(totFissoMese)}</td>
+                  <td className="px-4 py-3 text-right text-primary">{eur(totFissoMese / 2)}</td>
+                  <td colSpan={3} className="px-4 py-3"></td>
                 </tr>
               </tfoot>
             )}
