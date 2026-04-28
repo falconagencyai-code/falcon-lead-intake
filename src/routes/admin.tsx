@@ -46,7 +46,7 @@ const navItems: { label: string; to: string; icon: typeof Users; status: NavStat
   { label: "Analytics", to: "/admin/analytics", icon: BarChart2, status: "active" },
   { label: "Clienti", to: "/admin/clienti", icon: Users, status: "active" },
   { label: "Team", to: "/admin/team", icon: Shield, status: "mock" },
-  { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2, status: "mock" },
+  { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2, status: "active" },
   { label: "Road-map", to: "/admin/roadmap", icon: Map, status: "active" },
   { label: "Competitor", to: "/admin/competitor", icon: Radar, status: "mock" },
   { label: "Impostazioni", to: "/admin/settings", icon: Settings, status: "mock" },
