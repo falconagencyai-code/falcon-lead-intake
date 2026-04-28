@@ -731,7 +731,8 @@ function TransactionModal({ leads, initial, onClose, onSaved }: { leads: LeadOpt
   const [description, setDescription] = useState(initial?.description ?? "");
   const [leadId, setLeadId] = useState(initial?.lead_id ?? "");
   const [invoiceNumber, setInvoiceNumber] = useState(initial?.invoice_number ?? "");
-  const [paidBy, setPaidBy] = useState<Handler>((initial?.paid_by as Handler) ?? "agenzia");
+  const initialPaidBy: Partner = initial?.paid_by === "stefano" ? "stefano" : "pat";
+  const [paidBy, setPaidBy] = useState<Partner>(initialPaidBy);
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
