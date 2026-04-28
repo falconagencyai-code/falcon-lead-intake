@@ -220,10 +220,13 @@ function ContabilitaPage() {
     const usciteTx = transactions
       .filter((t) => t.type === "uscita" && inRange(t.date))
       .reduce((s, t) => s + Number(t.amount || 0), 0);
+    const usciteUnaTantum = oneTimeExpenses
+      .filter((o) => inRange(o.date))
+      .reduce((s, o) => s + Number(o.amount || 0), 0);
     const usciteFisseMese = fixedExpenses
       .filter((f) => f.active)
       .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
-    const uscite = usciteTx + usciteFisseMese * Math.max(1, monthsInPeriod);
+    const uscite = usciteTx + usciteUnaTantum + usciteFisseMese * Math.max(1, monthsInPeriod);
     const utile = entrate - uscite;
     const inAttesa = transactions.filter((t) => t.type === "entrata" && !t.invoice_number && inRange(t.date)).length;
     return {
@@ -233,7 +236,7 @@ function ContabilitaPage() {
       quota50: utile / 2,
       inAttesa,
     };
-  }, [transactions, fixedExpenses, periodFrom, periodTo, monthsInPeriod]);
+  }, [transactions, fixedExpenses, oneTimeExpenses, periodFrom, periodTo, monthsInPeriod]);
 
   // Chart — months within selected period
   const cashFlow = useMemo(() => {
