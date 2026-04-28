@@ -897,6 +897,28 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
             <span className="mb-1 block text-muted-foreground">Categoria</span>
             <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Affitto" />
           </label>
+          <div>
+            <span className="mb-1 block text-sm text-muted-foreground">Gestito da</span>
+            <div className="inline-flex w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] p-1">
+              {(["pat", "stefano"] as Partner[]).map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => setPaidBy(h)}
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition",
+                    paidBy === h
+                      ? h === "pat"
+                        ? "bg-cyan-950 text-cyan-400 shadow-[inset_0_0_18px_rgba(0,212,255,0.18)]"
+                        : "bg-amber-950 text-amber-400 shadow-[inset_0_0_18px_rgba(251,191,36,0.18)]"
+                      : "text-muted-foreground hover:text-white",
+                  )}
+                >
+                  {partnerLabel[h]}
+                </button>
+              ))}
+            </div>
+          </div>
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 rounded border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] accent-primary" />
             Attivo (incluso nei calcoli)
