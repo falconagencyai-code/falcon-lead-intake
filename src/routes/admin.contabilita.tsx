@@ -583,6 +583,21 @@ function ContabilitaPage() {
           onSaved={() => { setShowFxModal(false); loadAll(); }}
         />
       )}
+      {editingTx && (
+        <TransactionModal
+          leads={leads}
+          initial={editingTx}
+          onClose={() => setEditingTx(null)}
+          onSaved={() => { setEditingTx(null); loadAll(); }}
+        />
+      )}
+      {editingFx && (
+        <FixedExpenseModal
+          initial={editingFx}
+          onClose={() => setEditingFx(null)}
+          onSaved={() => { setEditingFx(null); loadAll(); }}
+        />
+      )}
     </div>
   );
 }
