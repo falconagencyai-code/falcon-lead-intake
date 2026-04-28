@@ -922,6 +922,16 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
             <span className="mb-1 block text-muted-foreground">Categoria</span>
             <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Affitto" />
           </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-muted-foreground">Data inizio abbonamento *</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={inputClass}
+              required
+            />
+          </label>
           {frequency === "mensile" ? (
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Giorno del mese (1-31)</span>
