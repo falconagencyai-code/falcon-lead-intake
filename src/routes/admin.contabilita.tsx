@@ -1146,11 +1146,19 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
         else ricevuto += Number(t.amount || 0);
       }
     });
-    return { anticipato, ricevuto, netto: anticipato - ricevuto };
+    return { anticipato, ricevuto };
   };
 
-  const patStats = partnerStats("pat");
-  const stefanoStats = partnerStats("stefano");
+  const patBase = partnerStats("pat");
+  const stefanoBase = partnerStats("stefano");
+  // Spese totali condivise = somma di quanto entrambi hanno anticipato (al netto di ciò che hanno ricevuto in restituzione)
+  const speseTotali = (patBase.anticipato - patBase.ricevuto) + (stefanoBase.anticipato - stefanoBase.ricevuto);
+  const quotaPro = speseTotali / 2;
+  // Netto = quanto il socio ha effettivamente sborsato meno la sua quota di competenza
+  // Positivo = gli spetta, Negativo = deve dare
+  const patStats = { ...patBase, netto: (patBase.anticipato - patBase.ricevuto) - quotaPro };
+  const stefanoStats = { ...stefanoBase, netto: (stefanoBase.anticipato - stefanoBase.ricevuto) - quotaPro };
+
 
   const directionArrow = (d: string) =>
     d === "stefano_to_pat" ? "Stefano → Pat" : "Pat → Stefano";
