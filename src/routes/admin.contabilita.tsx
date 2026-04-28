@@ -584,6 +584,7 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
   const [description, setDescription] = useState("");
   const [leadId, setLeadId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [paidBy, setPaidBy] = useState<Handler>("agenzia");
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
@@ -597,6 +598,7 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
       description: description || null,
       lead_id: leadId || null,
       invoice_number: invoiceNumber || null,
+      paid_by: paidBy,
     });
     setSaving(false);
     onSaved();
