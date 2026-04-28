@@ -4,6 +4,7 @@ import {
   DollarSign,
   Percent,
   Plus,
+  Scale,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -94,6 +95,7 @@ function ContabilitaPage() {
   const [loading, setLoading] = useState(true);
   const [showTxModal, setShowTxModal] = useState(false);
   const [showFxModal, setShowFxModal] = useState(false);
+  const [showDivisoria, setShowDivisoria] = useState(false);
   const [filterType, setFilterType] = useState<"all" | TxType>("all");
   const now = new Date();
   const todayIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -262,12 +264,23 @@ function ContabilitaPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <p className="label-section">Falcon Agency</p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-5xl">
-          Contabilità <span className="text-primary text-glow">— {periodoLabel}</span>
-        </h1>
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="label-section">Falcon Agency</p>
+          <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-5xl">
+            Contabilità <span className="text-primary text-glow">— {periodoLabel}</span>
+          </h1>
+        </div>
+        <button
+          onClick={() => setShowDivisoria(true)}
+          className="inline-flex items-center gap-2 self-start rounded-xl border border-[rgba(0,212,255,0.35)] bg-transparent px-4 py-2 text-sm font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.08)] md:self-auto"
+        >
+          <Scale className="h-4 w-4" />
+          Divisoria
+        </button>
       </header>
+
+      {showDivisoria && <DivisoriaModal onClose={() => setShowDivisoria(false)} />}
 
       {/* PERIOD SELECTOR */}
       <AdminCard className="p-4">
