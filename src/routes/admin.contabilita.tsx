@@ -1144,7 +1144,7 @@ function ConfirmDialog({
   onConfirm,
 }: {
   title: string;
-  body: React.ReactNode;
+  body: ReactNode;
   cancelLabel: string;
   confirmLabel: string;
   onCancel: () => void;
