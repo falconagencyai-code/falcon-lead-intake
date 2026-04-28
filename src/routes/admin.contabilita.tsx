@@ -41,6 +41,7 @@ export const Route = createFileRoute("/admin/contabilita")({
 // =============== TYPES ===============
 
 type TxType = "entrata" | "uscita";
+type Handler = "agenzia" | "pat" | "stefano";
 
 interface Transaction {
   id: string;
@@ -51,6 +52,7 @@ interface Transaction {
   date: string;
   lead_id: string | null;
   invoice_number: string | null;
+  paid_by: Handler;
   created_at?: string;
   leads?: { full_name: string | null; company: string | null } | null;
 }
