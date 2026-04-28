@@ -5,6 +5,7 @@ import {
   Percent,
   Plus,
   Scale,
+  Pencil,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -111,6 +112,8 @@ function ContabilitaPage() {
   const [showTxModal, setShowTxModal] = useState(false);
   const [showFxModal, setShowFxModal] = useState(false);
   const [showDivisoria, setShowDivisoria] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+  const [editingFx, setEditingFx] = useState<FixedExpense | null>(null);
   const [filterType, setFilterType] = useState<"all" | TxType>("all");
   const now = new Date();
   const todayIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -433,9 +436,14 @@ function ContabilitaPage() {
                       </span>
                     </td>
                     <td className="text-right">
-                      <button onClick={() => deleteFx(fx.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="inline-flex items-center gap-1.5">
+                        <button onClick={() => setEditingFx(fx)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => deleteFx(fx.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive" aria-label="Elimina">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -545,9 +553,14 @@ function ContabilitaPage() {
                   </td>
                   <td className="text-muted-foreground">{tx.invoice_number ?? "—"}</td>
                   <td className="text-right">
-                    <button onClick={() => deleteTx(tx.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="inline-flex items-center gap-1.5">
+                      <button onClick={() => setEditingTx(tx)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => deleteTx(tx.id)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-destructive hover:text-destructive" aria-label="Elimina">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
                 );
@@ -570,27 +583,42 @@ function ContabilitaPage() {
           onSaved={() => { setShowFxModal(false); loadAll(); }}
         />
       )}
+      {editingTx && (
+        <TransactionModal
+          leads={leads}
+          initial={editingTx}
+          onClose={() => setEditingTx(null)}
+          onSaved={() => { setEditingTx(null); loadAll(); }}
+        />
+      )}
+      {editingFx && (
+        <FixedExpenseModal
+          initial={editingFx}
+          onClose={() => setEditingFx(null)}
+          onSaved={() => { setEditingFx(null); loadAll(); }}
+        />
+      )}
     </div>
   );
 }
 
 // =============== MODALS ===============
 
-function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; onClose: () => void; onSaved: () => void }) {
-  const [type, setType] = useState<TxType>("entrata");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [description, setDescription] = useState("");
-  const [leadId, setLeadId] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [paidBy, setPaidBy] = useState<Handler>("agenzia");
+function TransactionModal({ leads, initial, onClose, onSaved }: { leads: LeadOption[]; initial?: Transaction | null; onClose: () => void; onSaved: () => void }) {
+  const [type, setType] = useState<TxType>(initial?.type ?? "entrata");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10));
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [leadId, setLeadId] = useState(initial?.lead_id ?? "");
+  const [invoiceNumber, setInvoiceNumber] = useState(initial?.invoice_number ?? "");
+  const [paidBy, setPaidBy] = useState<Handler>((initial?.paid_by as Handler) ?? "agenzia");
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
     if (!supabase || !amount) return;
     setSaving(true);
-    await supabase.from("transactions").insert({
+    const payload = {
       type,
       amount: parseFloat(amount),
       category: category || null,
@@ -599,7 +627,12 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
       lead_id: leadId || null,
       invoice_number: invoiceNumber || null,
       paid_by: paidBy,
-    });
+    };
+    if (initial) {
+      await supabase.from("transactions").update(payload).eq("id", initial.id);
+    } else {
+      await supabase.from("transactions").insert(payload);
+    }
     setSaving(false);
     onSaved();
   };
@@ -608,7 +641,7 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Nuova transazione</h2>
+          <h2 className="text-2xl font-bold text-white">{initial ? "Modifica transazione" : "Nuova transazione"}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
         </div>
         <div className="mt-6 space-y-4">
@@ -688,23 +721,29 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
   );
 }
 
-function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [name, setName] = useState("");
-  const [amount, setAmount] = useState("");
-  const [frequency, setFrequency] = useState<"mensile" | "annuale">("mensile");
-  const [category, setCategory] = useState("");
+function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpense | null; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [frequency, setFrequency] = useState<"mensile" | "annuale">(initial?.frequency ?? "mensile");
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [active, setActive] = useState<boolean>(initial?.active ?? true);
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
     if (!supabase || !name || !amount) return;
     setSaving(true);
-    await supabase.from("fixed_expenses").insert({
+    const payload = {
       name,
       amount: parseFloat(amount),
       frequency,
       category: category || null,
-      active: true,
-    });
+      active,
+    };
+    if (initial) {
+      await supabase.from("fixed_expenses").update(payload).eq("id", initial.id);
+    } else {
+      await supabase.from("fixed_expenses").insert(payload);
+    }
     setSaving(false);
     onSaved();
   };
@@ -713,7 +752,7 @@ function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved:
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Nuova spesa fissa</h2>
+          <h2 className="text-2xl font-bold text-white">{initial ? "Modifica spesa fissa" : "Nuova spesa fissa"}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
         </div>
         <div className="mt-6 space-y-4">
@@ -737,6 +776,10 @@ function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved:
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Categoria</span>
             <input value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass} placeholder="Es. Software, Affitto" />
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 rounded border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] accent-primary" />
+            Attivo (incluso nei calcoli)
           </label>
         </div>
         <div className="mt-6 flex justify-end gap-3">
