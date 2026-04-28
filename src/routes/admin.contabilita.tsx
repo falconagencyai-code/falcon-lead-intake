@@ -865,10 +865,11 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
     if (initial?.frequency === "annuale" && initial.due_date) return initial.due_date;
     return new Date().toISOString().slice(0, 10);
   });
+  const [startDate, setStartDate] = useState<string>(initial?.start_date ?? new Date().toISOString().slice(0, 10));
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
-    if (!supabase || !name || !amount) return;
+    if (!supabase || !name || !amount || !startDate) return;
     setSaving(true);
     const due_date = frequency === "mensile"
       ? String(Math.min(31, Math.max(1, parseInt(dueDay || "1", 10) || 1)))
@@ -881,6 +882,7 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
       active,
       paid_by: paidBy,
       due_date,
+      start_date: startDate,
     };
     if (initial) {
       await supabase.from("fixed_expenses").update(payload).eq("id", initial.id);
