@@ -906,7 +906,8 @@ function DivisoriaModal({
           }}
         />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
