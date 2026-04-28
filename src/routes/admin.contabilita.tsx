@@ -440,6 +440,7 @@ function ContabilitaPage() {
                 <th className="w-[120px] whitespace-nowrap px-4 py-3">Categoria</th>
                 <th className="w-[100px] whitespace-nowrap px-4 py-3 text-right">Importo</th>
                 <th className="w-[100px] whitespace-nowrap px-4 py-3">Frequenza</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3">Attivo dal</th>
                 <th className="w-[120px] whitespace-nowrap px-4 py-3">Scadenza</th>
                 <th className="w-[120px] whitespace-nowrap px-4 py-3 text-right">Quota mensile</th>
                 <th className="w-[110px] whitespace-nowrap px-4 py-3 text-right">Per partner (÷2)</th>
