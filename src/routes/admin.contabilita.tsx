@@ -1074,7 +1074,10 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
     const dates: string[] = [];
     txs.forEach((t) => t.date && dates.push(t.date));
     oneTime.forEach((o) => o.date && dates.push(o.date));
-    fixed.forEach((f: any) => f.created_at && dates.push(String(f.created_at).slice(0, 10)));
+    fixed.forEach((f: any) => {
+      const d = f.start_date ?? f.created_at;
+      if (d) dates.push(String(d).slice(0, 10));
+    });
     if (dates.length === 0) return today;
     return dates.sort()[0];
   }, [txs, oneTime, fixed, today]);
