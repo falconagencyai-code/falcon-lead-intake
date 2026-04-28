@@ -1086,8 +1086,12 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
   // ---------- COMPONENTE 1 — Abbonamenti (pro-rated) ----------
   const subscriptionRows = useMemo(() => {
     return fixed.map((f: any) => {
-      const created = f.created_at ? String(f.created_at).slice(0, 10) : periodStart;
-      const startDate = created > periodStart ? created : periodStart;
+      const subStart = f.start_date
+        ? String(f.start_date).slice(0, 10)
+        : f.created_at
+          ? String(f.created_at).slice(0, 10)
+          : periodStart;
+      const startDate = subStart > periodStart ? subStart : periodStart;
       const days = daysBetween(startDate, today);
       const elapsed = f.frequency === "annuale" ? days / 365 : days / 30;
       const prorated = Number(f.amount || 0) * elapsed;
