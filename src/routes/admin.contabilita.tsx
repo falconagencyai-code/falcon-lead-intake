@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import {
   Clock,
   DollarSign,
+  Percent,
   Plus,
   Trash2,
   TrendingDown,
@@ -95,7 +96,32 @@ function ContabilitaPage() {
   const [showFxModal, setShowFxModal] = useState(false);
   const [filterType, setFilterType] = useState<"all" | TxType>("all");
   const now = new Date();
+  const todayIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const [periodFrom, setPeriodFrom] = useState<string>(todayIso(startOfMonth));
+  const [periodTo, setPeriodTo] = useState<string>(todayIso(endOfMonth));
   const [filterMonth, setFilterMonth] = useState<string>(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
+
+  const setQuickRange = (range: "thisMonth" | "lastMonth" | "last3Months" | "thisYear") => {
+    const n = new Date();
+    let from: Date, to: Date;
+    if (range === "thisMonth") {
+      from = new Date(n.getFullYear(), n.getMonth(), 1);
+      to = new Date(n.getFullYear(), n.getMonth() + 1, 0);
+    } else if (range === "lastMonth") {
+      from = new Date(n.getFullYear(), n.getMonth() - 1, 1);
+      to = new Date(n.getFullYear(), n.getMonth(), 0);
+    } else if (range === "last3Months") {
+      from = new Date(n.getFullYear(), n.getMonth() - 2, 1);
+      to = new Date(n.getFullYear(), n.getMonth() + 1, 0);
+    } else {
+      from = new Date(n.getFullYear(), 0, 1);
+      to = new Date(n.getFullYear(), 11, 31);
+    }
+    setPeriodFrom(todayIso(from));
+    setPeriodTo(todayIso(to));
+  };
 
   const loadAll = async () => {
     if (!supabase) return;
@@ -115,47 +141,60 @@ function ContabilitaPage() {
     loadAll();
   }, []);
 
-  // KPI computation — current month
+  // Months span between periodFrom and periodTo (inclusive)
+  const monthsInPeriod = useMemo(() => {
+    const from = new Date(periodFrom);
+    const to = new Date(periodTo);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return 1;
+    return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()) + 1;
+  }, [periodFrom, periodTo]);
+
+  // KPI computation — selected period
   const kpi = useMemo(() => {
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const inMonth = (d: string) => {
+    const from = new Date(periodFrom);
+    const to = new Date(periodTo);
+    to.setHours(23, 59, 59, 999);
+    const inRange = (d: string) => {
       const dt = new Date(d);
-      return dt.getFullYear() === y && dt.getMonth() === m;
+      return dt >= from && dt <= to;
     };
-    const entrateMese = transactions
-      .filter((t) => t.type === "entrata" && inMonth(t.date))
+    const entrate = transactions
+      .filter((t) => t.type === "entrata" && inRange(t.date))
       .reduce((s, t) => s + Number(t.amount || 0), 0);
-    const usciteTxMese = transactions
-      .filter((t) => t.type === "uscita" && inMonth(t.date))
+    const usciteTx = transactions
+      .filter((t) => t.type === "uscita" && inRange(t.date))
       .reduce((s, t) => s + Number(t.amount || 0), 0);
     const usciteFisseMese = fixedExpenses
       .filter((f) => f.active)
       .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
-    const usciteMese = usciteTxMese + usciteFisseMese;
-    const utile = entrateMese - usciteMese;
-    const inAttesa = transactions.filter((t) => t.type === "entrata" && !t.invoice_number).length;
+    const uscite = usciteTx + usciteFisseMese * Math.max(1, monthsInPeriod);
+    const utile = entrate - uscite;
+    const inAttesa = transactions.filter((t) => t.type === "entrata" && !t.invoice_number && inRange(t.date)).length;
     return {
-      entrateMese,
-      usciteMese,
+      entrate,
+      uscite,
       utile,
-      quotaPat: utile / 2,
-      quotaSocio: utile / 2,
+      quota50: utile / 2,
       inAttesa,
     };
-  }, [transactions, fixedExpenses]);
+  }, [transactions, fixedExpenses, periodFrom, periodTo, monthsInPeriod]);
 
-  // Chart — last 6 months
+  // Chart — months within selected period
   const cashFlow = useMemo(() => {
+    const from = new Date(periodFrom);
+    const to = new Date(periodTo);
+    if (isNaN(from.getTime()) || isNaN(to.getTime())) return [];
     const buckets: { key: string; month: string; entrate: number; uscite: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+    const end = new Date(to.getFullYear(), to.getMonth(), 1);
+    while (cursor <= end) {
       buckets.push({
-        key: `${d.getFullYear()}-${d.getMonth()}`,
-        month: monthNames[d.getMonth()],
+        key: `${cursor.getFullYear()}-${cursor.getMonth()}`,
+        month: `${monthNames[cursor.getMonth()]} ${String(cursor.getFullYear()).slice(2)}`,
         entrate: 0,
         uscite: 0,
       });
+      cursor.setMonth(cursor.getMonth() + 1);
     }
     transactions.forEach((t) => {
       const dt = new Date(t.date);
@@ -171,7 +210,7 @@ function ContabilitaPage() {
       .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
     buckets.forEach((b) => (b.uscite += usciteFisseMese));
     return buckets;
-  }, [transactions, fixedExpenses]);
+  }, [transactions, fixedExpenses, periodFrom, periodTo]);
 
   const totFissoMese = fixedExpenses
     .filter((f) => f.active)
@@ -206,23 +245,63 @@ function ContabilitaPage() {
       <header>
         <p className="label-section">Falcon Agency</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-5xl">
-          Contabilità <span className="text-primary text-glow">{monthNames[now.getMonth()]}</span>
+          Contabilità
         </h1>
       </header>
 
-      {/* KPI ROW */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <AdminKpi icon={TrendingUp} title="Entrate totali" value={eur(kpi.entrateMese)} meta="mese corrente" tone="green" />
-        <AdminKpi icon={TrendingDown} title="Uscite totali" value={eur(kpi.usciteMese)} meta="mese corrente + fisse" tone="orange" />
-        <AdminKpi icon={DollarSign} title="Utile netto" value={eur(kpi.utile)} meta="entrate − uscite" tone="cyan" />
-        <AdminKpi icon={User} title="Quota Pat" value={eur(kpi.quotaPat)} meta="50% utile" tone="cyan" />
-        <AdminKpi icon={User} title="Quota Socio" value={eur(kpi.quotaSocio)} meta="50% utile" tone="cyan" />
-        <AdminKpi icon={Clock} title="Fatture in attesa" value={String(kpi.inAttesa)} meta="entrate senza n° fattura" tone="orange" />
+      {/* PERIOD SELECTOR */}
+      <AdminCard className="p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Periodo</label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Da</span>
+              <input
+                type="date"
+                value={periodFrom}
+                onChange={(e) => setPeriodFrom(e.target.value)}
+                className="rounded-xl border border-[rgba(0,212,255,0.14)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+              />
+              <span className="text-xs text-muted-foreground">A</span>
+              <input
+                type="date"
+                value={periodTo}
+                onChange={(e) => setPeriodTo(e.target.value)}
+                className="rounded-xl border border-[rgba(0,212,255,0.14)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-xs text-foreground outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {([
+              ["thisMonth", "Questo mese"],
+              ["lastMonth", "Ultimo mese"],
+              ["last3Months", "Ultimi 3 mesi"],
+              ["thisYear", "Quest'anno"],
+            ] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setQuickRange(key)}
+                className="rounded-xl border border-[rgba(0,212,255,0.14)] bg-[rgba(255,255,255,0.03)] px-3 py-1.5 text-xs font-semibold text-muted-foreground transition hover:border-primary hover:text-primary"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </AdminCard>
+
+      {/* KPI ROW — 5 cards */}
+      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
+        <AdminKpi icon={TrendingUp} title="Entrate Totali" value={eur(kpi.entrate)} meta="periodo selezionato" tone="green" />
+        <AdminKpi icon={TrendingDown} title="Uscite Totali" value={eur(kpi.uscite)} meta="incluso fisso" tone="orange" />
+        <AdminKpi icon={DollarSign} title="Utile Netto" value={eur(kpi.utile)} meta="entrate − uscite" tone="cyan" />
+        <AdminKpi icon={Percent} title="Quota 50%" value={eur(kpi.quota50)} meta="utile ÷ 2" tone="cyan" />
+        <AdminKpi icon={Clock} title="Fatture in Attesa" value={String(kpi.inAttesa)} meta="senza n° fattura" tone="orange" />
       </section>
 
       {/* CASH FLOW CHART */}
       <AdminCard className="p-5">
-        <AdminSectionTitle eyebrow="Cash flow" title="Entrate vs Uscite — ultimi 6 mesi" />
+        <AdminSectionTitle eyebrow="Cash flow" title="Entrate vs Uscite — periodo selezionato" />
         <div className="mt-6 h-80">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={cashFlow} margin={{ left: -10, right: 14, top: 12 }}>
