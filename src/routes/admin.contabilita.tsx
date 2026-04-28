@@ -625,6 +625,30 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
               <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
             </label>
           </div>
+          <div>
+            <span className="mb-1 block text-sm text-muted-foreground">Gestito da</span>
+            <div className="inline-flex w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] p-1">
+              {(["agenzia", "pat", "stefano"] as Handler[]).map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => setPaidBy(h)}
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition",
+                    paidBy === h
+                      ? h === "agenzia"
+                        ? "bg-[rgba(255,255,255,0.08)] text-white"
+                        : h === "pat"
+                          ? "bg-[rgba(0,212,255,0.14)] text-primary shadow-[inset_0_0_18px_rgba(0,212,255,0.18)]"
+                          : "bg-[rgba(251,191,36,0.14)] text-amber-300 shadow-[inset_0_0_18px_rgba(251,191,36,0.18)]"
+                      : "text-muted-foreground hover:text-white",
+                  )}
+                >
+                  {handlerLabel[h]}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Categoria</span>
