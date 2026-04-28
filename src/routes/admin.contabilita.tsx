@@ -604,21 +604,21 @@ function ContabilitaPage() {
 
 // =============== MODALS ===============
 
-function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; onClose: () => void; onSaved: () => void }) {
-  const [type, setType] = useState<TxType>("entrata");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [description, setDescription] = useState("");
-  const [leadId, setLeadId] = useState("");
-  const [invoiceNumber, setInvoiceNumber] = useState("");
-  const [paidBy, setPaidBy] = useState<Handler>("agenzia");
+function TransactionModal({ leads, initial, onClose, onSaved }: { leads: LeadOption[]; initial?: Transaction | null; onClose: () => void; onSaved: () => void }) {
+  const [type, setType] = useState<TxType>(initial?.type ?? "entrata");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [category, setCategory] = useState(initial?.category ?? "");
+  const [date, setDate] = useState(initial?.date ?? new Date().toISOString().slice(0, 10));
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [leadId, setLeadId] = useState(initial?.lead_id ?? "");
+  const [invoiceNumber, setInvoiceNumber] = useState(initial?.invoice_number ?? "");
+  const [paidBy, setPaidBy] = useState<Handler>((initial?.paid_by as Handler) ?? "agenzia");
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
     if (!supabase || !amount) return;
     setSaving(true);
-    await supabase.from("transactions").insert({
+    const payload = {
       type,
       amount: parseFloat(amount),
       category: category || null,
@@ -627,7 +627,12 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
       lead_id: leadId || null,
       invoice_number: invoiceNumber || null,
       paid_by: paidBy,
-    });
+    };
+    if (initial) {
+      await supabase.from("transactions").update(payload).eq("id", initial.id);
+    } else {
+      await supabase.from("transactions").insert(payload);
+    }
     setSaving(false);
     onSaved();
   };
@@ -636,7 +641,7 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Nuova transazione</h2>
+          <h2 className="text-2xl font-bold text-white">{initial ? "Modifica transazione" : "Nuova transazione"}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
         </div>
         <div className="mt-6 space-y-4">
