@@ -12,7 +12,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
   Area,
@@ -41,6 +41,7 @@ export const Route = createFileRoute("/admin/contabilita")({
 // =============== TYPES ===============
 
 type TxType = "entrata" | "uscita";
+type Handler = "agenzia" | "pat" | "stefano";
 
 interface Transaction {
   id: string;
@@ -51,6 +52,7 @@ interface Transaction {
   date: string;
   lead_id: string | null;
   invoice_number: string | null;
+  paid_by: Handler;
   created_at?: string;
   leads?: { full_name: string | null; company: string | null } | null;
 }
@@ -86,6 +88,18 @@ const monthNames = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set
 
 const inputClass =
   "w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] px-3 py-2 text-sm text-white outline-none focus:border-primary";
+
+const handlerLabel: Record<Handler, string> = {
+  agenzia: "Agenzia",
+  pat: "Pat",
+  stefano: "Stefano",
+};
+
+const handlerBadgeClass: Record<Handler, string> = {
+  agenzia: "border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.05)] text-muted-foreground",
+  pat: "border-[rgba(0,212,255,0.32)] bg-[rgba(0,212,255,0.1)] text-primary",
+  stefano: "border-[rgba(251,191,36,0.32)] bg-[rgba(251,191,36,0.1)] text-amber-300",
+};
 
 // =============== PAGE ===============
 
@@ -477,11 +491,12 @@ function ContabilitaPage() {
           </div>
         </div>
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[920px] text-left text-sm">
+          <table className="w-full min-w-[1040px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               <tr className="border-b border-[rgba(0,212,255,0.1)]">
                 <th className="py-4">Data</th>
                 <th>Tipo</th>
+                <th>Gestito da</th>
                 <th>Categoria</th>
                 <th>Descrizione</th>
                 <th>Cliente</th>
@@ -492,12 +507,14 @@ function ContabilitaPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && filteredTx.length === 0 && (
-                <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Nessuna transazione</td></tr>
+                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Nessuna transazione</td></tr>
               )}
-              {filteredTx.map((tx) => (
+              {filteredTx.map((tx) => {
+                const handler = (tx.paid_by ?? "agenzia") as Handler;
+                return (
                 <tr key={tx.id} className="border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
                   <td className="py-4 text-muted-foreground">{new Date(tx.date).toLocaleDateString("it-IT")}</td>
                   <td>
@@ -508,6 +525,14 @@ function ContabilitaPage() {
                         : "border-[rgba(248,113,113,0.32)] bg-[rgba(248,113,113,0.1)] text-red-400"
                     )}>
                       {tx.type}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={cn(
+                      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                      handlerBadgeClass[handler],
+                    )}>
+                      {handlerLabel[handler]}
                     </span>
                   </td>
                   <td className="text-muted-foreground">{tx.category ?? "—"}</td>
@@ -525,7 +550,8 @@ function ContabilitaPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -558,6 +584,7 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
   const [description, setDescription] = useState("");
   const [leadId, setLeadId] = useState("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [paidBy, setPaidBy] = useState<Handler>("agenzia");
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
@@ -571,6 +598,7 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
       description: description || null,
       lead_id: leadId || null,
       invoice_number: invoiceNumber || null,
+      paid_by: paidBy,
     });
     setSaving(false);
     onSaved();
@@ -596,6 +624,30 @@ function TransactionModal({ leads, onClose, onSaved }: { leads: LeadOption[]; on
               <span className="mb-1 block text-muted-foreground">Importo (€)</span>
               <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
             </label>
+          </div>
+          <div>
+            <span className="mb-1 block text-sm text-muted-foreground">Gestito da</span>
+            <div className="inline-flex w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] p-1">
+              {(["agenzia", "pat", "stefano"] as Handler[]).map((h) => (
+                <button
+                  key={h}
+                  type="button"
+                  onClick={() => setPaidBy(h)}
+                  className={cn(
+                    "flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition",
+                    paidBy === h
+                      ? h === "agenzia"
+                        ? "bg-[rgba(255,255,255,0.08)] text-white"
+                        : h === "pat"
+                          ? "bg-[rgba(0,212,255,0.14)] text-primary shadow-[inset_0_0_18px_rgba(0,212,255,0.18)]"
+                          : "bg-[rgba(251,191,36,0.14)] text-amber-300 shadow-[inset_0_0_18px_rgba(251,191,36,0.18)]"
+                      : "text-muted-foreground hover:text-white",
+                  )}
+                >
+                  {handlerLabel[h]}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
@@ -701,15 +753,16 @@ function FixedExpenseModal({ onClose, onSaved }: { onClose: () => void; onSaved:
 // =============== DIVISORIA ===============
 
 type Partner = "pat" | "stefano";
+type SettlementDirection = "pat_to_stefano" | "stefano_to_pat";
 
-interface PartnerPayment {
+interface SettlementEvent {
   id: string;
-  paid_by: Partner;
-  description: string;
-  amount: number;
-  date: string;
-  category: string | null;
-  settled: boolean;
+  direction: SettlementDirection;
+  net_amount: number;
+  settlement_date: string;
+  reversed: boolean;
+  reversed_at: string | null;
+  note: string | null;
   created_at?: string;
 }
 
@@ -722,11 +775,11 @@ function DivisoriaModal({
   periodFrom: string;
   periodTo: string;
 }) {
-  const [payments, setPayments] = useState<PartnerPayment[]>([]);
-  const [fixed, setFixed] = useState<FixedExpense[]>([]);
   const [txs, setTxs] = useState<Transaction[]>([]);
+  const [fixed, setFixed] = useState<FixedExpense[]>([]);
+  const [events, setEvents] = useState<SettlementEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
+  const [confirmStep, setConfirmStep] = useState<0 | 1 | 2>(0);
 
   // Lock body scroll while open
   useEffect(() => {
@@ -740,19 +793,23 @@ function DivisoriaModal({
   const load = async () => {
     if (!supabase) return;
     setLoading(true);
-    const [pp, fe, tx] = await Promise.all([
-      supabase.from("partner_payments").select("*").eq("settled", false).order("date", { ascending: false }),
-      supabase.from("fixed_expenses").select("*").eq("active", true),
+    const [tx, fe, se] = await Promise.all([
       supabase
         .from("transactions")
         .select("*")
         .gte("date", periodFrom)
         .lte("date", periodTo)
         .order("date", { ascending: false }),
+      supabase.from("fixed_expenses").select("*").eq("active", true),
+      supabase
+        .from("settlement_events")
+        .select("*")
+        .order("settlement_date", { ascending: false })
+        .order("created_at", { ascending: false }),
     ]);
-    setPayments((pp.data as PartnerPayment[]) ?? []);
-    setFixed((fe.data as FixedExpense[]) ?? []);
     setTxs((tx.data as Transaction[]) ?? []);
+    setFixed((fe.data as FixedExpense[]) ?? []);
+    setEvents((se.data as SettlementEvent[]) ?? []);
     setLoading(false);
   };
 
@@ -761,43 +818,87 @@ function DivisoriaModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodFrom, periodTo]);
 
-  const months = useMemo(() => {
-    const f = new Date(periodFrom);
-    const t = new Date(periodTo);
-    if (isNaN(f.getTime()) || isNaN(t.getTime())) return 1;
-    return Math.max(1, (t.getFullYear() - f.getFullYear()) * 12 + (t.getMonth() - f.getMonth()) + 1);
-  }, [periodFrom, periodTo]);
+  // ---------- Calcolo balance ----------
+  const sumBy = (handler: Partner, type: TxType) =>
+    txs
+      .filter((t) => (t.paid_by ?? "agenzia") === handler && t.type === type)
+      .reduce((s, t) => s + Number(t.amount || 0), 0);
 
-  // Auto-derived from contabilità
-  const entrate = txs.filter((t) => t.type === "entrata").reduce((s, t) => s + Number(t.amount || 0), 0);
-  const usciteTransazioni = txs.filter((t) => t.type === "uscita").reduce((s, t) => s + Number(t.amount || 0), 0);
-  const usciteFisseMese = fixed.reduce(
-    (s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)),
-    0,
-  );
-  const usciteFisse = usciteFisseMese * months;
-  const totaleUscite = usciteTransazioni + usciteFisse;
-  const utileNetto = entrate - totaleUscite;
-  const quotaPerSocio = utileNetto / 2;
+  const patUscite = sumBy("pat", "uscita");
+  const patEntrate = sumBy("pat", "entrata");
+  const stefanoUscite = sumBy("stefano", "uscita");
+  const stefanoEntrate = sumBy("stefano", "entrata");
 
-  // Manual partner payments
-  const patPayments = payments.filter((p) => p.paid_by === "pat");
-  const stePayments = payments.filter((p) => p.paid_by === "stefano");
-  const patPagato = patPayments.reduce((s, p) => s + Number(p.amount), 0);
-  const stefanoPagato = stePayments.reduce((s, p) => s + Number(p.amount), 0);
-  const totalePagato = patPagato + stefanoPagato;
-  const fairShare = totalePagato / 2;
-  const bilancio = patPagato - fairShare; // >0 stefano deve a pat
+  const patNetto = patUscite - patEntrate;
+  const stefanoNetto = stefanoUscite - stefanoEntrate;
+  const totaleNetto = patNetto + stefanoNetto;
+  const fairShare = totaleNetto / 2;
 
-  const settleAll = async () => {
-    if (!supabase || payments.length === 0) return;
-    if (!window.confirm("Segnare tutti i pagamenti come saldati?")) return;
-    await supabase.from("partner_payments").update({ settled: true }).eq("settled", false);
+  // patDeve > 0 → Pat ha pagato più del dovuto → Stefano deve a Pat
+  const patSurplus = patNetto - fairShare;
+
+  // Aggiusta con i settlement non stornati
+  const settledPatToStefano = events
+    .filter((e) => !e.reversed && e.direction === "pat_to_stefano")
+    .reduce((s, e) => s + Number(e.net_amount || 0), 0);
+  const settledStefanoToPat = events
+    .filter((e) => !e.reversed && e.direction === "stefano_to_pat")
+    .reduce((s, e) => s + Number(e.net_amount || 0), 0);
+
+  // patSurplus residuo: ogni pagamento da Stefano a Pat lo riduce; ogni pagamento da Pat a Stefano lo aumenta
+  const balanceAdjusted = patSurplus - settledStefanoToPat + settledPatToStefano;
+
+  let direction: SettlementDirection | null = null;
+  let amountDue = 0;
+  if (Math.abs(balanceAdjusted) >= 0.01) {
+    if (balanceAdjusted > 0) {
+      direction = "stefano_to_pat";
+      amountDue = balanceAdjusted;
+    } else {
+      direction = "pat_to_stefano";
+      amountDue = -balanceAdjusted;
+    }
+  }
+
+  const directionLabel = (d: SettlementDirection, amt: number) =>
+    d === "stefano_to_pat"
+      ? `Stefano deve a Pat ${eur(amt)}`
+      : `Pat deve a Stefano ${eur(amt)}`;
+
+  const directionArrow = (d: SettlementDirection) =>
+    d === "stefano_to_pat" ? "Stefano → Pat" : "Pat → Stefano";
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const confirmRegister = async () => {
+    if (!supabase || !direction) return;
+    await supabase.from("settlement_events").insert({
+      direction,
+      net_amount: Number(amountDue.toFixed(2)),
+      settlement_date: today,
+      reversed: false,
+    });
+    setConfirmStep(0);
+    await load();
+  };
+
+  const reverseEvent = async (id: string) => {
+    if (!supabase) return;
+    if (
+      !window.confirm(
+        "Confermi lo storno di questo saldo? L'importo tornerà nel bilancio.",
+      )
+    )
+      return;
+    await supabase
+      .from("settlement_events")
+      .update({ reversed: true, reversed_at: new Date().toISOString() })
+      .eq("id", id);
     await load();
   };
 
   const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+    new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" });
 
   if (typeof document === "undefined") return null;
 
@@ -806,25 +907,20 @@ function DivisoriaModal({
       className="fixed inset-0 z-[100] flex flex-col bg-[#070b14]"
       style={{ height: "100vh", width: "100vw" }}
     >
-      {/* HEADER — fixed top */}
+      {/* HEADER */}
       <div className="flex-shrink-0 border-b border-[rgba(255,255,255,0.06)]">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
           <Scale className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold tracking-tight text-white">Divisoria</h2>
           <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={() => setShowAdd(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.06)] px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-[rgba(0,212,255,0.12)]"
-            >
-              <Plus className="h-3.5 w-3.5" /> Aggiungi
-            </button>
-            <button
-              onClick={settleAll}
-              disabled={payments.length === 0}
-              className="rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-white disabled:opacity-40"
-            >
-              Saldo
-            </button>
+            {direction && (
+              <button
+                onClick={() => setConfirmStep(1)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.08)] px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.14)]"
+              >
+                Registra saldo
+              </button>
+            )}
             <button
               onClick={onClose}
               className="rounded-lg p-1.5 text-muted-foreground transition hover:text-white"
@@ -836,74 +932,162 @@ function DivisoriaModal({
         </div>
       </div>
 
-      {/* BODY — scrollable */}
+      {/* BODY */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-5xl p-6">
-          {/* AUTO section — 3 cols */}
-          <div>
-            <div className="rounded-2xl border border-[rgba(0,212,255,0.08)] bg-[rgba(255,255,255,0.02)]">
-              <div className="grid grid-cols-1 divide-y divide-[rgba(255,255,255,0.05)] md:grid-cols-3 md:divide-x md:divide-y-0">
-                <AutoCell label="Entrate agenzia" value={entrate} />
-                <AutoCell label="Uscite totali" value={totaleUscite} />
-                <AutoCell label="Quota per socio" value={quotaPerSocio} accent />
-              </div>
+        <div className="mx-auto max-w-5xl space-y-8 p-6">
+          {/* AUTO summary — 2 partner columns */}
+          <div className="rounded-2xl border border-[rgba(0,212,255,0.08)] bg-[rgba(255,255,255,0.02)]">
+            <div className="grid grid-cols-1 divide-y divide-[rgba(255,255,255,0.06)] md:grid-cols-2 md:divide-x md:divide-y-0">
+              <PartnerSummary
+                name="PAT"
+                accent="cyan"
+                uscite={patUscite}
+                entrate={patEntrate}
+                netto={patNetto}
+              />
+              <PartnerSummary
+                name="STEFANO"
+                accent="amber"
+                uscite={stefanoUscite}
+                entrate={stefanoEntrate}
+                netto={stefanoNetto}
+              />
             </div>
-            <p className="mt-2 px-1 text-[11px] text-muted-foreground">
-              Calcolato sul periodo selezionato · Utile netto {eur(utileNetto)} ·{" "}
-              {months} {months === 1 ? "mese" : "mesi"}
-            </p>
+            <div className="border-t border-[rgba(255,255,255,0.08)] px-5 py-4">
+              <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  Bilancio corrente
+                </span>
+                {loading ? (
+                  <span className="text-sm text-muted-foreground">Caricamento…</span>
+                ) : direction ? (
+                  <div className="flex items-center gap-3 text-sm md:text-base">
+                    <span className="text-muted-foreground">{directionArrow(direction)}</span>
+                    <span className="text-2xl font-black tracking-tight text-primary md:text-3xl">
+                      {eur(amountDue)}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-sm font-semibold text-emerald-400">In pareggio ✓</span>
+                )}
+              </div>
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Calcolato sul periodo selezionato — fixed expenses considerate nei KPI principali (split 50/50).
+              </p>
+            </div>
           </div>
 
-          {/* MANUAL section — two thin columns */}
-          <div className="mt-8 grid gap-8 md:grid-cols-2">
-            <PartnerList
-              name="Pat"
-              total={patPagato}
-              payments={patPayments}
-              loading={loading}
-              fmtDate={fmtDate}
-            />
-            <PartnerList
-              name="Stefano"
-              total={stefanoPagato}
-              payments={stePayments}
-              loading={loading}
-              fmtDate={fmtDate}
-            />
-          </div>
-
-          {/* SETTLEMENT banner */}
-          <div className="mt-8">
-            {totalePagato === 0 ? (
-              <div className="rounded-xl border-l-2 border-l-[rgba(0,212,255,0.6)] bg-[rgba(0,212,255,0.04)] px-5 py-3 text-sm text-muted-foreground">
-                Nessun pagamento manuale registrato
-              </div>
-            ) : Math.abs(bilancio) < 0.01 ? (
-              <div className="flex items-center justify-between rounded-xl border-l-2 border-l-[rgba(34,197,94,0.6)] bg-[rgba(34,197,94,0.04)] px-5 py-3">
-                <span className="text-sm text-muted-foreground">In pareggio</span>
-                <span className="text-sm font-semibold text-emerald-400">✓</span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between rounded-xl border-l-2 border-l-[rgba(0,212,255,0.6)] bg-[rgba(0,212,255,0.04)] px-5 py-4">
-                <span className="text-sm text-muted-foreground">
-                  {bilancio > 0 ? "Stefano deve a Pat" : "Pat deve a Stefano"}
-                </span>
-                <span className="text-2xl font-black tracking-tight text-primary">
-                  {eur(Math.abs(bilancio))}
-                </span>
-              </div>
-            )}
+          {/* STORICO SALDI */}
+          <div>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                Storico saldi
+              </h3>
+              <span className="text-[11px] text-muted-foreground">
+                {events.length} evento{events.length === 1 ? "" : "i"}
+              </span>
+            </div>
+            <div className="rounded-2xl border border-[rgba(255,255,255,0.06)]">
+              {loading ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">Caricamento…</p>
+              ) : events.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  Nessun saldo registrato
+                </p>
+              ) : (
+                <ul className="divide-y divide-[rgba(255,255,255,0.06)]">
+                  {events.map((e) => (
+                    <li
+                      key={e.id}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 text-sm",
+                        e.reversed && "opacity-50",
+                      )}
+                    >
+                      <span className="w-24 shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {fmtDate(e.settlement_date)}
+                      </span>
+                      <span className="min-w-0 flex-1 text-white/90">
+                        {directionArrow(e.direction)}
+                      </span>
+                      <span className="shrink-0 font-semibold tabular-nums text-white">
+                        {eur(Number(e.net_amount))}
+                      </span>
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                          e.reversed
+                            ? "border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] text-muted-foreground"
+                            : "border-[rgba(52,211,153,0.32)] bg-[rgba(52,211,153,0.1)] text-emerald-300",
+                        )}
+                      >
+                        {e.reversed ? "Stornato" : "Registrato"}
+                      </span>
+                      <button
+                        onClick={() => !e.reversed && reverseEvent(e.id)}
+                        disabled={e.reversed}
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(255,255,255,0.08)] text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-[rgba(255,255,255,0.08)] disabled:hover:text-muted-foreground"
+                        aria-label="Storna saldo"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {showAdd && (
-        <AddPartnerPaymentModal
-          onClose={() => setShowAdd(false)}
-          onSaved={async () => {
-            setShowAdd(false);
-            await load();
-          }}
+      {/* CONFIRM STEP 1 */}
+      {confirmStep === 1 && direction && (
+        <ConfirmDialog
+          title="Registra saldo"
+          body={
+            <>
+              <p className="text-sm text-muted-foreground">
+                Stai per registrare un saldo tra i soci.
+              </p>
+              <div className="mt-4 rounded-xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)] p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Bilancio attuale
+                </p>
+                <p className="mt-1 text-lg font-bold text-primary">
+                  {directionLabel(direction, amountDue)}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">Data: {fmtDate(today)}</p>
+              </div>
+            </>
+          }
+          cancelLabel="Annulla"
+          confirmLabel="Continua →"
+          onCancel={() => setConfirmStep(0)}
+          onConfirm={() => setConfirmStep(2)}
+        />
+      )}
+
+      {/* CONFIRM STEP 2 */}
+      {confirmStep === 2 && direction && (
+        <ConfirmDialog
+          title="Conferma definitiva"
+          body={
+            <>
+              <p className="text-sm text-muted-foreground">
+                Questa azione è reversibile ma richiede conferma.
+              </p>
+              <div className="mt-4 rounded-xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)] p-4 text-center">
+                <p className="text-base font-bold text-white">
+                  {directionLabel(direction, amountDue)}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">in data {fmtDate(today)}</p>
+              </div>
+            </>
+          }
+          cancelLabel="Annulla"
+          confirmLabel="Conferma saldo ✓"
+          onCancel={() => setConfirmStep(0)}
+          onConfirm={confirmRegister}
         />
       )}
     </div>,
@@ -911,147 +1095,82 @@ function DivisoriaModal({
   );
 }
 
-function AutoCell({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
-  return (
-    <div className="px-5 py-5">
-      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-2 text-2xl font-black tracking-tight md:text-3xl",
-          accent ? "text-primary" : "text-white",
-        )}
-      >
-        {eur(value)}
-      </p>
-    </div>
-  );
-}
-
-function PartnerList({
+function PartnerSummary({
   name,
-  total,
-  payments,
-  loading,
-  fmtDate,
+  accent,
+  uscite,
+  entrate,
+  netto,
 }: {
   name: string;
-  total: number;
-  payments: PartnerPayment[];
-  loading: boolean;
-  fmtDate: (d: string) => string;
+  accent: "cyan" | "amber";
+  uscite: number;
+  entrate: number;
+  netto: number;
+}) {
+  const accentClass = accent === "cyan" ? "text-primary" : "text-amber-300";
+  return (
+    <div className="px-5 py-5">
+      <div className="flex items-baseline justify-between">
+        <h3 className={cn("text-sm font-bold uppercase tracking-[0.22em]", accentClass)}>
+          {name}
+        </h3>
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">socio</span>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Uscite</p>
+          <p className="mt-1 text-base font-bold text-red-400 tabular-nums">{eur(uscite)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Entrate</p>
+          <p className="mt-1 text-base font-bold text-emerald-300 tabular-nums">{eur(entrate)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Netto</p>
+          <p className={cn("mt-1 text-base font-bold tabular-nums", accentClass)}>{eur(netto)}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  title,
+  body,
+  cancelLabel,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  body: ReactNode;
+  cancelLabel: string;
+  confirmLabel: string;
+  onCancel: () => void;
+  onConfirm: () => void;
 }) {
   return (
-    <div>
-      <div className="flex items-baseline justify-between border-b border-[rgba(255,255,255,0.08)] pb-2">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-          {name}
-        </span>
-        <span className="text-sm font-semibold text-white">{eur(total)}</span>
-      </div>
-      <div className="divide-y divide-[rgba(255,255,255,0.06)]">
-        {loading ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">Caricamento…</p>
-        ) : payments.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">Nessun pagamento</p>
-        ) : (
-          payments.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 py-2.5 text-sm">
-              <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
-                {fmtDate(p.date)}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-white/90">{p.description}</span>
-              <span className="shrink-0 font-medium tabular-nums text-white">
-                {eur(Number(p.amount))}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-function AddPartnerPaymentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [paidBy, setPaidBy] = useState<Partner>("pat");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const today = new Date().toISOString().slice(0, 10);
-  const [date, setDate] = useState(today);
-  const [category, setCategory] = useState("Software");
-  const [saving, setSaving] = useState(false);
-
-  const onSave = async () => {
-    if (!supabase || !description || !amount) return;
-    setSaving(true);
-    await supabase.from("partner_payments").insert({
-      paid_by: paidBy,
-      description,
-      amount: parseFloat(amount),
-      date,
-      category,
-      settled: false,
-    });
-    setSaving(false);
-    onSaved();
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-3xl border border-[rgba(0,212,255,0.15)] bg-[#0d1117] p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-white">Aggiungi pagamento</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-white">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="mt-6 space-y-4">
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted-foreground">Pagato da</span>
-            <select value={paidBy} onChange={(e) => setPaidBy(e.target.value as Partner)} className={inputClass}>
-              <option value="pat">Pat</option>
-              <option value="stefano">Stefano</option>
-            </select>
-          </label>
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted-foreground">Descrizione</span>
-            <input value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} placeholder="Es. Abbonamento Figma" />
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Importo (€)</span>
-              <input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Data</span>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
-            </label>
-          </div>
-          <label className="block text-sm">
-            <span className="mb-1 block text-muted-foreground">Categoria</span>
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputClass}>
-              <option>Software</option>
-              <option>Marketing</option>
-              <option>Hosting</option>
-              <option>Operativo</option>
-              <option>Altro</option>
-            </select>
-          </label>
-        </div>
+        <h3 className="text-xl font-bold text-white">{title}</h3>
+        <div className="mt-4">{body}</div>
         <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-xl border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-muted-foreground hover:text-white">
-            Annulla
+          <button
+            onClick={onCancel}
+            className="rounded-xl border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-muted-foreground hover:text-white"
+          >
+            {cancelLabel}
           </button>
           <button
-            onClick={onSave}
-            disabled={saving || !description || !amount}
-            className="rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary disabled:opacity-50"
+            onClick={onConfirm}
+            className="rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary"
           >
-            {saving ? "Salvataggio…" : "Salva"}
+            {confirmLabel}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
