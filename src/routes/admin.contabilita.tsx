@@ -172,13 +172,15 @@ function ContabilitaPage() {
   const loadAll = async () => {
     if (!supabase) return;
     setLoading(true);
-    const [{ data: tx }, { data: fx }, { data: ld }] = await Promise.all([
+    const [{ data: tx }, { data: fx }, { data: ot }, { data: ld }] = await Promise.all([
       supabase.from("transactions").select("*, leads(full_name, company)").order("date", { ascending: false }),
       supabase.from("fixed_expenses").select("*").order("created_at", { ascending: false }),
+      supabase.from("one_time_expenses").select("*").order("date", { ascending: false }),
       supabase.from("leads").select("id, full_name, company").eq("pipeline_stage", "chiuso_vinto"),
     ]);
     setTransactions((tx as Transaction[]) ?? []);
     setFixedExpenses((fx as FixedExpense[]) ?? []);
+    setOneTimeExpenses((ot as OneTimeExpense[]) ?? []);
     setLeads((ld as LeadOption[]) ?? []);
     setLoading(false);
   };
