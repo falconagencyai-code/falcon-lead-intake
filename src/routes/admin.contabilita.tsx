@@ -758,19 +758,21 @@ function TransactionModal({ leads, initial, onClose, onSaved }: { leads: LeadOpt
     const payload = {
       type,
       amount: parseFloat(amount),
-      category: category || null,
+      category: category?.trim() || "Altro",
       date,
-      description: description || null,
+      description: description?.trim() || null,
       lead_id: leadId || null,
-      invoice_number: invoiceNumber || null,
+      invoice_number: invoiceNumber?.trim() || null,
       paid_by: paidBy,
     };
-    if (initial) {
-      await supabase.from("transactions").update(payload).eq("id", initial.id);
-    } else {
-      await supabase.from("transactions").insert(payload);
-    }
+    const { error } = initial
+      ? await supabase.from("transactions").update(payload).eq("id", initial.id)
+      : await supabase.from("transactions").insert(payload);
     setSaving(false);
+    if (error) {
+      alert("Errore salvataggio transazione: " + error.message);
+      return;
+    }
     onSaved();
   };
 
@@ -873,17 +875,19 @@ function FixedExpenseModal({ initial, onClose, onSaved }: { initial?: FixedExpen
       name,
       amount: parseFloat(amount),
       frequency,
-      category: category || null,
+      category: category?.trim() || "Altro",
       active,
       paid_by: paidBy,
       start_date: startDate,
     };
-    if (initial) {
-      await supabase.from("fixed_expenses").update(payload).eq("id", initial.id);
-    } else {
-      await supabase.from("fixed_expenses").insert(payload);
-    }
+    const { error } = initial
+      ? await supabase.from("fixed_expenses").update(payload).eq("id", initial.id)
+      : await supabase.from("fixed_expenses").insert(payload);
     setSaving(false);
+    if (error) {
+      alert("Errore salvataggio spesa fissa: " + error.message);
+      return;
+    }
     onSaved();
   };
 
@@ -1738,19 +1742,21 @@ function OneTimeExpenseModal({ initial, onClose, onSaved }: { initial?: OneTimeE
     if (!supabase || !amount || !date) return;
     setSaving(true);
     const payload = {
-      description: description || null,
-      category: category || null,
+      description: description?.trim() || null,
+      category: category?.trim() || "Altro",
       amount: parseFloat(amount),
       date,
       paid_by: paidBy,
-      note: note || null,
+      note: note?.trim() || null,
     };
-    if (initial) {
-      await supabase.from("one_time_expenses").update(payload).eq("id", initial.id);
-    } else {
-      await supabase.from("one_time_expenses").insert(payload);
-    }
+    const { error } = initial
+      ? await supabase.from("one_time_expenses").update(payload).eq("id", initial.id)
+      : await supabase.from("one_time_expenses").insert(payload);
     setSaving(false);
+    if (error) {
+      alert("Errore salvataggio spesa: " + error.message);
+      return;
+    }
     onSaved();
   };
 
