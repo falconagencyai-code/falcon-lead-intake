@@ -280,7 +280,13 @@ function ContabilitaPage() {
         </button>
       </header>
 
-      {showDivisoria && <DivisoriaModal onClose={() => setShowDivisoria(false)} />}
+      {showDivisoria && (
+        <DivisoriaModal
+          onClose={() => setShowDivisoria(false)}
+          periodFrom={periodFrom}
+          periodTo={periodTo}
+        />
+      )}
 
       {/* PERIOD SELECTOR */}
       <AdminCard className="p-4">
@@ -706,41 +712,81 @@ interface PartnerPayment {
   created_at?: string;
 }
 
-function DivisoriaModal({ onClose }: { onClose: () => void }) {
+function DivisoriaModal({
+  onClose,
+  periodFrom,
+  periodTo,
+}: {
+  onClose: () => void;
+  periodFrom: string;
+  periodTo: string;
+}) {
   const [payments, setPayments] = useState<PartnerPayment[]>([]);
+  const [fixed, setFixed] = useState<FixedExpense[]>([]);
+  const [txs, setTxs] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
 
   const load = async () => {
     if (!supabase) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("partner_payments")
-      .select("*")
-      .eq("settled", false)
-      .order("date", { ascending: false });
-    setPayments((data as PartnerPayment[]) ?? []);
+    const [pp, fe, tx] = await Promise.all([
+      supabase.from("partner_payments").select("*").eq("settled", false).order("date", { ascending: false }),
+      supabase.from("fixed_expenses").select("*").eq("active", true),
+      supabase
+        .from("transactions")
+        .select("*")
+        .gte("date", periodFrom)
+        .lte("date", periodTo)
+        .order("date", { ascending: false }),
+    ]);
+    setPayments((pp.data as PartnerPayment[]) ?? []);
+    setFixed((fe.data as FixedExpense[]) ?? []);
+    setTxs((tx.data as Transaction[]) ?? []);
     setLoading(false);
   };
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodFrom, periodTo]);
 
+  const months = useMemo(() => {
+    const f = new Date(periodFrom);
+    const t = new Date(periodTo);
+    if (isNaN(f.getTime()) || isNaN(t.getTime())) return 1;
+    return Math.max(1, (t.getFullYear() - f.getFullYear()) * 12 + (t.getMonth() - f.getMonth()) + 1);
+  }, [periodFrom, periodTo]);
+
+  // Auto-derived from contabilità
+  const entrate = txs.filter((t) => t.type === "entrata").reduce((s, t) => s + Number(t.amount || 0), 0);
+  const usciteTransazioni = txs.filter((t) => t.type === "uscita").reduce((s, t) => s + Number(t.amount || 0), 0);
+  const usciteFisseMese = fixed.reduce(
+    (s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)),
+    0,
+  );
+  const usciteFisse = usciteFisseMese * months;
+  const totaleUscite = usciteTransazioni + usciteFisse;
+  const utileNetto = entrate - totaleUscite;
+  const quotaPerSocio = utileNetto / 2;
+
+  // Manual partner payments
   const patPayments = payments.filter((p) => p.paid_by === "pat");
   const stePayments = payments.filter((p) => p.paid_by === "stefano");
-  const patTotal = patPayments.reduce((s, p) => s + Number(p.amount), 0);
-  const steTotal = stePayments.reduce((s, p) => s + Number(p.amount), 0);
-  const combined = patTotal + steTotal;
-  const fairShare = combined / 2;
-  const diff = Math.abs(patTotal - steTotal) / 2;
-
-  let banner: { tone: "balanced" | "owes"; debtor?: string; creditor?: string; amount?: number } = {
-    tone: "balanced",
-  };
-  if (combined === 0) banner = { tone: "balanced" };
-  else if (patTotal > steTotal) banner = { tone: "owes", debtor: "STEFANO", creditor: "PAT", amount: diff };
-  else if (steTotal > patTotal) banner = { tone: "owes", debtor: "PAT", creditor: "STEFANO", amount: diff };
+  const patPagato = patPayments.reduce((s, p) => s + Number(p.amount), 0);
+  const stefanoPagato = stePayments.reduce((s, p) => s + Number(p.amount), 0);
+  const totalePagato = patPagato + stefanoPagato;
+  const fairShare = totalePagato / 2;
+  const bilancio = patPagato - fairShare; // >0 stefano deve a pat
 
   const settleAll = async () => {
     if (!supabase || payments.length === 0) return;
@@ -749,97 +795,105 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
     await load();
   };
 
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#070b14]/95 backdrop-blur-xl">
-      <div className="mx-auto max-w-7xl p-4 md:p-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 border-b border-[rgba(255,255,255,0.08)] pb-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="rounded-2xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.08)] p-3">
-              <Scale className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-3xl font-black tracking-tight text-white md:text-4xl">Divisoria</h2>
-              <p className="text-sm text-muted-foreground">Pareggiamento spese tra soci</p>
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-[#070b14]/98 backdrop-blur-xl"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="mx-auto max-w-5xl p-4 md:p-8">
+        <div className="rounded-3xl border border-[rgba(0,212,255,0.1)] bg-[#070b14] shadow-[0_0_80px_rgba(0,0,0,0.6)]">
+          {/* HEADER — single row */}
+          <div className="flex items-center gap-4 border-b border-[rgba(255,255,255,0.06)] px-6 py-4">
+            <Scale className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold tracking-tight text-white">Divisoria</h2>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => setShowAdd(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.06)] px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-[rgba(0,212,255,0.12)]"
+              >
+                <Plus className="h-3.5 w-3.5" /> Aggiungi
+              </button>
+              <button
+                onClick={settleAll}
+                disabled={payments.length === 0}
+                className="rounded-lg border border-[rgba(255,255,255,0.08)] px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:text-white disabled:opacity-40"
+              >
+                Saldo
+              </button>
+              <button
+                onClick={onClose}
+                className="rounded-lg p-1.5 text-muted-foreground transition hover:text-white"
+                aria-label="Chiudi"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setShowAdd(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.3)] bg-[rgba(0,212,255,0.12)] px-4 py-2 text-sm font-semibold text-primary"
-            >
-              <Plus className="h-4 w-4" /> Aggiungi pagamento
-            </button>
-            <button
-              onClick={settleAll}
-              disabled={payments.length === 0}
-              className="rounded-xl border border-[rgba(34,197,94,0.3)] bg-[rgba(34,197,94,0.08)] px-4 py-2 text-sm font-semibold text-emerald-400 disabled:opacity-50"
-            >
-              Segna tutto come saldato
-            </button>
-            <button
-              onClick={onClose}
-              className="rounded-xl border border-[rgba(255,255,255,0.12)] p-2 text-muted-foreground hover:text-white"
-              aria-label="Chiudi"
-            >
-              <X className="h-5 w-5" />
-            </button>
+
+          {/* AUTO section — 3 cols */}
+          <div className="px-6 pt-6">
+            <div className="rounded-2xl border border-[rgba(0,212,255,0.08)] bg-[rgba(255,255,255,0.02)]">
+              <div className="grid grid-cols-1 divide-y divide-[rgba(255,255,255,0.05)] md:grid-cols-3 md:divide-x md:divide-y-0">
+                <AutoCell label="Entrate agenzia" value={entrate} />
+                <AutoCell label="Uscite totali" value={totaleUscite} />
+                <AutoCell
+                  label="Quota per socio"
+                  value={quotaPerSocio}
+                  accent
+                />
+              </div>
+            </div>
+            <p className="mt-2 px-1 text-[11px] text-muted-foreground">
+              Calcolato sul periodo selezionato · Utile netto {eur(utileNetto)} ·{" "}
+              {months} {months === 1 ? "mese" : "mesi"}
+            </p>
           </div>
-        </div>
 
-        {/* Two columns */}
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <PartnerColumn
-            name="PAT"
-            total={patTotal}
-            payments={patPayments}
-            accent="cyan"
-            loading={loading}
-          />
-          <PartnerColumn
-            name="STEFANO"
-            total={steTotal}
-            payments={stePayments}
-            accent="amber"
-            loading={loading}
-          />
-        </div>
+          {/* MANUAL section — two thin columns */}
+          <div className="grid gap-8 px-6 pt-8 md:grid-cols-2">
+            <PartnerList
+              name="Pat"
+              total={patPagato}
+              payments={patPayments}
+              loading={loading}
+              fmtDate={fmtDate}
+            />
+            <PartnerList
+              name="Stefano"
+              total={stefanoPagato}
+              payments={stePayments}
+              loading={loading}
+              fmtDate={fmtDate}
+            />
+          </div>
 
-        {/* Settlement banner */}
-        <div className="mt-8">
-          {banner.tone === "balanced" ? (
-            <div className="rounded-3xl border border-[rgba(34,197,94,0.35)] bg-[rgba(34,197,94,0.08)] p-8 text-center shadow-[0_0_60px_rgba(34,197,94,0.15)]">
-              <p className="text-xs uppercase tracking-[0.3em] text-emerald-400/80">Stato</p>
-              <p className="mt-3 text-4xl font-black tracking-tight text-emerald-400 md:text-5xl">
-                IN PAREGGIO ✓
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Totale combinato: <span className="font-semibold text-white">{eur(combined)}</span> · Quota equa: {eur(fairShare)}
-              </p>
-            </div>
-          ) : (
-            <div
-              className={cn(
-                "rounded-3xl border p-8 text-center",
-                banner.debtor === "PAT"
-                  ? "border-[rgba(251,191,36,0.4)] bg-[rgba(251,191,36,0.08)] shadow-[0_0_60px_rgba(251,191,36,0.18)]"
-                  : "border-[rgba(0,212,255,0.4)] bg-[rgba(0,212,255,0.08)] shadow-[0_0_60px_rgba(0,212,255,0.18)]",
-              )}
-            >
-              <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Saldo da regolare</p>
-              <p className="mt-4 text-2xl font-bold text-white md:text-3xl">
-                <span className={banner.debtor === "PAT" ? "text-amber-400" : "text-primary"}>{banner.debtor}</span>{" "}
-                deve a{" "}
-                <span className={banner.creditor === "PAT" ? "text-primary" : "text-amber-400"}>{banner.creditor}</span>
-              </p>
-              <p className="mt-4 text-6xl font-black tracking-tight text-white md:text-7xl">
-                {eur(banner.amount ?? 0)}
-              </p>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Totale combinato {eur(combined)} · Quota equa {eur(fairShare)}
-              </p>
-            </div>
-          )}
+          {/* SETTLEMENT banner */}
+          <div className="px-6 py-6">
+            {totalePagato === 0 ? (
+              <div className="rounded-xl border-l-2 border-l-[rgba(0,212,255,0.6)] bg-[rgba(0,212,255,0.04)] px-5 py-3 text-sm text-muted-foreground">
+                Nessun pagamento manuale registrato
+              </div>
+            ) : Math.abs(bilancio) < 0.01 ? (
+              <div className="flex items-center justify-between rounded-xl border-l-2 border-l-[rgba(34,197,94,0.6)] bg-[rgba(34,197,94,0.04)] px-5 py-3">
+                <span className="text-sm text-muted-foreground">In pareggio</span>
+                <span className="text-sm font-semibold text-emerald-400">✓</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between rounded-xl border-l-2 border-l-[rgba(0,212,255,0.6)] bg-[rgba(0,212,255,0.04)] px-5 py-4">
+                <span className="text-sm text-muted-foreground">
+                  {bilancio > 0 ? "Stefano deve a Pat" : "Pat deve a Stefano"}
+                </span>
+                <span className="text-2xl font-black tracking-tight text-primary">
+                  {eur(Math.abs(bilancio))}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -856,63 +910,63 @@ function DivisoriaModal({ onClose }: { onClose: () => void }) {
   );
 }
 
-function PartnerColumn({
+function AutoCell({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+  return (
+    <div className="px-5 py-5">
+      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-2 text-2xl font-black tracking-tight md:text-3xl",
+          accent ? "text-primary" : "text-white",
+        )}
+      >
+        {eur(value)}
+      </p>
+    </div>
+  );
+}
+
+function PartnerList({
   name,
   total,
   payments,
-  accent,
   loading,
+  fmtDate,
 }: {
   name: string;
   total: number;
   payments: PartnerPayment[];
-  accent: "cyan" | "amber";
   loading: boolean;
+  fmtDate: (d: string) => string;
 }) {
-  const isCyan = accent === "cyan";
-  const border = isCyan ? "border-[rgba(0,212,255,0.3)]" : "border-[rgba(251,191,36,0.3)]";
-  const glow = isCyan
-    ? "shadow-[0_0_40px_rgba(0,212,255,0.12)]"
-    : "shadow-[0_0_40px_rgba(251,191,36,0.12)]";
-  const text = isCyan ? "text-primary" : "text-amber-400";
-  const chipBg = isCyan ? "bg-[rgba(0,212,255,0.08)]" : "bg-[rgba(251,191,36,0.08)]";
-
   return (
-    <div className={cn("rounded-3xl border bg-[rgba(255,255,255,0.02)] p-6", border, glow)}>
-      <div className={cn("flex items-center justify-between rounded-2xl px-4 py-3", chipBg)}>
-        <h3 className={cn("text-2xl font-black tracking-tight md:text-3xl", text)}>{name}</h3>
-        <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-          {payments.length} pagamenti
+    <div>
+      <div className="flex items-baseline justify-between border-b border-[rgba(255,255,255,0.08)] pb-2">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+          {name}
         </span>
+        <span className="text-sm font-semibold text-white">{eur(total)}</span>
       </div>
-
-      <div className="mt-5 space-y-2">
+      <div className="divide-y divide-[rgba(255,255,255,0.06)]">
         {loading ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Caricamento…</p>
+          <p className="py-6 text-center text-xs text-muted-foreground">Caricamento…</p>
         ) : payments.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">Nessun pagamento</p>
+          <p className="py-6 text-center text-xs text-muted-foreground">Nessun pagamento</p>
         ) : (
           payments.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-3 py-2.5 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-white">{p.description}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {new Date(p.date).toLocaleDateString("it-IT")}
-                  {p.category && <> · {p.category}</>}
-                </p>
-              </div>
-              <span className={cn("whitespace-nowrap font-bold", text)}>{eur(Number(p.amount))}</span>
+            <div key={p.id} className="flex items-center gap-3 py-2.5 text-sm">
+              <span className="w-10 shrink-0 text-xs tabular-nums text-muted-foreground">
+                {fmtDate(p.date)}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-white/90">{p.description}</span>
+              <span className="shrink-0 font-medium tabular-nums text-white">
+                {eur(Number(p.amount))}
+              </span>
             </div>
           ))
         )}
-      </div>
-
-      <div className={cn("mt-5 flex items-center justify-between rounded-2xl border px-4 py-3", border, chipBg)}>
-        <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Totale pagato</span>
-        <span className={cn("text-2xl font-black tracking-tight", text)}>{eur(total)}</span>
       </div>
     </div>
   );
