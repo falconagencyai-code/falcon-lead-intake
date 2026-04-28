@@ -5,6 +5,7 @@ import {
   Percent,
   Plus,
   Scale,
+  Pencil,
   Trash2,
   TrendingDown,
   TrendingUp,
