@@ -429,39 +429,39 @@ function ContabilitaPage() {
           </button>
         </div>
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               <tr className="border-b border-[rgba(0,212,255,0.1)]">
-                <th className="py-4">Nome</th>
-                <th>Categoria</th>
-                <th className="text-right">Importo</th>
-                <th>Frequenza</th>
-                <th className="text-right">Quota mensile</th>
-                <th className="text-right">Per partner (÷2)</th>
-                <th>Gestito da</th>
-                <th>Stato</th>
-                <th className="text-right">Azioni</th>
+                <th className="w-[180px] whitespace-nowrap px-4 py-3">Nome</th>
+                <th className="w-[120px] whitespace-nowrap px-4 py-3">Categoria</th>
+                <th className="w-[100px] whitespace-nowrap px-4 py-3 text-right">Importo</th>
+                <th className="w-[100px] whitespace-nowrap px-4 py-3">Frequenza</th>
+                <th className="w-[120px] whitespace-nowrap px-4 py-3 text-right">Quota mensile</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3 text-right">Per partner (÷2)</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3">Gestito da</th>
+                <th className="w-[90px] whitespace-nowrap px-4 py-3">Stato</th>
+                <th className="w-[80px] whitespace-nowrap px-4 py-3 text-right">Azioni</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && fixedExpenses.length === 0 && (
-                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Nessuna spesa fissa</td></tr>
               )}
               {fixedExpenses.map((fx) => {
                 const monthly = fx.frequency === "annuale" ? Number(fx.amount) / 12 : Number(fx.amount);
                 const fxPaidBy = (fx.paid_by as Partner | null | undefined) ?? null;
                 return (
                   <tr key={fx.id} className="group border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
-                    <td className="py-4 font-medium">{fx.name}</td>
-                    <td className="text-muted-foreground">{fx.category ?? "—"}</td>
-                    <td className="text-right">{eur(Number(fx.amount))}</td>
-                    <td className="text-muted-foreground capitalize">{fx.frequency}</td>
-                    <td className="text-right font-semibold text-primary">{eur(monthly)}</td>
-                    <td className="text-right text-muted-foreground">{eur(monthly / 2)}</td>
-                    <td>
+                    <td className="px-4 py-3 font-medium">{fx.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{fx.category ?? "—"}</td>
+                    <td className="px-4 py-3 text-right">{eur(Number(fx.amount))}</td>
+                    <td className="px-4 py-3 text-muted-foreground capitalize">{fx.frequency}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-primary">{eur(monthly)}</td>
+                    <td className="px-4 py-3 text-right text-muted-foreground">{eur(monthly / 2)}</td>
+                    <td className="px-4 py-3">
                       {fxPaidBy ? (
                         <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", partnerBadgeClass[fxPaidBy])}>
                           {partnerLabel[fxPaidBy]}
@@ -470,7 +470,7 @@ function ContabilitaPage() {
                         <span className="text-muted-foreground text-xs">—</span>
                       )}
                     </td>
-                    <td>
+                    <td className="px-4 py-3">
                       <span className={cn(
                         "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
                         fx.active
@@ -480,7 +480,7 @@ function ContabilitaPage() {
                         {fx.active ? "Attivo" : "Inattivo"}
                       </span>
                     </td>
-                    <td className="text-right">
+                    <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-1.5 opacity-0 transition group-hover:opacity-100">
                         <button onClick={() => setEditingFx(fx)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
                           <Pencil className="h-4 w-4" />
@@ -497,10 +497,10 @@ function ContabilitaPage() {
             {fixedExpenses.length > 0 && (
               <tfoot>
                 <tr className="border-t-2 border-[rgba(0,212,255,0.2)] text-sm font-bold text-foreground">
-                  <td colSpan={4} className="py-4 text-right">Totale mensile complessivo:</td>
-                  <td className="text-right text-primary">{eur(totFissoMese)}</td>
-                  <td className="text-right text-primary">{eur(totFissoMese / 2)}</td>
-                  <td colSpan={3}></td>
+                  <td colSpan={4} className="px-4 py-3 text-right">Totale mensile complessivo:</td>
+                  <td className="px-4 py-3 text-right text-primary">{eur(totFissoMese)}</td>
+                  <td className="px-4 py-3 text-right text-primary">{eur(totFissoMese / 2)}</td>
+                  <td colSpan={3} className="px-4 py-3"></td>
                 </tr>
               </tfoot>
             )}
