@@ -78,7 +78,7 @@ function ImagePlaceholder({
 function ServiceVisual({ imageUrl, animation }: { imageUrl: string; animation: ReactNode }) {
   const [phase, setPhase] = useState<"image" | "anim">("image");
   useEffect(() => {
-    const t = setTimeout(() => setPhase((p) => (p === "image" ? "anim" : "image")), phase === "image" ? 3000 : 4000);
+    const t = setTimeout(() => setPhase((p) => (p === "image" ? "anim" : "image")), phase === "image" ? 5500 : 7000);
     return () => clearTimeout(t);
   }, [phase]);
   return (
