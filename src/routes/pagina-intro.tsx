@@ -119,7 +119,6 @@ function ServiceBlock({
   imageUrl,
   animation,
   reverse = false,
-  fromDirection = "left",
 }: {
   badge: string;
   title: string;
@@ -127,32 +126,45 @@ function ServiceBlock({
   imageUrl: string;
   animation: ReactNode;
   reverse?: boolean;
-  fromDirection?: "left" | "right";
 }) {
-  const x = fromDirection === "left" ? -50 : 50;
   return (
-    <motion.div
-      initial={{ opacity: 0, x }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true }}
-      transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+    <div
+      className={`grid md:grid-cols-2 gap-8 items-center rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 md:p-10 ${reverse ? "md:[&>*:first-child]:order-2" : ""}`}
     >
-      <div
-        className={`grid md:grid-cols-2 gap-8 items-center rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 md:p-10 ${reverse ? "md:[&>*:first-child]:order-2" : ""}`}
-      >
-        <div>
-          <span
-            className="inline-block rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.2em]"
-            style={{ background: "rgba(34,211,238,0.12)", color: ACCENT, border: "1px solid rgba(34,211,238,0.3)" }}
-          >
-            {badge}
-          </span>
-          <h3 className="mt-4 text-2xl md:text-3xl font-bold text-white leading-tight">{title}</h3>
-          <p className="mt-4 text-zinc-300 leading-relaxed">{text}</p>
-        </div>
-        <ServiceVisual imageUrl={imageUrl} animation={animation} />
+      <div>
+        <span
+          className="inline-block rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.2em]"
+          style={{ background: "rgba(34,211,238,0.12)", color: ACCENT, border: "1px solid rgba(34,211,238,0.3)" }}
+        >
+          {badge}
+        </span>
+        <h3 className="mt-4 text-2xl md:text-3xl font-bold text-white leading-tight">{title}</h3>
+        <p className="mt-4 text-zinc-300 leading-relaxed">{text}</p>
       </div>
-    </motion.div>
+      <ServiceVisual imageUrl={imageUrl} animation={animation} />
+    </div>
+  );
+}
+
+function ScrollRevealBlock({
+  children,
+  direction,
+}: {
+  children: ReactNode;
+  direction: "left" | "right";
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start 0.92", "start 0.18"],
+  });
+  const xStart = direction === "left" ? -90 : 90;
+  const x = useTransform(scrollYProgress, [0, 0.7], [xStart, 0]);
+  const opacity = useTransform(scrollYProgress, [0, 0.55], [0, 1]);
+  return (
+    <div ref={ref}>
+      <motion.div style={{ x, opacity }}>{children}</motion.div>
+    </div>
   );
 }
 
@@ -601,31 +613,36 @@ function PaginaIntro() {
               </h2>
             </Reveal>
 
-            <ServiceBlock
-              badge="SITI WEB"
-              title="La tua presenza online, curata nei dettagli."
-              text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi — e rispecchia esattamente chi sei."
-              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
-              animation={<BrowserTypewriter />}
-            />
+            <ScrollRevealBlock direction="left">
+              <ServiceBlock
+                badge="SITI WEB"
+                title="La tua presenza online, curata nei dettagli."
+                text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi — e rispecchia esattamente chi sei."
+                imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
+                animation={<BrowserTypewriter />}
+              />
+            </ScrollRevealBlock>
 
-            <ServiceBlock
-              badge="GESTIONALE AI"
-              title="Gestisci tutto da un unico pannello."
-              text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività — non un software generico che devi adattare a te."
-              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
-              animation={<DashboardAnim />}
-              reverse
-              fromDirection="right"
-            />
+            <ScrollRevealBlock direction="right">
+              <ServiceBlock
+                badge="GESTIONALE AI"
+                title="Gestisci tutto da un unico pannello."
+                text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività — non un software generico che devi adattare a te."
+                imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
+                animation={<DashboardAnim />}
+                reverse
+              />
+            </ScrollRevealBlock>
 
-            <ServiceBlock
-              badge="AUTOMAZIONI AI"
-              title="Il tuo business lavora anche quando tu non puoi."
-              text="Risposte automatiche, conferme appuntamento, notifiche, follow-up. L'AI gestisce la comunicazione, tu gestisci il business."
-              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/81ae04c1b141e95da9dc73575c11e785-1777472375825.png"
-              animation={<ChatAnim />}
-            />
+            <ScrollRevealBlock direction="left">
+              <ServiceBlock
+                badge="AUTOMAZIONI AI"
+                title="Il tuo business lavora anche quando tu non puoi."
+                text="Risposte automatiche, conferme appuntamento, notifiche, follow-up. L'AI gestisce la comunicazione, tu gestisci il business."
+                imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/81ae04c1b141e95da9dc73575c11e785-1777472375825.png"
+                animation={<ChatAnim />}
+              />
+            </ScrollRevealBlock>
           </div>
         </section>
 
