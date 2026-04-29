@@ -98,7 +98,7 @@ function ServiceVisual({ imageUrl, animation }: { imageUrl: string; animation: R
         ) : (
           <motion.div
             key="anim"
-            className="absolute inset-0 w-full h-full"
+            className="absolute inset-0 w-full h-full flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
