@@ -156,13 +156,17 @@ function FormPage() {
 
       {/* Top bar */}
       <header className="relative z-10 px-6 py-5 max-w-7xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white"
-            style={{ background: "var(--gradient-cyan)", boxShadow: "0 0 16px rgba(0,212,255,0.35)" }}
-          >
-            F
-          </div>
+        <div className="flex items-center gap-2">
+          <img
+            src="https://tpzpydnvcbcdkuthyweh.supabase.co/storage/v1/object/public/assets/falcon-wings-closed.png"
+            alt="Falcon"
+            style={{
+              width: "36px",
+              height: "36px",
+              objectFit: "contain",
+              filter: "drop-shadow(0 0 6px rgba(0,212,255,0.5))",
+            }}
+          />
           <span className="font-semibold tracking-wide text-white">Falcon Agency</span>
         </div>
         <StepDots step={Math.min(step, 5)} />
