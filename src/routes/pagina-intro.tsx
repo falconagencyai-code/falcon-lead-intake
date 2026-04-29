@@ -78,7 +78,7 @@ function ImagePlaceholder({
 function ServiceVisual({ imageUrl, animation }: { imageUrl: string; animation: ReactNode }) {
   const [phase, setPhase] = useState<"image" | "anim">("image");
   useEffect(() => {
-    const t = setTimeout(() => setPhase((p) => (p === "image" ? "anim" : "image")), phase === "image" ? 3000 : 4000);
+    const t = setTimeout(() => setPhase((p) => (p === "image" ? "anim" : "image")), phase === "image" ? 5500 : 7000);
     return () => clearTimeout(t);
   }, [phase]);
   return (
@@ -98,7 +98,7 @@ function ServiceVisual({ imageUrl, animation }: { imageUrl: string; animation: R
         ) : (
           <motion.div
             key="anim"
-            className="absolute inset-0 w-full h-full"
+            className="absolute inset-0 w-full h-full flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -119,6 +119,7 @@ function ServiceBlock({
   imageUrl,
   animation,
   reverse = false,
+  fromDirection = "left",
 }: {
   badge: string;
   title: string;
@@ -126,9 +127,16 @@ function ServiceBlock({
   imageUrl: string;
   animation: ReactNode;
   reverse?: boolean;
+  fromDirection?: "left" | "right";
 }) {
+  const x = fromDirection === "left" ? -50 : 50;
   return (
-    <Reveal>
+    <motion.div
+      initial={{ opacity: 0, x }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div
         className={`grid md:grid-cols-2 gap-8 items-center rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 md:p-10 ${reverse ? "md:[&>*:first-child]:order-2" : ""}`}
       >
@@ -144,7 +152,7 @@ function ServiceBlock({
         </div>
         <ServiceVisual imageUrl={imageUrl} animation={animation} />
       </div>
-    </Reveal>
+    </motion.div>
   );
 }
 
@@ -260,9 +268,9 @@ function DashboardAnim() {
 function ChatAnim() {
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const delays = [800, 1200, 1400, 1200, 1400, 1500];
+    const delays = [1200, 2200, 2500, 2000, 2800, 2200];
     if (step >= 6) {
-      const t = setTimeout(() => setStep(0), 1800);
+      const t = setTimeout(() => setStep(0), 4000);
       return () => clearTimeout(t);
     }
     const t = setTimeout(() => setStep(step + 1), delays[step]);
@@ -528,6 +536,7 @@ function PaginaIntro() {
               imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
               animation={<DashboardAnim />}
               reverse
+              fromDirection="right"
             />
 
             <ServiceBlock
