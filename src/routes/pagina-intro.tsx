@@ -518,46 +518,37 @@ function ProblemTimeline() {
 }
 
 function PaginaIntro() {
-  useEffect(() => {
-    const prev = document.documentElement.style.scrollBehavior;
-    document.documentElement.style.scrollBehavior = "smooth";
-    return () => {
-      document.documentElement.style.scrollBehavior = prev;
-    };
-  }, []);
-
   return (
     <div
       className="relative min-h-screen overflow-hidden"
       style={{ background: "#070b14" }}
     >
-      {/* Ambient blobs — cyan only, fixed so persistono allo scroll */}
-      <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
+      {/* Ambient blobs — cyan only, fixed so persistono allo scroll. GPU-promoted to avoid recompositing on scroll. */}
+      <div
+        aria-hidden
+        className="fixed inset-0 pointer-events-none z-0"
+        style={{ transform: "translateZ(0)", willChange: "transform" }}
+      >
         <div
-          className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full blur-3xl"
+          className="absolute -top-40 -left-40 w-[480px] h-[480px] rounded-full blur-3xl"
           style={{ background: "rgba(34,211,238,0.18)" }}
         />
         <div
-          className="absolute top-1/3 -right-40 w-[500px] h-[500px] rounded-full blur-3xl"
-          style={{ background: "rgba(34,211,238,0.10)" }}
-        />
-        <div
-          className="absolute -bottom-40 left-1/4 w-[700px] h-[700px] rounded-full blur-3xl"
+          className="absolute -bottom-40 left-1/4 w-[520px] h-[520px] rounded-full blur-3xl"
           style={{ background: "rgba(34,211,238,0.14)" }}
         />
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full blur-3xl"
-          style={{ background: "rgba(34,211,238,0.06)" }}
-        />
       </div>
-      <div className="fixed inset-0 circuit-bg pointer-events-none z-0" />
+      <div
+        className="fixed inset-0 circuit-bg pointer-events-none z-0"
+        style={{ transform: "translateZ(0)", willChange: "transform" }}
+      />
 
       {/* NAVBAR */}
       <header
-        className="sticky top-0 z-50 border-b backdrop-blur"
+        className="sticky top-0 z-50 border-b"
         style={{
           borderColor: "rgba(255,255,255,0.06)",
-          background: "rgba(7,11,20,0.7)",
+          background: "rgba(7,11,20,0.88)",
         }}
       >
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-6">
@@ -569,7 +560,6 @@ function PaginaIntro() {
                 width: "36px",
                 height: "36px",
                 objectFit: "contain",
-                filter: "drop-shadow(0 0 8px rgba(0,212,255,0.6)) drop-shadow(0 0 3px rgba(0,212,255,0.4))",
               }}
             />
             <span
