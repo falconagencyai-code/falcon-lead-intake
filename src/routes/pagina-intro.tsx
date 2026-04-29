@@ -122,7 +122,7 @@ function ServiceBlock({
 }: {
   badge: string;
   title: string;
-  text: string;
+  text: ReactNode;
   imageUrl: string;
   animation: ReactNode;
   reverse?: boolean;
