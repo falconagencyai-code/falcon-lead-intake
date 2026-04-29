@@ -681,7 +681,7 @@ function PaginaIntro() {
               <ServiceBlock
                 badge="GESTIONALE AI"
                 title="Gestisci tutto da un unico pannello."
-                text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività — non un software generico che devi adattare a te."
+                text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività, non un software generico da adattare a te."
                 imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
                 animation={<DashboardAnim />}
                 reverse
