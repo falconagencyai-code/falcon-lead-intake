@@ -158,11 +158,11 @@ function ScrollRevealBlock({
     target: ref,
     offset: ["start 0.92", "start 0.18"],
   });
-  const xStart = direction === "left" ? -90 : 90;
+  const xStart = direction === "left" ? -350 : 350;
   const x = useTransform(scrollYProgress, [0, 0.7], [xStart, 0]);
-  const opacity = useTransform(scrollYProgress, [0, 0.55], [0, 1]);
+  const opacity = useTransform(scrollYProgress, [0, 0.4], [0, 1]);
   return (
-    <div ref={ref}>
+    <div ref={ref} style={{ overflow: "hidden" }}>
       <motion.div style={{ x, opacity }}>{children}</motion.div>
     </div>
   );
