@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PaginaIntroRouteImport } from './routes/pagina-intro'
 import { Route as FormContatto1RouteImport } from './routes/form-contatto-1'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -26,6 +27,11 @@ import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAiMonitorRouteImport } from './routes/admin.ai-monitor'
 import { Route as AdminAdsRouteImport } from './routes/admin.ads'
 
+const PaginaIntroRoute = PaginaIntroRouteImport.update({
+  id: '/pagina-intro',
+  path: '/pagina-intro',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FormContatto1Route = FormContatto1RouteImport.update({
   id: '/form-contatto-1',
   path: '/form-contatto-1',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/pagina-intro': typeof PaginaIntroRoute
   '/admin/ads': typeof AdminAdsRoute
   '/admin/ai-monitor': typeof AdminAiMonitorRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/pagina-intro': typeof PaginaIntroRoute
   '/admin/ads': typeof AdminAdsRoute
   '/admin/ai-monitor': typeof AdminAiMonitorRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/form-contatto-1': typeof FormContatto1Route
+  '/pagina-intro': typeof PaginaIntroRoute
   '/admin/ads': typeof AdminAdsRoute
   '/admin/ai-monitor': typeof AdminAiMonitorRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/form-contatto-1'
+    | '/pagina-intro'
     | '/admin/ads'
     | '/admin/ai-monitor'
     | '/admin/analytics'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/form-contatto-1'
+    | '/pagina-intro'
     | '/admin/ads'
     | '/admin/ai-monitor'
     | '/admin/analytics'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/form-contatto-1'
+    | '/pagina-intro'
     | '/admin/ads'
     | '/admin/ai-monitor'
     | '/admin/analytics'
@@ -223,10 +235,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   FormContatto1Route: typeof FormContatto1Route
+  PaginaIntroRoute: typeof PaginaIntroRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/pagina-intro': {
+      id: '/pagina-intro'
+      path: '/pagina-intro'
+      fullPath: '/pagina-intro'
+      preLoaderRoute: typeof PaginaIntroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/form-contatto-1': {
       id: '/form-contatto-1'
       path: '/form-contatto-1'
@@ -380,16 +400,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   FormContatto1Route: FormContatto1Route,
+  PaginaIntroRoute: PaginaIntroRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
