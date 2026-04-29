@@ -541,7 +541,7 @@ function PaginaIntro() {
         </section>
 
         {/* BLOCCO 4 — PROVA VISIVA */}
-        <section className="mt-28 space-y-6">
+        <section className="mt-28 space-y-6 text-center">
           <Reveal>
             <h2
               className="text-3xl font-bold"
