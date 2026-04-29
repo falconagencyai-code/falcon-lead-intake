@@ -260,9 +260,9 @@ function DashboardAnim() {
 function ChatAnim() {
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const delays = [800, 1200, 1400, 1200, 1400, 1500];
+    const delays = [1200, 2200, 2500, 2000, 2800, 2200];
     if (step >= 6) {
-      const t = setTimeout(() => setStep(0), 1800);
+      const t = setTimeout(() => setStep(0), 4000);
       return () => clearTimeout(t);
     }
     const t = setTimeout(() => setStep(step + 1), delays[step]);
