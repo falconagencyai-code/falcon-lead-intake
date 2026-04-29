@@ -603,7 +603,7 @@ function PaginaIntro() {
 
         {/* BLOCCO 3 — SERVIZI */}
         <section className="mt-28 -mx-6 md:-mx-[calc((min(64rem,100vw)-42rem)/2)]">
-          <div className="mx-auto max-w-5xl px-6 space-y-12">
+          <div className="mx-auto max-w-5xl px-6 space-y-12 overflow-hidden">
             <Reveal>
               <h2
                 className="text-3xl font-bold text-center"
