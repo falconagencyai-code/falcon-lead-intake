@@ -369,11 +369,13 @@ function ChatAnim() {
   );
 }
 
-const PROBLEMS = [
-  "Processi manuali che rubano tempo",
-  "Nessun sistema per clienti e appuntamenti",
-  "Sito web vecchio o assente",
-  "I competitor ti stanno superando",
+const STRONG_STYLE: React.CSSProperties = { color: "white", fontWeight: 600 };
+
+const PROBLEMS: ReactNode[] = [
+  <><strong style={STRONG_STYLE}>Processi manuali</strong> che rubano tempo</>,
+  <>Nessun sistema per <strong style={STRONG_STYLE}>clienti e appuntamenti</strong></>,
+  <><strong style={STRONG_STYLE}>Sito web vecchio</strong> o assente</>,
+  <>I <strong style={STRONG_STYLE}>competitor ti stanno superando</strong></>,
 ];
 
 const PATH_D =
