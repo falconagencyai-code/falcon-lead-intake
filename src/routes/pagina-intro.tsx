@@ -613,31 +613,36 @@ function PaginaIntro() {
               </h2>
             </Reveal>
 
-            <ServiceBlock
-              badge="SITI WEB"
-              title="La tua presenza online, curata nei dettagli."
-              text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi — e rispecchia esattamente chi sei."
-              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
-              animation={<BrowserTypewriter />}
-            />
+            <ScrollRevealBlock direction="left">
+              <ServiceBlock
+                badge="SITI WEB"
+                title="La tua presenza online, curata nei dettagli."
+                text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi — e rispecchia esattamente chi sei."
+                imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
+                animation={<BrowserTypewriter />}
+              />
+            </ScrollRevealBlock>
 
-            <ServiceBlock
-              badge="GESTIONALE AI"
-              title="Gestisci tutto da un unico pannello."
-              text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività — non un software generico che devi adattare a te."
-              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
-              animation={<DashboardAnim />}
-              reverse
-              fromDirection="right"
-            />
+            <ScrollRevealBlock direction="right">
+              <ServiceBlock
+                badge="GESTIONALE AI"
+                title="Gestisci tutto da un unico pannello."
+                text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività — non un software generico che devi adattare a te."
+                imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
+                animation={<DashboardAnim />}
+                reverse
+              />
+            </ScrollRevealBlock>
 
-            <ServiceBlock
-              badge="AUTOMAZIONI AI"
-              title="Il tuo business lavora anche quando tu non puoi."
-              text="Risposte automatiche, conferme appuntamento, notifiche, follow-up. L'AI gestisce la comunicazione, tu gestisci il business."
-              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/81ae04c1b141e95da9dc73575c11e785-1777472375825.png"
-              animation={<ChatAnim />}
-            />
+            <ScrollRevealBlock direction="left">
+              <ServiceBlock
+                badge="AUTOMAZIONI AI"
+                title="Il tuo business lavora anche quando tu non puoi."
+                text="Risposte automatiche, conferme appuntamento, notifiche, follow-up. L'AI gestisce la comunicazione, tu gestisci il business."
+                imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/81ae04c1b141e95da9dc73575c11e785-1777472375825.png"
+                animation={<ChatAnim />}
+              />
+            </ScrollRevealBlock>
           </div>
         </section>
 
