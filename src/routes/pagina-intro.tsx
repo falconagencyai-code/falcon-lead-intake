@@ -646,52 +646,6 @@ function PaginaIntro() {
           </div>
         </section>
 
-        {/* BLOCCO 4 — PROVA VISIVA */}
-        <section className="mt-28 space-y-6 text-center">
-          <Reveal>
-            <h2
-              className="text-3xl font-bold"
-              style={{ textShadow: "0 0 24px rgba(34,211,238,0.2)" }}
-            >
-              Ecco come appare nella realtà.
-            </h2>
-          </Reveal>
-          <Reveal delay={0.05}>
-            <p className="text-lg leading-relaxed" style={{ color: "#a8b5d1" }}>
-              Non mockup, non demo. Screenshot reali di ciò che consegniamo ai nostri clienti.
-            </p>
-          </Reveal>
-
-          <Reveal delay={0.1}>
-            <img
-              src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
-              alt="Gestionale prenotazioni"
-              className="w-full object-cover"
-              style={{ borderRadius: "12px" }}
-            />
-            <p className="mt-3 text-center text-sm" style={{ color: "#6677aa" }}>
-              Gestionale prenotazioni — consegnato in 5 giorni
-            </p>
-          </Reveal>
-
-          <Reveal delay={0.15}>
-            <div className="mt-8">
-              <img
-                src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/81ae04c1b141e95da9dc73575c11e785-1777472375825.png"
-                alt="Sito web con integrazione booking"
-                className="w-full object-cover"
-                style={{ borderRadius: "12px" }}
-              />
-              <p
-                className="mt-3 text-center text-sm"
-                style={{ color: "#6677aa" }}
-              >
-                Sito web con integrazione booking — da zero a online in 72 ore
-              </p>
-            </div>
-          </Reveal>
-        </section>
-
         {/* BLOCCO 5 — CTA INTERMEDIO */}
         <section className="mt-28">
           <Reveal>
