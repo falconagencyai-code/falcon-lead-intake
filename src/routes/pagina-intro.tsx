@@ -444,7 +444,7 @@ function ProblemLabel({
         transform: "translateY(-50%)",
         opacity,
         y: yShift,
-        color: "#a8b5d1",
+        color: "#c9d6ea",
         fontSize: "13px",
         lineHeight: 1.4,
         maxWidth: "130px",
@@ -604,7 +604,7 @@ function PaginaIntro() {
           <Reveal delay={0.15}>
             <p
               className="mx-auto mt-6 max-w-xl text-lg leading-relaxed"
-              style={{ color: "#8a9bbf" }}
+              style={{ color: "#b8c8e0" }}
             >
               <strong style={STRONG_STYLE}>Siti web</strong>, <strong style={STRONG_STYLE}>gestionali su misura</strong> e <strong style={STRONG_STYLE}>automazioni intelligenti</strong>.
               Per qualsiasi tipo di attività.
@@ -769,7 +769,7 @@ function PaginaIntro() {
                   <h3 className="text-xl font-bold text-white">{s.title}</h3>
                   <p
                     className="mt-2 text-lg leading-relaxed"
-                    style={{ color: "#a8b5d1" }}
+                    style={{ color: "#c9d6ea" }}
                   >
                     {s.text}
                   </p>
