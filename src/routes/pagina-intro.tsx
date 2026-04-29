@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { useEffect, type ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState, type ReactNode } from "react";
 
 const FORM_PATH = "/form-contatto-1";
 const ACCENT = "#22d3ee";
