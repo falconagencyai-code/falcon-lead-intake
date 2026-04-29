@@ -1,22 +1,29 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import { ArrowRight, Zap, TrendingUp, Target, Clock } from "lucide-react";
+import { motion, useInView } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowRight,
+  Zap,
+  Globe,
+  LayoutDashboard,
+  Bot,
+  Check,
+} from "lucide-react";
 
 export const Route = createFileRoute("/pagina-intro")({
   head: () => ({
     meta: [
-      { title: "Falcon Agency · Crescita reale per il tuo business" },
+      { title: "Falcon Agency · Siti, gestionali e automazioni AI" },
       {
         name: "description",
         content:
-          "Strategie di advertising e marketing digitale che generano lead qualificati e clienti reali. Prenota una call gratuita.",
+          "Sviluppiamo siti web, gestionali su misura e automazioni AI per qualsiasi attività. Consegna rapida, prima call gratuita.",
       },
-      { property: "og:title", content: "Falcon Agency · Crescita reale per il tuo business" },
+      { property: "og:title", content: "Falcon Agency · Siti, gestionali e automazioni AI" },
       {
         property: "og:description",
         content:
-          "Strategie di advertising e marketing digitale che generano lead qualificati e clienti reali.",
+          "Sviluppiamo siti web, gestionali su misura e automazioni AI per qualsiasi attività.",
       },
     ],
   }),
@@ -26,21 +33,20 @@ export const Route = createFileRoute("/pagina-intro")({
 const FORM_PATH = "/form-contatto-1";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
+/* ---------- Reusable reveal ---------- */
 function Reveal({
   children,
   delay = 0,
-  x = 0,
   className = "",
 }: {
   children: React.ReactNode;
   delay?: number;
-  x?: number;
   className?: string;
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 32, x }}
-      whileInView={{ opacity: 1, y: 0, x: 0 }}
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.7, delay, ease: EASE }}
       className={className}
@@ -50,11 +56,49 @@ function Reveal({
   );
 }
 
+/* ---------- Animated counter ---------- */
+function Counter({ value, suffix = "" }: { value: string; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const [display, setDisplay] = useState(value.replace(/[0-9]/g, "0"));
+
+  useEffect(() => {
+    if (!inView) return;
+    const num = parseFloat(value);
+    if (isNaN(num)) {
+      setDisplay(value);
+      return;
+    }
+    const duration = 1200;
+    const start = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const cur = num * eased;
+      const formatted = value.includes(".")
+        ? cur.toFixed(1)
+        : Math.round(cur).toString();
+      setDisplay(formatted + value.replace(/[0-9.]/g, ""));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, value]);
+
+  return (
+    <span ref={ref}>
+      {display}
+      {suffix}
+    </span>
+  );
+}
+
 /* ---------- NAVBAR ---------- */
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
+    const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -62,18 +106,20 @@ function Navbar() {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled ? "border-b border-white/10 bg-black/60 backdrop-blur-md" : "border-b border-transparent"
+        scrolled
+          ? "border-b border-zinc-200/80 bg-white/85 backdrop-blur-md"
+          : "border-b border-transparent bg-transparent"
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link to="/pagina-intro" className="text-sm font-extrabold uppercase tracking-[0.2em] text-white">
+        <span className="text-sm font-black uppercase tracking-[0.18em] text-zinc-900">
           Falcon Agency
-        </Link>
+        </span>
         <Link
           to={FORM_PATH}
-          className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition-all hover:border-cyan-400 hover:text-cyan-300"
+          className="group inline-flex items-center gap-2 rounded-full bg-teal-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-teal-600"
         >
-          Prenota una call
+          Parlaci del tuo progetto
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>
@@ -82,58 +128,113 @@ function Navbar() {
 }
 
 /* ---------- HERO ---------- */
+function BrowserMock() {
+  return (
+    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-2xl shadow-teal-900/10">
+      {/* Browser bar */}
+      <div className="flex items-center gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-2.5">
+        <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+        <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+        <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
+        <div className="ml-3 flex-1 truncate rounded-md bg-white px-3 py-1 text-[11px] text-zinc-500 ring-1 ring-zinc-200">
+          falcon.agency/progetto
+        </div>
+      </div>
+
+      {/* SOSTITUIRE con screenshot reale del progetto */}
+      <div className="flex h-[300px] bg-white md:h-[340px]">
+        {/* Sidebar */}
+        <div className="flex w-1/4 flex-col gap-2 border-r border-zinc-100 bg-zinc-50/60 p-3">
+          <div className="h-2 w-3/4 rounded bg-teal-400/60" />
+          <div className="mt-2 space-y-1.5">
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className={`h-2 rounded ${i === 1 ? "w-full bg-teal-200" : "w-2/3 bg-zinc-200"}`}
+              />
+            ))}
+          </div>
+        </div>
+        {/* Main */}
+        <div className="flex-1 p-4">
+          <div className="h-3 w-1/2 rounded bg-zinc-300" />
+          <div className="mt-2 h-2 w-1/3 rounded bg-zinc-200" />
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="rounded-lg border border-zinc-100 p-2">
+                <div className="h-1.5 w-1/2 rounded bg-zinc-200" />
+                <div className="mt-1.5 h-3 w-3/4 rounded bg-zinc-800" />
+              </div>
+            ))}
+          </div>
+          {/* mini chart */}
+          <div className="mt-4 flex h-24 items-end gap-1.5 rounded-lg border border-zinc-100 p-2">
+            {[40, 65, 50, 80, 55, 90, 70, 95].map((h, i) => (
+              <div
+                key={i}
+                style={{ height: `${h}%` }}
+                className={`flex-1 rounded-t ${i % 2 === 0 ? "bg-teal-400" : "bg-zinc-300"}`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Hero() {
   return (
-    <section className="relative min-h-screen overflow-hidden bg-[#080810] pt-32">
-      {/* Static glow blobs */}
-      <div className="pointer-events-none absolute -right-24 -top-24 h-[520px] w-[520px] rounded-full bg-cyan-500/20 blur-[120px]" />
-      <div className="pointer-events-none absolute -bottom-32 -left-24 h-[520px] w-[520px] rounded-full bg-violet-600/20 blur-[120px]" />
+    <section className="relative overflow-hidden bg-white pt-32">
+      {/* soft teal gradient at top */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-gradient-to-b from-teal-50 via-white to-white" />
+      <div className="pointer-events-none absolute -right-20 top-10 h-96 w-96 rounded-full bg-teal-200/40 blur-3xl" />
 
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 px-6 pb-32 lg:grid-cols-[1.4fr_1fr]">
-        {/* LEFT */}
+      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 px-6 pb-28 lg:grid-cols-[1.2fr_1fr]">
         <div>
           <Reveal>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-cyan-400 backdrop-blur-md">
+            <span className="inline-flex items-center gap-2 rounded-full bg-teal-500/10 px-3.5 py-1.5 text-xs font-semibold text-teal-700 ring-1 ring-teal-500/20">
               <Zap className="h-3.5 w-3.5" />
-              Agenzia AI-First · Risultati misurabili
+              Consegna rapida · Risultati garantiti
             </span>
           </Reveal>
 
-          <Reveal delay={0.1}>
-            <h1 className="mt-8 text-5xl font-black leading-[0.95] tracking-tight text-white md:text-7xl">
-              Smetti di
+          <Reveal delay={0.08}>
+            <h1 className="mt-6 text-5xl font-black leading-[1.02] tracking-tight text-zinc-900 md:text-6xl">
+              Il tuo business,
               <br />
-              inseguire clienti.
-              <br />
-              <span className="text-cyan-400">Inizia a chiuderli.</span>
+              potenziato dall'AI.
             </h1>
           </Reveal>
 
-          <Reveal delay={0.2}>
-            <p className="mt-6 max-w-md text-lg text-zinc-400">
-              Strategie di advertising e marketing digitale che generano lead qualificati e clienti reali — non solo numeri.
+          <Reveal delay={0.16}>
+            <p className="mt-5 max-w-md text-lg text-zinc-500">
+              Siti web, gestionali su misura e automatizzazioni AI. Consegnati
+              in tempi rapidi, per qualsiasi tipo di attività.
             </p>
           </Reveal>
 
-          <Reveal delay={0.3}>
-            <div className="mt-10">
+          <Reveal delay={0.24}>
+            <div className="mt-8">
               <Link
                 to={FORM_PATH}
-                className="group inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-base font-bold text-black transition-all hover:bg-zinc-100"
+                className="group inline-flex items-center gap-2 rounded-full bg-teal-500 px-7 py-4 text-base font-bold text-white shadow-lg shadow-teal-500/25 transition-all hover:bg-teal-600 hover:shadow-teal-500/35"
               >
-                Inizia la valutazione
+                Raccontaci il tuo progetto
                 <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Link>
             </div>
           </Reveal>
 
-          <Reveal delay={0.4}>
-            <div className="mt-6 flex flex-wrap gap-2">
-              {["✓ Nessun impegno", "✓ Risposta in 24h", "✓ Prima call gratuita"].map((t) => (
-                <span
-                  key={t}
-                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300"
-                >
+          <Reveal delay={0.32}>
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm text-zinc-500">
+              {[
+                "Risposta entro 24h",
+                "Nessun costo iniziale",
+                "Prima call gratuita",
+              ].map((t) => (
+                <span key={t} className="inline-flex items-center gap-1.5">
+                  <Check className="h-4 w-4 text-teal-500" />
                   {t}
                 </span>
               ))}
@@ -141,60 +242,28 @@ function Hero() {
           </Reveal>
         </div>
 
-        {/* RIGHT */}
-        <div className="relative mx-auto h-[440px] w-full max-w-[420px]">
-          {/* Hexagon shield */}
-          <Reveal delay={0.2}>
-            <div className="relative mx-auto h-[400px] w-[340px] rotate-12">
-              <svg viewBox="0 0 200 220" className="absolute inset-0 h-full w-full drop-shadow-[0_0_60px_rgba(34,211,238,0.35)]">
-                <defs>
-                  <linearGradient id="hexG" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="rgb(34,211,238)" />
-                    <stop offset="100%" stopColor="rgb(124,58,237)" />
-                  </linearGradient>
-                </defs>
-                <polygon
-                  points="100,10 185,60 185,160 100,210 15,160 15,60"
-                  fill="url(#hexG)"
-                  opacity="0.9"
-                />
-                <polygon
-                  points="100,10 185,60 185,160 100,210 15,160 15,60"
-                  fill="none"
-                  stroke="white"
-                  strokeOpacity="0.15"
-                  strokeWidth="1"
-                />
-              </svg>
-            </div>
+        {/* Visual */}
+        <div className="relative">
+          <Reveal delay={0.15}>
+            <BrowserMock />
           </Reveal>
 
-          {/* Floating cards */}
+          {/* Floating mini badges */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6, ease: EASE }}
-            className="absolute left-0 top-6 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-semibold text-white backdrop-blur-md"
+            transition={{ delay: 0.7, duration: 0.5, ease: EASE }}
+            className="mt-6 flex flex-wrap justify-center gap-2"
           >
-            📈 +210% ROAS
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7, duration: 0.6, ease: EASE }}
-            className="absolute bottom-8 right-0 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-semibold text-white backdrop-blur-md"
-          >
-            🎯 47 lead/mese
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.9, duration: 0.6, ease: EASE }}
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-white/15 bg-black/60 px-4 py-3 text-sm font-semibold text-white backdrop-blur-md"
-          >
-            ⚡ Setup in 7 giorni
+            {["Sito web", "Gestionale AI", "Automazione"].map((t) => (
+              <span
+                key={t}
+                className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-sm"
+              >
+                <Check className="h-3.5 w-3.5 text-teal-500" />
+                {t}
+              </span>
+            ))}
           </motion.div>
         </div>
       </div>
@@ -202,45 +271,29 @@ function Hero() {
   );
 }
 
-/* ---------- STATS (white) ---------- */
+/* ---------- STATS ---------- */
 function Stats() {
-  const cards = [
-    { v: "€2M+", l: "Budget gestito", pos: "left-2 top-4 md:left-8 md:top-12", Icon: TrendingUp },
-    { v: "47+", l: "Clienti attivi", pos: "right-2 top-8 md:right-10 md:top-20", Icon: Target },
-    { v: "3.8x", l: "ROAS medio", pos: "left-4 bottom-12 md:left-16 md:bottom-20", Icon: TrendingUp },
-    { v: "24/7", l: "Monitoraggio attivo", pos: "right-4 bottom-8 md:right-16 md:bottom-16", Icon: Clock },
+  const stats = [
+    { v: "48h", l: "Tempo medio di risposta al brief" },
+    { v: "100%", l: "Progetti consegnati nei tempi" },
+    { v: "3 in 1", l: "Sito · Gestionale · Automazione" },
   ];
   return (
-    <section className="relative overflow-hidden bg-white py-32">
-      <div className="relative mx-auto max-w-7xl px-6">
-        <div className="relative overflow-hidden">
-          <Reveal>
-            <h2 className="text-center text-7xl font-black leading-[0.85] tracking-tight text-zinc-950 md:text-9xl">
-              L'impatto,
-              <br />
-              <span className="text-violet-600">Misurato.</span>
-            </h2>
-          </Reveal>
-
-          {cards.map((c, i) => (
-            <motion.div
-              key={c.l}
-              initial={{ opacity: 0, y: 30, scale: 0.9 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.6, delay: i * 0.12, ease: EASE }}
-              className={`absolute ${c.pos} z-10 rounded-2xl border border-violet-200 bg-white px-5 py-4 shadow-xl shadow-violet-900/5`}
-            >
-              <c.Icon className="h-4 w-4 text-violet-600" />
-              <p className="mt-2 text-3xl font-black text-zinc-950 md:text-4xl">{c.v}</p>
-              <p className="text-xs uppercase tracking-wider text-zinc-500">{c.l}</p>
-            </motion.div>
+    <section className="border-y border-zinc-100 bg-zinc-50 py-20">
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="grid grid-cols-1 gap-10 text-center md:grid-cols-3">
+          {stats.map((s, i) => (
+            <Reveal key={s.l} delay={i * 0.1}>
+              <p className="text-5xl font-black tracking-tight text-zinc-900 md:text-6xl">
+                <Counter value={s.v} />
+              </p>
+              <p className="mt-3 text-sm text-zinc-500">{s.l}</p>
+            </Reveal>
           ))}
         </div>
-
         <Reveal delay={0.4}>
-          <p className="mt-16 text-center text-sm text-zinc-500">
-            Dati aggiornati · Clienti reali · Nessuna stima
+          <p className="mt-12 text-center text-xs text-zinc-400">
+            Lavoriamo con attività di ogni settore e dimensione
           </p>
         </Reveal>
       </div>
@@ -248,168 +301,147 @@ function Stats() {
   );
 }
 
-/* ---------- PRODUCT MOCKUPS ---------- */
-function MockPipeline() {
-  const steps = ["Nuovo", "Contattato", "Call", "Preventivo", "Chiuso"];
-  const colors = ["bg-zinc-600", "bg-zinc-500", "bg-cyan-700", "bg-cyan-500", "bg-cyan-400"];
-  const leads = [
-    { n: "M. Rossi", v: "€2.4k" },
-    { n: "L. Bianchi", v: "€5.1k" },
-    { n: "A. Verdi", v: "€3.8k" },
-    { n: "G. Neri", v: "€7.2k" },
-    { n: "F. Galli", v: "€4.5k" },
-  ];
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-      <p className="mb-6 text-xs uppercase tracking-wider text-zinc-400">Pipeline · Gennaio 2026</p>
-      <div className="relative flex items-center justify-between">
-        <div className="absolute left-4 right-4 top-3 h-px bg-gradient-to-r from-zinc-700 via-cyan-700 to-cyan-400" />
-        {steps.map((s, i) => (
-          <div key={s} className="relative z-10 flex flex-col items-center">
-            <div className={`h-6 w-6 rounded-full ${colors[i]} border-2 border-zinc-950`} />
-            <p className="mt-2 text-[10px] font-medium text-white">{s}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-6 grid grid-cols-5 gap-2">
-        {leads.map((l) => (
-          <div key={l.n} className="rounded-md border border-white/5 bg-white/5 p-2">
-            <p className="truncate text-[10px] text-white">{l.n}</p>
-            <p className="text-[10px] font-bold text-cyan-400">{l.v}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function MockChart() {
-  const months = ["Set", "Ott", "Nov", "Dic", "Gen", "Feb"];
-  const inc = [60, 75, 70, 90, 85, 100];
-  const exp = [30, 35, 32, 40, 38, 42];
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm font-semibold text-white">Entrate vs Uscite</p>
-        <div className="flex gap-3 text-[10px]">
-          <span className="flex items-center gap-1 text-zinc-400"><span className="h-2 w-2 rounded-sm bg-cyan-400" />Entrate</span>
-          <span className="flex items-center gap-1 text-zinc-400"><span className="h-2 w-2 rounded-sm bg-violet-400" />Uscite</span>
-        </div>
-      </div>
-      <div className="flex h-40 items-end gap-3">
-        {months.map((m, i) => (
-          <div key={m} className="flex flex-1 flex-col items-center gap-1">
-            <div className="flex w-full items-end gap-1">
-              <div style={{ height: `${inc[i] * 1.3}px` }} className="flex-1 rounded-t bg-cyan-400" />
-              <div style={{ height: `${exp[i] * 1.3}px` }} className="flex-1 rounded-t bg-violet-400" />
-            </div>
-            <p className="text-[10px] text-zinc-500">{m}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function MockReport() {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md">
-      <p className="mb-4 text-xs uppercase tracking-wider text-zinc-400">Report settimanale</p>
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { l: "Entrate", v: "€18k" },
-          { l: "Lead", v: "94" },
-          { l: "ROAS", v: "4.2x" },
-        ].map((k) => (
-          <div key={k.l} className="rounded-lg border border-white/5 bg-white/5 p-3">
-            <p className="text-[10px] uppercase text-zinc-500">{k.l}</p>
-            <p className="mt-1 text-2xl font-black text-white">{k.v}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 space-y-2">
-        {[
-          { c: "Meta Ads", v: "+€8.2k" },
-          { c: "Google Ads", v: "+€6.5k" },
-          { c: "LinkedIn", v: "+€3.3k" },
-        ].map((r) => (
-          <div key={r.c} className="flex items-center justify-between rounded-md border border-white/5 bg-white/5 px-3 py-2">
-            <span className="text-xs text-zinc-300">{r.c}</span>
-            <span className="text-xs font-bold text-cyan-400">{r.v}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PreviewBlock({
-  num,
+/* ---------- WHAT WE DO ---------- */
+function ServiceCard({
+  Icon,
   title,
   text,
+  tag,
+  visualComment,
   visual,
-  reverse = false,
+  delay = 0,
 }: {
-  num: string;
+  Icon: React.ComponentType<{ className?: string }>;
   title: string;
   text: string;
+  tag: string;
+  visualComment: string;
   visual: React.ReactNode;
-  reverse?: boolean;
+  delay?: number;
 }) {
   return (
-    <div className={`grid grid-cols-1 items-center gap-12 lg:grid-cols-2 ${reverse ? "lg:[&>*:first-child]:order-2" : ""}`}>
-      <Reveal x={reverse ? 40 : -40}>
-        <div>
-          <span className="inline-block rounded-full border border-cyan-400/30 bg-cyan-400/5 px-3 py-1 text-xs font-bold text-cyan-400">
-            {num}
-          </span>
-          <h3 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">{title}</h3>
-          <p className="mt-4 text-lg text-zinc-400">{text}</p>
+    <Reveal delay={delay}>
+      <div className="group flex h-full flex-col rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md">
+        <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600">
+          <Icon className="h-5 w-5" />
         </div>
-      </Reveal>
-      <Reveal x={reverse ? -40 : 40} delay={0.15}>
-        {visual}
-      </Reveal>
-    </div>
+        <h3 className="mt-5 text-xl font-bold text-zinc-900">{title}</h3>
+        <p className="mt-2 text-sm text-zinc-500">{text}</p>
+
+        {/* {visualComment} */}
+        <div className="mt-5 h-32 overflow-hidden rounded-lg bg-zinc-100 ring-1 ring-zinc-200/70">
+          {visual}
+        </div>
+
+        <span className="mt-4 inline-block text-xs font-semibold text-teal-700">
+          {tag}
+        </span>
+      </div>
+    </Reveal>
   );
 }
 
-function PreviewSection() {
+function WhatWeDo() {
   return (
-    <section className="bg-zinc-950 py-32">
+    <section className="bg-white py-28">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-4xl font-black tracking-tight text-white md:text-5xl">
-              Tutto sotto controllo,
+            <h2 className="text-4xl font-black tracking-tight text-zinc-900 md:text-5xl">
+              Qualunque sia la tua attività,
               <br />
-              <span className="text-cyan-400">sempre.</span>
+              <span className="font-serif italic text-teal-600">
+                abbiamo la soluzione.
+              </span>
             </h2>
-            <p className="mt-4 text-lg text-zinc-400">
-              Dal primo lead al cliente pagante, ogni step è tracciato e ottimizzato.
+            <p className="mt-4 text-base text-zinc-500">
+              Non vendiamo pacchetti standard. Costruiamo esattamente ciò di cui
+              hai bisogno.
             </p>
           </div>
         </Reveal>
 
-        <div className="mt-24 space-y-32">
-          <PreviewBlock
-            num="01"
-            title="Pipeline CRM completa"
-            text="Ogni lead segue un percorso preciso. Vedi in tempo reale dove si trova ogni trattativa."
-            visual={<MockPipeline />}
+        <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3">
+          <ServiceCard
+            Icon={Globe}
+            title="Il tuo sito, fatto bene"
+            text="Design professionale, veloce e ottimizzato. Pronto in pochi giorni, non mesi."
+            tag="Da €X · Consegna in X giorni"
+            visualComment="screenshot sito cliente"
+            visual={
+              <div className="flex h-full flex-col p-3">
+                <div className="flex gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-300" />
+                </div>
+                <div className="mt-2 h-2 w-3/4 rounded bg-zinc-300" />
+                <div className="mt-1.5 h-2 w-1/2 rounded bg-zinc-200" />
+                <div className="mt-3 grid flex-1 grid-cols-3 gap-1.5">
+                  <div className="rounded bg-teal-200/60" />
+                  <div className="rounded bg-zinc-200" />
+                  <div className="rounded bg-zinc-200" />
+                </div>
+              </div>
+            }
+            delay={0}
           />
-          <PreviewBlock
-            reverse
-            num="02"
-            title="Contabilità e analytics in tempo reale"
-            text="Entrate, uscite e utile netto sempre aggiornati. Nessun foglio Excel."
-            visual={<MockChart />}
+          <ServiceCard
+            Icon={LayoutDashboard}
+            title="Il tuo gestionale su misura"
+            text="Prenotazioni, inventario, clienti, fatture. Tutto in un pannello pensato per la tua attività."
+            tag="Su misura · Nessun abbonamento esterno"
+            visualComment="screenshot gestionale cliente"
+            visual={
+              <div className="flex h-full p-3">
+                <div className="flex w-1/4 flex-col gap-1">
+                  <div className="h-1.5 w-full rounded bg-teal-300" />
+                  <div className="h-1.5 w-3/4 rounded bg-zinc-200" />
+                  <div className="h-1.5 w-3/4 rounded bg-zinc-200" />
+                  <div className="h-1.5 w-3/4 rounded bg-zinc-200" />
+                </div>
+                <div className="ml-3 flex flex-1 flex-col gap-1.5">
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div className="h-6 rounded bg-zinc-200" />
+                    <div className="h-6 rounded bg-zinc-200" />
+                    <div className="h-6 rounded bg-teal-200/70" />
+                  </div>
+                  <div className="flex flex-1 items-end gap-1">
+                    {[40, 70, 55, 85, 60].map((h, i) => (
+                      <div
+                        key={i}
+                        style={{ height: `${h}%` }}
+                        className="flex-1 rounded-t bg-teal-400"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            }
+            delay={0.1}
           />
-          <PreviewBlock
-            num="03"
-            title="Report automatici"
-            text="Ogni settimana sai esattamente cosa ha funzionato, cosa ottimizzare e quanto hai guadagnato."
-            visual={<MockReport />}
+          <ServiceCard
+            Icon={Bot}
+            title="Fai lavorare il tuo business da solo"
+            text="Risposte automatiche, gestione ordini, notifiche, report. Tu ti concentri sul business, ci pensa l'AI."
+            tag="Risparmia ore ogni settimana"
+            visualComment="flow automazione cliente"
+            visual={
+              <div className="flex h-full items-center justify-between p-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 text-[10px] font-bold text-white">
+                  IN
+                </div>
+                <div className="h-px flex-1 bg-zinc-300" />
+                <div className="h-8 w-8 rounded-md bg-zinc-300" />
+                <div className="h-px flex-1 bg-zinc-300" />
+                <div className="h-8 w-8 rounded-md bg-zinc-300" />
+                <div className="h-px flex-1 bg-zinc-300" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-[10px] font-bold text-white">
+                  OK
+                </div>
+              </div>
+            }
+            delay={0.2}
           />
         </div>
       </div>
@@ -417,87 +449,162 @@ function PreviewSection() {
   );
 }
 
-/* ---------- PROCESS ---------- */
-function Process() {
+/* ---------- HOW WE WORK ---------- */
+function HowWeWork() {
   const steps = [
-    { t: "Analisi gratuita", d: "Studiamo il tuo mercato, i competitor e gli obiettivi reali. Nessun template." },
-    { t: "Strategia su misura", d: "Una roadmap costruita solo per te: canali, budget, messaggi e KPI chiari." },
-    { t: "Esecuzione e ottimizzazione", d: "Lanciamo, testiamo e miglioriamo ogni settimana. Dati alla mano." },
-    { t: "Risultati e crescita", d: "Report settimanali, numeri reali, decisioni basate sui dati." },
+    {
+      n: "01",
+      t: "Ci parli del tuo progetto",
+      d: "Una call di 20 minuti. Ascoltiamo, capiamo, proponiamo.",
+    },
+    {
+      n: "02",
+      t: "Definiamo insieme il prodotto",
+      d: "Brief chiaro, tempi certi, costo fisso. Nessuna sorpresa.",
+    },
+    {
+      n: "03",
+      t: "Ti consegniamo il risultato",
+      d: "Sito, gestionale o automazione. Pronto, funzionante, tuo.",
+    },
   ];
   return (
-    <section className="relative overflow-hidden bg-black py-32">
-      {/* Dot grid texture */}
+    <section className="relative overflow-hidden bg-zinc-950 py-28">
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
+        className="pointer-events-none absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
             "radial-gradient(rgb(255,255,255) 1px, transparent 1px)",
-          backgroundSize: "24px 24px",
+          backgroundSize: "28px 28px",
         }}
       />
-      <div className="relative mx-auto max-w-3xl px-6">
+      <div className="relative mx-auto max-w-6xl px-6">
         <Reveal>
           <h2 className="text-center text-4xl font-black tracking-tight text-white md:text-5xl">
-            Il nostro processo
+            Tre passi.
             <br />
-            <span className="text-cyan-400">in 4 step.</span>
+            <span className="text-teal-400">Dal brief al prodotto finito.</span>
           </h2>
         </Reveal>
 
-        <div className="relative mt-20">
-          <div className="absolute bottom-10 left-1/2 top-10 hidden border-l-2 border-dashed border-white/10 md:block" />
-          <div className="space-y-10">
-            {steps.map((s, i) => {
-              const offset = i % 2 === 0 ? "md:mr-16" : "md:ml-16";
-              return (
-                <Reveal key={s.t} delay={i * 0.12} x={i % 2 === 0 ? -30 : 30}>
-                  <div className={`relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-8 backdrop-blur-md ${offset}`}>
-                    <span className="pointer-events-none absolute -right-2 -top-6 select-none text-7xl font-black text-white/10">
-                      0{i + 1}
+        <div className="relative mt-16">
+          {/* dashed connector desktop */}
+          <div className="absolute left-[16%] right-[16%] top-10 hidden border-t-2 border-dashed border-teal-400/30 md:block" />
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+            {steps.map((s, i) => (
+              <Reveal key={s.n} delay={i * 0.12}>
+                <div className="relative text-center md:text-left">
+                  <div className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-teal-500/10 ring-1 ring-teal-500/30 md:mx-0">
+                    <span className="text-3xl font-black text-teal-400">
+                      {s.n}
                     </span>
-                    <h3 className="text-xl font-bold text-white">{s.t}</h3>
-                    <p className="mt-2 text-sm text-zinc-400">{s.d}</p>
                   </div>
-                </Reveal>
-              );
-            })}
+                  <h3 className="mt-6 text-xl font-bold text-white">{s.t}</h3>
+                  <p className="mt-2 text-sm text-zinc-400">{s.d}</p>
+                </div>
+              </Reveal>
+            ))}
           </div>
         </div>
+
+        <Reveal delay={0.4}>
+          <div className="mt-16 text-center">
+            <Link
+              to={FORM_PATH}
+              className="group inline-flex items-center gap-2 rounded-full bg-teal-500 px-7 py-4 text-base font-bold text-white shadow-lg shadow-teal-500/30 transition-all hover:bg-teal-400"
+            >
+              Inizia ora — è gratis
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
 }
 
-/* ---------- RESULTS (white) ---------- */
-function Results() {
-  const cards = [
-    { tag: "E-commerce", color: "bg-violet-100 text-violet-700", v: "+210%", s: "ROAS in 60 giorni", d: "Budget €3k/mese · Meta Ads" },
-    { tag: "B2B Services", color: "bg-cyan-100 text-cyan-700", v: "47", s: "lead qualificati/mese", d: "Budget €1.5k/mese · Google + LinkedIn" },
-    { tag: "Local Business", color: "bg-emerald-100 text-emerald-700", v: "€18k", s: "fatturato aggiuntivo", d: "Budget €800/mese · Meta Ads" },
+/* ---------- WORK PREVIEWS ---------- */
+function ProjectCard({
+  type,
+  title,
+  sector,
+  result,
+  delay = 0,
+}: {
+  type: string;
+  title: string;
+  sector: string;
+  result: string;
+  delay?: number;
+}) {
+  return (
+    <Reveal delay={delay}>
+      <div className="group overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg">
+        {/* INSERIRE screenshot progetto reale */}
+        <div className="relative aspect-video w-full overflow-hidden bg-zinc-100">
+          <img
+            src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='450'%3E%3Crect width='100%25' height='100%25' fill='%23f4f4f5'/%3E%3C/svg%3E"
+            alt={`Anteprima ${title} — ${type}`}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-zinc-400">
+            // INSERIRE screenshot progetto reale
+          </div>
+        </div>
+        <div className="p-6">
+          <span className="inline-block rounded-full bg-teal-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-teal-700">
+            {type}
+          </span>
+          <h3 className="mt-4 text-lg font-bold text-zinc-900">{title}</h3>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-md bg-zinc-100 px-2 py-1 text-zinc-600">
+              {sector}
+            </span>
+            <span className="rounded-md bg-zinc-100 px-2 py-1 text-zinc-600">
+              {result}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Reveal>
+  );
+}
+
+function WorkPreviews() {
+  const projects = [
+    { type: "Sito Web", title: "Progetto Cliente 1", sector: "Ristorazione", result: "+x prenotazioni" },
+    { type: "Gestionale", title: "Progetto Cliente 2", sector: "Studio professionale", result: "-x ore/settimana" },
+    { type: "Automazione", title: "Progetto Cliente 3", sector: "E-commerce", result: "Ordini gestiti 24/7" },
+    { type: "Sito Web", title: "Progetto Cliente 4", sector: "Negozio locale", result: "+x clienti" },
   ];
   return (
-    <section className="bg-white py-32">
+    <section className="bg-white py-28">
       <div className="mx-auto max-w-6xl px-6">
         <Reveal>
-          <h2 className="text-center text-4xl font-black tracking-tight text-zinc-950 md:text-5xl">
-            Risultati reali,
-            <br />
-            <span className="text-violet-600">non promesse.</span>
-          </h2>
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-4xl font-black tracking-tight text-zinc-900 md:text-5xl">
+              Quello che costruiamo,
+              <br />
+              <span className="font-serif italic text-teal-600">
+                lo puoi vedere.
+              </span>
+            </h2>
+            <p className="mt-4 text-base text-zinc-500">
+              Esempi reali di ciò che realizziamo per i nostri clienti.
+            </p>
+          </div>
         </Reveal>
-        <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3">
-          {cards.map((c, i) => (
-            <Reveal key={c.tag} delay={i * 0.12}>
-              <div className="h-full rounded-2xl border border-violet-200 bg-white p-7 shadow-md">
-                <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${c.color}`}>
-                  {c.tag}
-                </span>
-                <p className="mt-6 text-5xl font-black tracking-tight text-zinc-950">{c.v}</p>
-                <p className="mt-1 text-sm font-medium text-zinc-700">{c.s}</p>
-                <p className="mt-4 text-xs text-zinc-500">{c.d}</p>
-              </div>
-            </Reveal>
+
+        <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-2">
+          {projects.map((p, i) => (
+            <ProjectCard
+              key={p.title}
+              type={p.type}
+              title={p.title}
+              sector={p.sector}
+              result={p.result}
+              delay={i * 0.1}
+            />
           ))}
         </div>
       </div>
@@ -508,47 +615,52 @@ function Results() {
 /* ---------- FINAL CTA ---------- */
 function FinalCTA() {
   return (
-    <section className="relative overflow-hidden bg-black py-32">
-      <div className="pointer-events-none absolute left-1/2 top-1/2 -z-0 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 opacity-30">
-        <svg viewBox="0 0 200 220" className="h-full w-full blur-3xl">
-          <defs>
-            <linearGradient id="ctaG" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="rgb(34,211,238)" />
-              <stop offset="100%" stopColor="rgb(124,58,237)" />
-            </linearGradient>
-          </defs>
-          <polygon points="100,10 185,60 185,160 100,210 15,160 15,60" fill="url(#ctaG)" />
-        </svg>
-      </div>
+    <section className="relative overflow-hidden bg-gradient-to-br from-teal-950 via-zinc-950 to-zinc-950 py-32">
+      <div className="pointer-events-none absolute -left-20 top-1/2 h-96 w-96 -translate-y-1/2 rounded-full bg-teal-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-teal-400/10 blur-3xl" />
 
       <div className="relative mx-auto max-w-3xl px-6 text-center">
         <Reveal>
-          <p className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-400">Pronto a crescere?</p>
+          <span className="inline-block rounded-full bg-teal-400/15 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-teal-300">
+            Inizia oggi
+          </span>
         </Reveal>
         <Reveal delay={0.1}>
-          <h2 className="mt-6 text-5xl font-black leading-tight tracking-tight text-white md:text-6xl">
-            Porta Falcon Agency
+          <h2 className="mt-6 text-5xl font-black leading-[1.05] tracking-tight text-white md:text-6xl">
+            Hai un'idea.
             <br />
-            nel tuo business.
+            <span className="font-serif italic text-teal-300">
+              Noi la costruiamo.
+            </span>
           </h2>
         </Reveal>
         <Reveal delay={0.2}>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-zinc-400">
-            Compila il form in 3 minuti. Ti ricontattiamo entro 24 ore per la tua call gratuita.
+          <p className="mx-auto mt-6 max-w-xl text-lg text-zinc-300">
+            Raccontaci cosa vuoi realizzare. Ti rispondiamo entro 24 ore con una
+            proposta concreta.
           </p>
         </Reveal>
         <Reveal delay={0.3}>
           <div className="mt-10">
             <Link
               to={FORM_PATH}
-              className="group inline-flex items-center gap-2 rounded-full bg-white px-9 py-4 text-lg font-bold text-black transition-all hover:bg-zinc-100"
+              className="group inline-flex items-center gap-2 rounded-full bg-white px-9 py-4 text-lg font-bold text-zinc-900 shadow-2xl transition-all hover:bg-zinc-100"
             >
-              Inizia ora
+              Parla con noi
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
-            <p className="mt-5 text-sm text-zinc-400">
-              Nessun impegno · Nessuna carta di credito · Solo risultati
-            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-zinc-400">
+              {[
+                "Nessun impegno",
+                "Prima consulenza gratuita",
+                "Risposta in 24h",
+              ].map((t) => (
+                <span key={t} className="inline-flex items-center gap-1.5">
+                  <Check className="h-4 w-4 text-teal-400" />
+                  {t}
+                </span>
+              ))}
+            </div>
           </div>
         </Reveal>
       </div>
@@ -559,10 +671,14 @@ function FinalCTA() {
 /* ---------- FOOTER ---------- */
 function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-black py-8">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 md:flex-row">
-        <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-white">Falcon Agency</p>
-        <p className="text-xs text-zinc-500">© 2026 · Privacy Policy</p>
+    <footer className="border-t border-zinc-800 bg-zinc-950 py-8">
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-6 md:flex-row">
+        <p className="text-sm font-black uppercase tracking-[0.18em] text-white">
+          Falcon Agency
+        </p>
+        <p className="text-xs text-zinc-500">
+          © 2026 · hello@falcon.agency
+        </p>
       </div>
     </footer>
   );
@@ -576,14 +692,14 @@ function PaginaIntro() {
     };
   }, []);
   return (
-    <div className="min-h-screen bg-black font-sans text-white antialiased">
+    <div className="min-h-screen bg-white font-sans text-zinc-900 antialiased">
       <Navbar />
       <main>
         <Hero />
         <Stats />
-        <PreviewSection />
-        <Process />
-        <Results />
+        <WhatWeDo />
+        <HowWeWork />
+        <WorkPreviews />
         <FinalCTA />
       </main>
       <Footer />
