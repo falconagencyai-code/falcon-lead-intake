@@ -168,6 +168,58 @@ function ScrollRevealBlock({
   );
 }
 
+function ScrollTypewriter({
+  text,
+  className,
+  style,
+}: {
+  text: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLHeadingElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start 0.95", "start 0.45"],
+  });
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    const unsub = scrollYProgress.on("change", (v) => {
+      const clamped = Math.max(0, Math.min(1, v));
+      setCount(Math.round(clamped * text.length));
+    });
+    return () => unsub();
+  }, [scrollYProgress, text.length]);
+  const showCaret = count > 0 && count < text.length;
+  return (
+    <h2 ref={ref} className={className} style={style}>
+      <span style={{ visibility: "hidden" }}>{text}</span>
+      <span
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+        }}
+      >
+        {text.slice(0, count)}
+        <span
+          style={{
+            display: "inline-block",
+            width: 3,
+            height: "0.9em",
+            marginLeft: 2,
+            verticalAlign: "-0.1em",
+            background: ACCENT,
+            opacity: showCaret ? 1 : 0,
+            animation: showCaret ? "pulse 1s ease-in-out infinite" : "none",
+          }}
+        />
+      </span>
+    </h2>
+  );
+}
+
 function BrowserTypewriter() {
   const phrases = [
     "La tua pizzeria, online.",
@@ -604,14 +656,14 @@ function PaginaIntro() {
         {/* BLOCCO 3 — SERVIZI */}
         <section className="mt-28 -mx-6 md:-mx-[calc((min(64rem,100vw)-42rem)/2)]">
           <div className="mx-auto max-w-5xl px-6 space-y-12 overflow-hidden">
-            <Reveal>
-              <h2
-                className="text-3xl font-bold text-center"
-                style={{ textShadow: "0 0 24px rgba(34,211,238,0.2)" }}
-              >
-                Cosa costruiamo per te.
-              </h2>
-            </Reveal>
+            <ScrollTypewriter
+              text="Cosa costruiamo per te."
+              className="relative text-3xl font-bold text-center mx-auto"
+              style={{
+                textShadow: "0 0 24px rgba(34,211,238,0.2)",
+                minHeight: "1.2em",
+              }}
+            />
 
             <ScrollRevealBlock direction="left">
               <ServiceBlock
