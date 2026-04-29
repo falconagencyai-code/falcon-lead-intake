@@ -133,16 +133,30 @@ function ScrollRevealBlock({
   direction: "left" | "right";
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 0.92", "start 0.18"],
-  });
-  const xStart = direction === "left" ? -350 : 350;
-  const x = useTransform(scrollYProgress, [0, 0.7], [xStart, 0]);
-  const opacity = useTransform(scrollYProgress, [0, 0.4], [0, 1]);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { threshold: 0.08, rootMargin: "-5% 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const xOffset = direction === "left" ? "-340px" : "340px";
   return (
     <div ref={ref} style={{ overflow: "hidden" }}>
-      <motion.div style={{ x, opacity, willChange: "transform, opacity" }}>{children}</motion.div>
+      <div
+        style={{
+          transform: visible ? "translateX(0)" : `translateX(${xOffset})`,
+          opacity: visible ? 1 : 0,
+          transition: "transform 0.75s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.55s ease",
+          willChange: "transform, opacity",
+        }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
@@ -507,12 +521,12 @@ function PaginaIntro() {
         style={{ transform: "translateZ(0)", willChange: "transform" }}
       >
         <div
-          className="absolute -top-40 -left-40 w-[480px] h-[480px] rounded-full blur-3xl"
-          style={{ background: "rgba(34,211,238,0.18)" }}
+          className="absolute -top-32 -left-32 w-[340px] h-[340px] rounded-full blur-2xl"
+          style={{ background: "rgba(34,211,238,0.15)" }}
         />
         <div
-          className="absolute -bottom-40 left-1/4 w-[520px] h-[520px] rounded-full blur-3xl"
-          style={{ background: "rgba(34,211,238,0.14)" }}
+          className="absolute -bottom-32 left-1/4 w-[360px] h-[360px] rounded-full blur-2xl"
+          style={{ background: "rgba(34,211,238,0.11)" }}
         />
       </div>
       <div

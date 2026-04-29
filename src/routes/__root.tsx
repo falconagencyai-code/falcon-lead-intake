@@ -86,13 +86,13 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="sync">
         <motion.div
           key={pathname}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.18, ease: "easeInOut" }}
+          transition={{ duration: 0.1, ease: "easeOut" }}
           style={{ minHeight: "100vh" }}
         >
           <Outlet />
