@@ -444,7 +444,7 @@ function ProblemLabel({
         transform: "translateY(-50%)",
         opacity,
         y: yShift,
-        color: "#a8b5d1",
+        color: "#c9d6ea",
         fontSize: "13px",
         lineHeight: 1.4,
         maxWidth: "130px",
@@ -604,7 +604,7 @@ function PaginaIntro() {
           <Reveal delay={0.15}>
             <p
               className="mx-auto mt-6 max-w-xl text-lg leading-relaxed"
-              style={{ color: "#8a9bbf" }}
+              style={{ color: "#b8c8e0" }}
             >
               <strong style={STRONG_STYLE}>Siti web</strong>, <strong style={STRONG_STYLE}>gestionali su misura</strong> e <strong style={STRONG_STYLE}>automazioni intelligenti</strong>.
               Per qualsiasi tipo di attività.
@@ -642,15 +642,41 @@ function PaginaIntro() {
             </h2>
           </Reveal>
           <Reveal delay={0.05}>
-            <p className="text-lg leading-relaxed" style={{ color: "#a8b5d1" }}>
-              Processi manuali che rubano tempo. Nessun sistema per gestire clienti,
-              appuntamenti o ordini. Un sito vecchio o inesistente. La sensazione che
-              i competitor stiano andando avanti mentre tu sei fermo.
+            <p className="text-lg leading-relaxed" style={{ color: "#c9d6ea" }}>
+              Qualunque sia il settore, i problemi che frenano la crescita sono sempre gli stessi.
             </p>
           </Reveal>
           <Reveal delay={0.1}>
             <div className="mt-8 flex justify-center">
               <ProblemTimeline />
+            </div>
+          </Reveal>
+        </section>
+
+        {/* BLOCCO 5 — CTA INTERMEDIO */}
+        <section className="mt-28">
+          <Reveal>
+            <div
+              className="rounded-2xl p-8 text-center border"
+              style={{
+                borderColor: "rgba(34,211,238,0.25)",
+                background:
+                  "linear-gradient(135deg, rgba(34,211,238,0.08), rgba(34,211,238,0.02))",
+                boxShadow: "0 0 48px rgba(34,211,238,0.12)",
+              }}
+            >
+              <h3 className="text-2xl font-bold text-white">
+                Vuoi capire cosa è possibile fare?
+              </h3>
+              <p className="mx-auto mt-3 max-w-md" style={{ color: "#c9d6ea" }}>
+                Raccontaci la tua attività. Insieme capiamo cosa ti serve e ti proponiamo la soluzione giusta.
+              </p>
+              <div className="mt-6 flex justify-center">
+                <CtaButton>Scopri cosa possiamo fare per te →</CtaButton>
+              </div>
+              <p className="mt-4 text-xs" style={{ color: "#6677aa" }}>
+                Nessun impegno · Rispondiamo entro 24h
+              </p>
             </div>
           </Reveal>
         </section>
@@ -700,35 +726,6 @@ function PaginaIntro() {
           </div>
         </section>
 
-        {/* BLOCCO 5 — CTA INTERMEDIO */}
-        <section className="mt-28">
-          <Reveal>
-            <div
-              className="rounded-2xl p-8 text-center border"
-              style={{
-                borderColor: "rgba(34,211,238,0.25)",
-                background:
-                  "linear-gradient(135deg, rgba(34,211,238,0.08), rgba(34,211,238,0.02))",
-                boxShadow: "0 0 48px rgba(34,211,238,0.12)",
-              }}
-            >
-              <h3 className="text-2xl font-bold text-white">
-                Hai già un'idea in testa?
-              </h3>
-              <p className="mx-auto mt-3 max-w-md" style={{ color: "#a8b5d1" }}>
-                Raccontacela. In 20 minuti capiamo insieme cosa ti serve e ti
-                diciamo quanto costa.
-              </p>
-              <div className="mt-6 flex justify-center">
-                <CtaButton>Prenota una call gratuita →</CtaButton>
-              </div>
-              <p className="mt-4 text-xs" style={{ color: "#6677aa" }}>
-                Nessun impegno · Risposta entro 24h
-              </p>
-            </div>
-          </Reveal>
-        </section>
-
         {/* BLOCCO 6 — COME FUNZIONA */}
         <section className="mt-28 space-y-8">
           <Reveal>
@@ -744,12 +741,12 @@ function PaginaIntro() {
             {
               n: "1",
               title: "Ci parli del tuo progetto",
-              text: <>Una call gratuita di <strong style={STRONG_STYLE}>20 minuti</strong>. Ascoltiamo cosa hai bisogno, senza tecnicismi.</>,
+              text: <>Una <strong style={STRONG_STYLE}>chiacchierata senza impegno</strong>. Ascoltiamo cosa hai in mente e ti aiutiamo a trovare la strada giusta.</>,
             },
             {
               n: "2",
               title: "Definiamo insieme il prodotto",
-              text: <>Ti diciamo esattamente cosa costruiamo, in quanto tempo e a quanto. <strong style={STRONG_STYLE}>Nessuna sorpresa</strong> dopo.</>,
+              text: <>Ti diciamo esattamente cosa costruiamo e come. <strong style={STRONG_STYLE}>Nessuna sorpresa</strong>.</>,
             },
             {
               n: "3",
@@ -772,7 +769,7 @@ function PaginaIntro() {
                   <h3 className="text-xl font-bold text-white">{s.title}</h3>
                   <p
                     className="mt-2 text-lg leading-relaxed"
-                    style={{ color: "#a8b5d1" }}
+                    style={{ color: "#c9d6ea" }}
                   >
                     {s.text}
                   </p>
@@ -798,10 +795,9 @@ function PaginaIntro() {
           <Reveal delay={0.05}>
             <p
               className="mx-auto mt-4 max-w-lg text-lg leading-relaxed"
-              style={{ color: "#a8b5d1" }}
+              style={{ color: "#c9d6ea" }}
             >
-              La prima call è gratuita. Ti diciamo in 20 minuti se e come possiamo
-              aiutarti, senza impegno.
+              Raccontaci il tuo progetto. Troveremo insieme la soluzione più adatta a te.
             </p>
           </Reveal>
           <Reveal delay={0.1}>
@@ -809,7 +805,7 @@ function PaginaIntro() {
               <CtaButton>Raccontaci il tuo progetto →</CtaButton>
             </div>
             <p className="mt-4 text-sm" style={{ color: "#6677aa" }}>
-              ✓ Prima consulenza gratuita · ✓ Risposta in 24h · ✓ Nessun costo iniziale
+              ✓ Nessun impegno · ✓ Risposta in 24h · ✓ Solo soluzioni concrete
             </p>
           </Reveal>
         </section>
