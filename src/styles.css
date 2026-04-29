@@ -133,6 +133,9 @@
     font-family: 'Inter', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
+  h1, h2, h3 {
+    font-family: 'Sora', system-ui, sans-serif;
+  }
 }
 
 @layer utilities {

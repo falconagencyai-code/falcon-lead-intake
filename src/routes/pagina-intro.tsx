@@ -122,7 +122,7 @@ function ServiceBlock({
 }: {
   badge: string;
   title: string;
-  text: string;
+  text: ReactNode;
   imageUrl: string;
   animation: ReactNode;
   reverse?: boolean;
@@ -369,11 +369,13 @@ function ChatAnim() {
   );
 }
 
-const PROBLEMS = [
-  "Processi manuali che rubano tempo",
-  "Nessun sistema per clienti e appuntamenti",
-  "Sito web vecchio o assente",
-  "I competitor ti stanno superando",
+const STRONG_STYLE: React.CSSProperties = { color: "white", fontWeight: 600 };
+
+const PROBLEMS: ReactNode[] = [
+  <><strong style={STRONG_STYLE}>Processi manuali</strong> che rubano tempo</>,
+  <>Nessun sistema per <strong style={STRONG_STYLE}>clienti e appuntamenti</strong></>,
+  <><strong style={STRONG_STYLE}>Sito web vecchio</strong> o assente</>,
+  <>I <strong style={STRONG_STYLE}>competitor ti stanno superando</strong></>,
 ];
 
 const PATH_D =
@@ -604,7 +606,7 @@ function PaginaIntro() {
               className="mx-auto mt-6 max-w-xl text-lg leading-relaxed"
               style={{ color: "#8a9bbf" }}
             >
-              Siti web, gestionali su misura e automazioni intelligenti.
+              <strong style={STRONG_STYLE}>Siti web</strong>, <strong style={STRONG_STYLE}>gestionali su misura</strong> e <strong style={STRONG_STYLE}>automazioni intelligenti</strong>.
               Per qualsiasi tipo di attività.
             </p>
           </Reveal>
@@ -669,7 +671,7 @@ function PaginaIntro() {
               <ServiceBlock
                 badge="SITI WEB"
                 title="La tua presenza online, curata nei dettagli."
-                text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi — e rispecchia esattamente chi sei."
+                text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi, e rispecchia esattamente chi sei."
                 imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
                 animation={<BrowserTypewriter />}
               />
@@ -679,7 +681,7 @@ function PaginaIntro() {
               <ServiceBlock
                 badge="GESTIONALE AI"
                 title="Gestisci tutto da un unico pannello."
-                text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività — non un software generico che devi adattare a te."
+                text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività, non un software generico da adattare a te."
                 imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
                 animation={<DashboardAnim />}
                 reverse
@@ -742,17 +744,17 @@ function PaginaIntro() {
             {
               n: "1",
               title: "Ci parli del tuo progetto",
-              text: "Una call gratuita di 20 minuti. Ascoltiamo cosa hai bisogno, senza tecnicismi.",
+              text: <>Una call gratuita di <strong style={STRONG_STYLE}>20 minuti</strong>. Ascoltiamo cosa hai bisogno, senza tecnicismi.</>,
             },
             {
               n: "2",
               title: "Definiamo insieme il prodotto",
-              text: "Ti diciamo esattamente cosa costruiamo, in quanto tempo e a quanto. Nessuna sorpresa dopo.",
+              text: <>Ti diciamo esattamente cosa costruiamo, in quanto tempo e a quanto. <strong style={STRONG_STYLE}>Nessuna sorpresa</strong> dopo.</>,
             },
             {
               n: "3",
               title: "Ti consegniamo il risultato",
-              text: "Veloce, testato, pronto all'uso. E restiamo al tuo fianco anche dopo la consegna.",
+              text: <><strong style={STRONG_STYLE}>Veloce, testato, pronto all'uso</strong>. E restiamo al tuo fianco anche dopo la consegna.</>,
             },
           ].map((s, i) => (
             <Reveal key={s.n} delay={i * 0.08}>
@@ -799,7 +801,7 @@ function PaginaIntro() {
               style={{ color: "#a8b5d1" }}
             >
               La prima call è gratuita. Ti diciamo in 20 minuti se e come possiamo
-              aiutarti — senza impegno.
+              aiutarti, senza impegno.
             </p>
           </Reveal>
           <Reveal delay={0.1}>
