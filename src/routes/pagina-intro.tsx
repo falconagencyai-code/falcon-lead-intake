@@ -801,7 +801,7 @@ function PaginaIntro() {
               style={{ color: "#a8b5d1" }}
             >
               La prima call è gratuita. Ti diciamo in 20 minuti se e come possiamo
-              aiutarti — senza impegno.
+              aiutarti, senza impegno.
             </p>
           </Reveal>
           <Reveal delay={0.1}>
