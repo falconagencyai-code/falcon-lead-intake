@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState, type ReactNode } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const FORM_PATH = "/form-contatto-1";
 const ACCENT = "#22d3ee";
@@ -297,6 +297,69 @@ function ChatAnim() {
   );
 }
 
+function ProblemTimeline() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const items = [
+    { y: 30, text: "Processi manuali che rubano tempo" },
+    { y: 110, text: "Nessun sistema per clienti e appuntamenti" },
+    { y: 190, text: "Sito web vecchio o assente" },
+    { y: 250, text: "I competitor ti stanno superando" },
+  ];
+  // Smooth S-curve path with 2 curves, height ~280
+  const path =
+    "M 30 10 C 80 60, -10 110, 30 150 C 70 190, 80 240, 30 270";
+  return (
+    <div ref={ref} className="mx-auto w-full max-w-md" style={{ height: 280 }}>
+      <div className="relative h-full">
+        <svg
+          width="60"
+          height="280"
+          viewBox="0 0 60 280"
+          className="absolute left-0 top-0"
+          style={{ overflow: "visible" }}
+        >
+          <motion.path
+            d={path}
+            fill="none"
+            stroke="rgba(34,211,238,0.45)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            initial={{ pathLength: 0 }}
+            animate={inView ? { pathLength: 1 } : {}}
+            transition={{ duration: 1.6, ease: "easeInOut" }}
+          />
+          {items.map((it, i) => (
+            <motion.circle
+              key={i}
+              cx="30"
+              cy={it.y}
+              r="6"
+              fill="#22d3ee"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={inView ? { opacity: 1, scale: 1 } : {}}
+              transition={{ duration: 0.4, delay: 1.2 + i * 0.35 }}
+              style={{ filter: "drop-shadow(0 0 8px rgba(34,211,238,0.8))" }}
+            />
+          ))}
+        </svg>
+        {items.map((it, i) => (
+          <motion.div
+            key={i}
+            className="absolute text-sm md:text-base font-medium"
+            style={{ left: 76, top: it.y - 12, color: "#a8b5d1" }}
+            initial={{ opacity: 0, x: -8 }}
+            animate={inView ? { opacity: 1, x: 0 } : {}}
+            transition={{ duration: 0.5, delay: 1.2 + i * 0.35 }}
+          >
+            {it.text}
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PaginaIntro() {
   useEffect(() => {
     const prev = document.documentElement.style.scrollBehavior;
@@ -415,7 +478,7 @@ function PaginaIntro() {
         </section>
 
         {/* BLOCCO 2 — PROBLEMA */}
-        <section className="mt-28 space-y-6">
+        <section className="mt-28 space-y-6 text-center">
           <Reveal>
             <h2
               className="text-3xl font-bold"
@@ -432,19 +495,9 @@ function PaginaIntro() {
             </p>
           </Reveal>
           <Reveal delay={0.1}>
-            <p className="text-lg leading-relaxed" style={{ color: "#a8b5d1" }}>
-              Il problema non sei tu — è che nessuno ti ha ancora dato gli strumenti
-              giusti. Strumenti che oggi esistono, costano meno di quello che pensi,
-              e si costruiscono in giorni, non mesi.
-            </p>
-          </Reveal>
-          <Reveal delay={0.15}>
-            <img
-              src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
-              alt="Screenshot progetto reale"
-              className="w-full object-cover"
-              style={{ borderRadius: "12px" }}
-            />
+            <div className="mt-8 flex justify-center">
+              <ProblemTimeline />
+            </div>
           </Reveal>
         </section>
 
@@ -488,7 +541,7 @@ function PaginaIntro() {
         </section>
 
         {/* BLOCCO 4 — PROVA VISIVA */}
-        <section className="mt-28 space-y-6">
+        <section className="mt-28 space-y-6 text-center">
           <Reveal>
             <h2
               className="text-3xl font-bold"
@@ -566,7 +619,7 @@ function PaginaIntro() {
         <section className="mt-28 space-y-8">
           <Reveal>
             <h2
-              className="text-3xl font-bold"
+              className="text-3xl font-bold text-center"
               style={{ textShadow: "0 0 24px rgba(34,211,238,0.2)" }}
             >
               Come funziona.
