@@ -305,65 +305,145 @@ function ChatAnim() {
   );
 }
 
-function ProblemTimeline() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-  const items = [
-    { y: 30, text: "Processi manuali che rubano tempo" },
-    { y: 110, text: "Nessun sistema per clienti e appuntamenti" },
-    { y: 190, text: "Sito web vecchio o assente" },
-    { y: 250, text: "I competitor ti stanno superando" },
-  ];
-  // Smooth S-curve path with 2 curves, height ~280
-  const path =
-    "M 30 10 C 80 60, -10 110, 30 150 C 70 190, 80 240, 30 270";
+const PROBLEMS = [
+  "Processi manuali che rubano tempo",
+  "Nessun sistema per clienti e appuntamenti",
+  "Sito web vecchio o assente",
+  "I competitor ti stanno superando",
+];
+
+const PATH_D =
+  "M 50 0 C 50 30, 20 50, 50 80 C 80 110, 80 150, 50 160 C 20 170, 20 210, 50 230 C 80 250, 50 265, 50 280";
+
+const NODE_POSITIONS = [
+  { x: 50, y: 0, progress: 0.05 },
+  { x: 50, y: 80, progress: 0.32 },
+  { x: 50, y: 160, progress: 0.62 },
+  { x: 50, y: 280, progress: 0.9 },
+];
+
+function ProblemNode({
+  scrollYProgress,
+  node,
+}: {
+  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
+  node: (typeof NODE_POSITIONS)[number];
+}) {
+  const opacity = useTransform(
+    scrollYProgress,
+    [node.progress - 0.04, node.progress + 0.04],
+    [0, 1],
+  );
   return (
-    <div ref={ref} className="mx-auto w-full max-w-md" style={{ height: 280 }}>
-      <div className="relative h-full">
-        <svg
-          width="60"
-          height="280"
-          viewBox="0 0 60 280"
-          className="absolute left-0 top-0"
-          style={{ overflow: "visible" }}
-        >
-          <motion.path
-            d={path}
-            fill="none"
-            stroke="rgba(34,211,238,0.45)"
-            strokeWidth="2"
-            strokeLinecap="round"
-            initial={{ pathLength: 0 }}
-            animate={inView ? { pathLength: 1 } : {}}
-            transition={{ duration: 1.6, ease: "easeInOut" }}
-          />
-          {items.map((it, i) => (
-            <motion.circle
-              key={i}
-              cx="30"
-              cy={it.y}
-              r="6"
-              fill="#22d3ee"
-              initial={{ opacity: 0, scale: 0 }}
-              animate={inView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 0.4, delay: 1.2 + i * 0.35 }}
-              style={{ filter: "drop-shadow(0 0 8px rgba(34,211,238,0.8))" }}
-            />
-          ))}
-        </svg>
-        {items.map((it, i) => (
-          <motion.div
-            key={i}
-            className="absolute text-sm md:text-base font-medium"
-            style={{ left: 76, top: it.y - 12, color: "#a8b5d1" }}
-            initial={{ opacity: 0, x: -8 }}
-            animate={inView ? { opacity: 1, x: 0 } : {}}
-            transition={{ duration: 0.5, delay: 1.2 + i * 0.35 }}
-          >
-            {it.text}
-          </motion.div>
+    <motion.circle
+      cx={node.x}
+      cy={node.y}
+      r="5"
+      fill="#22d3ee"
+      style={{
+        opacity,
+        filter: "drop-shadow(0 0 6px rgba(34,211,238,0.8))",
+      }}
+    />
+  );
+}
+
+function ProblemLabel({
+  scrollYProgress,
+  node,
+  index,
+}: {
+  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
+  node: (typeof NODE_POSITIONS)[number];
+  index: number;
+}) {
+  const opacity = useTransform(
+    scrollYProgress,
+    [node.progress - 0.04, node.progress + 0.08],
+    [0, 1],
+  );
+  const yShift = useTransform(
+    scrollYProgress,
+    [node.progress - 0.04, node.progress + 0.08],
+    [6, 0],
+  );
+  const isRight = index % 2 === 0;
+  return (
+    <motion.div
+      style={{
+        position: "absolute",
+        top: `${(node.y / 290) * 100}%`,
+        left: isRight ? "calc(50% + 20px)" : undefined,
+        right: !isRight ? "calc(50% + 20px)" : undefined,
+        transform: "translateY(-50%)",
+        opacity,
+        y: yShift,
+        color: "#a8b5d1",
+        fontSize: "13px",
+        lineHeight: 1.4,
+        maxWidth: "130px",
+        textAlign: isRight ? "left" : "right",
+      }}
+    >
+      {PROBLEMS[index]}
+    </motion.div>
+  );
+}
+
+function ProblemTimeline() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start 0.85", "end 0.4"],
+  });
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative mx-auto"
+      style={{ width: 320, height: 320 }}
+    >
+      <svg
+        viewBox="0 0 100 290"
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          width: "100%",
+          height: "100%",
+        }}
+        overflow="visible"
+      >
+        <path
+          d={PATH_D}
+          fill="none"
+          stroke="rgba(34,211,238,0.1)"
+          strokeWidth="2"
+        />
+        <motion.path
+          d={PATH_D}
+          fill="none"
+          stroke="#22d3ee"
+          strokeWidth="2"
+          strokeLinecap="round"
+          style={{
+            pathLength: scrollYProgress,
+            filter: "drop-shadow(0 0 4px rgba(34,211,238,0.6))",
+          }}
+        />
+        {NODE_POSITIONS.map((node, i) => (
+          <ProblemNode key={i} scrollYProgress={scrollYProgress} node={node} />
         ))}
-      </div>
+      </svg>
+
+      {NODE_POSITIONS.map((node, i) => (
+        <ProblemLabel
+          key={i}
+          scrollYProgress={scrollYProgress}
+          node={node}
+          index={i}
+        />
+      ))}
     </div>
   );
 }
