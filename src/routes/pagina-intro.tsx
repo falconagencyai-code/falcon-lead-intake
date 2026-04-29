@@ -297,7 +297,7 @@ function ChatAnim() {
   );
 }
 
-
+function PaginaIntro() {
   useEffect(() => {
     const prev = document.documentElement.style.scrollBehavior;
     document.documentElement.style.scrollBehavior = "smooth";
