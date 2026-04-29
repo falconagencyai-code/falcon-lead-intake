@@ -207,54 +207,43 @@ function PaginaIntro() {
           </Reveal>
         </section>
 
-        {/* BLOCCO 3 — SOLUZIONE */}
-        <section className="mt-28 space-y-8">
-          <Reveal>
-            <h2
-              className="text-3xl font-bold"
-              style={{ textShadow: "0 0 24px rgba(34,211,238,0.2)" }}
-            >
-              Cosa costruiamo per te.
-            </h2>
-          </Reveal>
-
-          {[
-            {
-              title: "Sito web professionale",
-              text: "Design moderno, veloce, ottimizzato. Non un template uguale a mille altri — una presenza online che rispecchia chi sei e converte i visitatori in clienti.",
-            },
-            {
-              title: "Gestionale AI su misura",
-              text: "Prenotazioni, clienti, magazzino, fatture. Un pannello costruito attorno alla tua attività specifica — non un software generico che devi adattare a te.",
-            },
-            {
-              title: "Automazioni intelligenti",
-              text: "Risposte automatiche, gestione ordini, notifiche, report. Il tuo business lavora anche quando tu non puoi.",
-            },
-          ].map((b, i) => (
-            <Reveal key={b.title} delay={i * 0.08}>
-              <div
-                className="border-l-2 pl-4"
-                style={{ borderColor: ACCENT }}
+        {/* BLOCCO 3 — SERVIZI */}
+        <section className="mt-28 -mx-6 md:-mx-[calc((min(64rem,100vw)-42rem)/2)]">
+          <div className="mx-auto max-w-5xl px-6 space-y-12">
+            <Reveal>
+              <h2
+                className="text-3xl font-bold text-center"
+                style={{ textShadow: "0 0 24px rgba(34,211,238,0.2)" }}
               >
-                <h3
-                  className="text-xl font-bold"
-                  style={{
-                    color: ACCENT,
-                    textShadow: "0 0 16px rgba(34,211,238,0.4)",
-                  }}
-                >
-                  {b.title}
-                </h3>
-                <p
-                  className="mt-2 text-lg leading-relaxed"
-                  style={{ color: "#a8b5d1" }}
-                >
-                  {b.text}
-                </p>
-              </div>
+                Cosa costruiamo per te.
+              </h2>
             </Reveal>
-          ))}
+
+            <ServiceBlock
+              badge="SITI WEB"
+              title="La tua presenza online, curata nei dettagli."
+              text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi — e rispecchia esattamente chi sei."
+              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
+              animation={<BrowserTypewriter />}
+            />
+
+            <ServiceBlock
+              badge="GESTIONALE AI"
+              title="Gestisci tutto da un unico pannello."
+              text="Prenotazioni, clienti, agenda, statistiche. Un gestionale costruito attorno alla tua attività — non un software generico che devi adattare a te."
+              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
+              animation={<DashboardAnim />}
+              reverse
+            />
+
+            <ServiceBlock
+              badge="AUTOMAZIONI AI"
+              title="Il tuo business lavora anche quando tu non puoi."
+              text="Risposte automatiche, conferme appuntamento, notifiche, follow-up. L'AI gestisce la comunicazione, tu gestisci il business."
+              imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/81ae04c1b141e95da9dc73575c11e785-1777472375825.png"
+              animation={<ChatAnim />}
+            />
+          </div>
         </section>
 
         {/* BLOCCO 4 — PROVA VISIVA */}
