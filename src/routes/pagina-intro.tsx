@@ -119,6 +119,7 @@ function ServiceBlock({
   imageUrl,
   animation,
   reverse = false,
+  fromDirection = "left",
 }: {
   badge: string;
   title: string;
@@ -126,9 +127,16 @@ function ServiceBlock({
   imageUrl: string;
   animation: ReactNode;
   reverse?: boolean;
+  fromDirection?: "left" | "right";
 }) {
+  const x = fromDirection === "left" ? -50 : 50;
   return (
-    <Reveal>
+    <motion.div
+      initial={{ opacity: 0, x }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+    >
       <div
         className={`grid md:grid-cols-2 gap-8 items-center rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 md:p-10 ${reverse ? "md:[&>*:first-child]:order-2" : ""}`}
       >
@@ -144,7 +152,7 @@ function ServiceBlock({
         </div>
         <ServiceVisual imageUrl={imageUrl} animation={animation} />
       </div>
-    </Reveal>
+    </motion.div>
   );
 }
 
