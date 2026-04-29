@@ -52,28 +52,6 @@ function CtaButton({ children }: { children: ReactNode }) {
   );
 }
 
-function ImagePlaceholder({
-  label,
-  height = "h-64",
-}: {
-  label: string;
-  height?: string;
-}) {
-  return (
-    /* SOSTITUIRE con immagine reale */
-    <div
-      className={`flex w-full items-center justify-center rounded-2xl border ${height}`}
-      style={{
-        borderColor: "rgba(34,211,238,0.18)",
-        background: "rgba(255,255,255,0.02)",
-      }}
-    >
-      <span className="text-sm" style={{ color: "#6677aa" }}>
-        [ {label} ]
-      </span>
-    </div>
-  );
-}
 
 function ServiceVisual({ imageUrl, animation }: { imageUrl: string; animation: ReactNode }) {
   const [phase, setPhase] = useState<"image" | "anim">("image");
@@ -179,32 +157,27 @@ function ScrollTypewriter({
   style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLHeadingElement>(null);
+  const textRef = useRef<HTMLSpanElement>(null);
+  const caretRef = useRef<HTMLSpanElement>(null);
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ["start 0.95", "start 0.45"],
   });
-  const [count, setCount] = useState(0);
   useEffect(() => {
-    const unsub = scrollYProgress.on("change", (v) => {
-      const clamped = Math.max(0, Math.min(1, v));
-      setCount(Math.round(clamped * text.length));
+    return scrollYProgress.on("change", (v) => {
+      const count = Math.round(Math.max(0, Math.min(1, v)) * text.length);
+      if (textRef.current) textRef.current.textContent = text.slice(0, count);
+      if (caretRef.current)
+        caretRef.current.style.opacity = count > 0 && count < text.length ? "1" : "0";
     });
-    return () => unsub();
-  }, [scrollYProgress, text.length]);
-  const showCaret = count > 0 && count < text.length;
+  }, [scrollYProgress, text]);
   return (
-    <h2 ref={ref} className={className} style={style}>
+    <h2 ref={ref} className={className} style={{ ...style, position: "relative" }}>
       <span style={{ visibility: "hidden" }}>{text}</span>
-      <span
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: 0,
-        }}
-      >
-        {text.slice(0, count)}
+      <span style={{ position: "absolute", left: 0, right: 0, top: 0 }}>
+        <span ref={textRef} />
         <span
+          ref={caretRef}
           style={{
             display: "inline-block",
             width: 3,
@@ -212,8 +185,8 @@ function ScrollTypewriter({
             marginLeft: 2,
             verticalAlign: "-0.1em",
             background: ACCENT,
-            opacity: showCaret ? 1 : 0,
-            animation: showCaret ? "pulse 1s ease-in-out infinite" : "none",
+            opacity: 0,
+            animation: "pulse 1s ease-in-out infinite",
           }}
         />
       </span>
@@ -221,13 +194,15 @@ function ScrollTypewriter({
   );
 }
 
+const BROWSER_PHRASES = [
+  "La tua pizzeria, online.",
+  "Il tuo studio, online.",
+  "Il tuo negozio, online.",
+  "La tua attività, online.",
+];
+
 function BrowserTypewriter() {
-  const phrases = [
-    "La tua pizzeria, online.",
-    "Il tuo studio, online.",
-    "Il tuo negozio, online.",
-    "La tua attività, online.",
-  ];
+  const phrases = BROWSER_PHRASES;
   const [idx, setIdx] = useState(0);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(true);
@@ -275,33 +250,35 @@ function BrowserTypewriter() {
 function Counter({ to, prefix = "", suffix = "" }: { to: number; prefix?: string; suffix?: string }) {
   const [n, setN] = useState(0);
   useEffect(() => {
-    const start = Date.now();
+    const start = performance.now();
     const dur = 1500;
-    const id = setInterval(() => {
-      const p = Math.min(1, (Date.now() - start) / dur);
+    let rafId: number;
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / dur);
       setN(Math.floor(p * to));
-      if (p === 1) clearInterval(id);
-    }, 30);
-    return () => clearInterval(id);
+      if (p < 1) rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
   }, [to]);
   return (
     <span style={{ color: ACCENT }}>
-      {prefix}
-      {n.toLocaleString("it-IT")}
-      {suffix}
+      {prefix}{n.toLocaleString("it-IT")}{suffix}
     </span>
   );
 }
+
+const DASHBOARD_KPIS = [
+  { label: "Prenotazioni oggi", to: 12 },
+  { label: "Questa settimana", to: 47 },
+  { label: "Entrate mese", to: 3240, prefix: "€" },
+] as const;
 
 function DashboardAnim() {
   return (
     <div className="w-full h-full bg-zinc-900 p-4 flex flex-col gap-3">
       <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: "Prenotazioni oggi", to: 12 },
-          { label: "Questa settimana", to: 47 },
-          { label: "Entrate mese", to: 3240, prefix: "€" },
-        ].map((k) => (
+        {DASHBOARD_KPIS.map((k) => (
           <div key={k.label} className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-2">
             <div className="text-[9px] uppercase tracking-wider text-zinc-400">{k.label}</div>
             <div className="mt-1 text-lg font-bold">
@@ -621,6 +598,8 @@ function PaginaIntro() {
                 src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
                 alt="Mockup gestionale Falcon Agency"
                 className="hero-float w-full"
+                fetchPriority="high"
+                decoding="async"
                 style={{
                   maxWidth: "780px",
                   borderRadius: "12px",
