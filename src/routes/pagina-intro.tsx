@@ -656,14 +656,14 @@ function PaginaIntro() {
         {/* BLOCCO 3 — SERVIZI */}
         <section className="mt-28 -mx-6 md:-mx-[calc((min(64rem,100vw)-42rem)/2)]">
           <div className="mx-auto max-w-5xl px-6 space-y-12 overflow-hidden">
-            <Reveal>
-              <h2
-                className="text-3xl font-bold text-center"
-                style={{ textShadow: "0 0 24px rgba(34,211,238,0.2)" }}
-              >
-                Cosa costruiamo per te.
-              </h2>
-            </Reveal>
+            <ScrollTypewriter
+              text="Cosa costruiamo per te."
+              className="relative text-3xl font-bold text-center mx-auto"
+              style={{
+                textShadow: "0 0 24px rgba(34,211,238,0.2)",
+                minHeight: "1.2em",
+              }}
+            />
 
             <ScrollRevealBlock direction="left">
               <ServiceBlock
