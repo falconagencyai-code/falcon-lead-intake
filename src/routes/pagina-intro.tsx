@@ -536,6 +536,7 @@ function PaginaIntro() {
               imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
               animation={<DashboardAnim />}
               reverse
+              fromDirection="right"
             />
 
             <ServiceBlock
