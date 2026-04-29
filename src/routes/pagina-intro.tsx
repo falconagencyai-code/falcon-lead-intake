@@ -158,11 +158,11 @@ function ScrollRevealBlock({
     target: ref,
     offset: ["start 0.92", "start 0.18"],
   });
-  const xStart = direction === "left" ? -90 : 90;
+  const xStart = direction === "left" ? -350 : 350;
   const x = useTransform(scrollYProgress, [0, 0.7], [xStart, 0]);
-  const opacity = useTransform(scrollYProgress, [0, 0.55], [0, 1]);
+  const opacity = useTransform(scrollYProgress, [0, 0.4], [0, 1]);
   return (
-    <div ref={ref}>
+    <div ref={ref} style={{ overflow: "hidden" }}>
       <motion.div style={{ x, opacity }}>{children}</motion.div>
     </div>
   );
@@ -603,7 +603,7 @@ function PaginaIntro() {
 
         {/* BLOCCO 3 — SERVIZI */}
         <section className="mt-28 -mx-6 md:-mx-[calc((min(64rem,100vw)-42rem)/2)]">
-          <div className="mx-auto max-w-5xl px-6 space-y-12">
+          <div className="mx-auto max-w-5xl px-6 space-y-12 overflow-hidden">
             <Reveal>
               <h2
                 className="text-3xl font-bold text-center"
