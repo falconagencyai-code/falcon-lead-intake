@@ -619,7 +619,7 @@ function PaginaIntro() {
         <section className="mt-28 space-y-8">
           <Reveal>
             <h2
-              className="text-3xl font-bold"
+              className="text-3xl font-bold text-center"
               style={{ textShadow: "0 0 24px rgba(34,211,238,0.2)" }}
             >
               Come funziona.
