@@ -75,7 +75,229 @@ function ImagePlaceholder({
   );
 }
 
-function PaginaIntro() {
+function ServiceVisual({ imageUrl, animation }: { imageUrl: string; animation: ReactNode }) {
+  const [phase, setPhase] = useState<"image" | "anim">("image");
+  useEffect(() => {
+    const t = setTimeout(() => setPhase((p) => (p === "image" ? "anim" : "image")), phase === "image" ? 3000 : 4000);
+    return () => clearTimeout(t);
+  }, [phase]);
+  return (
+    <div className="relative w-full h-64 md:h-80 rounded-xl overflow-hidden border border-zinc-700 bg-zinc-900">
+      <AnimatePresence mode="wait">
+        {phase === "image" ? (
+          <motion.img
+            key="img"
+            src={imageUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6 }}
+          />
+        ) : (
+          <motion.div
+            key="anim"
+            className="absolute inset-0 w-full h-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            {animation}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ServiceBlock({
+  badge,
+  title,
+  text,
+  imageUrl,
+  animation,
+  reverse = false,
+}: {
+  badge: string;
+  title: string;
+  text: string;
+  imageUrl: string;
+  animation: ReactNode;
+  reverse?: boolean;
+}) {
+  return (
+    <Reveal>
+      <div
+        className={`grid md:grid-cols-2 gap-8 items-center rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 md:p-10 ${reverse ? "md:[&>*:first-child]:order-2" : ""}`}
+      >
+        <div>
+          <span
+            className="inline-block rounded-full px-3 py-1 text-[11px] font-semibold tracking-[0.2em]"
+            style={{ background: "rgba(34,211,238,0.12)", color: ACCENT, border: "1px solid rgba(34,211,238,0.3)" }}
+          >
+            {badge}
+          </span>
+          <h3 className="mt-4 text-2xl md:text-3xl font-bold text-white leading-tight">{title}</h3>
+          <p className="mt-4 text-zinc-300 leading-relaxed">{text}</p>
+        </div>
+        <ServiceVisual imageUrl={imageUrl} animation={animation} />
+      </div>
+    </Reveal>
+  );
+}
+
+function BrowserTypewriter() {
+  const phrases = [
+    "La tua pizzeria, online.",
+    "Il tuo studio, online.",
+    "Il tuo negozio, online.",
+    "La tua attività, online.",
+  ];
+  const [idx, setIdx] = useState(0);
+  const [text, setText] = useState("");
+  const [typing, setTyping] = useState(true);
+  useEffect(() => {
+    const current = phrases[idx];
+    if (typing) {
+      if (text.length < current.length) {
+        const t = setTimeout(() => setText(current.slice(0, text.length + 1)), 60);
+        return () => clearTimeout(t);
+      }
+      const t = setTimeout(() => setTyping(false), 1500);
+      return () => clearTimeout(t);
+    } else {
+      if (text.length > 0) {
+        const t = setTimeout(() => setText(text.slice(0, -1)), 30);
+        return () => clearTimeout(t);
+      }
+      setTyping(true);
+      setIdx((i) => (i + 1) % phrases.length);
+    }
+  }, [text, typing, idx]);
+  return (
+    <div className="w-full h-full flex flex-col bg-zinc-900">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-700 bg-zinc-800/60">
+        <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+        <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+        <span className="w-2.5 h-2.5 rounded-full bg-green-500/70" />
+        <div className="ml-3 flex-1 max-w-xs rounded-md bg-zinc-900 border border-zinc-700 px-3 py-1 text-xs text-zinc-400">
+          tuodominio.com
+        </div>
+      </div>
+      <div className="flex-1 flex items-center justify-center px-6">
+        <span
+          className="text-xl md:text-2xl font-bold text-center"
+          style={{ color: ACCENT, textShadow: "0 0 18px rgba(34,211,238,0.5)" }}
+        >
+          {text}
+          <span className="inline-block w-[2px] h-5 ml-0.5 align-middle bg-cyan-400 animate-pulse" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Counter({ to, prefix = "", suffix = "" }: { to: number; prefix?: string; suffix?: string }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const dur = 1500;
+    const id = setInterval(() => {
+      const p = Math.min(1, (Date.now() - start) / dur);
+      setN(Math.floor(p * to));
+      if (p === 1) clearInterval(id);
+    }, 30);
+    return () => clearInterval(id);
+  }, [to]);
+  return (
+    <span style={{ color: ACCENT }}>
+      {prefix}
+      {n.toLocaleString("it-IT")}
+      {suffix}
+    </span>
+  );
+}
+
+function DashboardAnim() {
+  return (
+    <div className="w-full h-full bg-zinc-900 p-4 flex flex-col gap-3">
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: "Prenotazioni oggi", to: 12 },
+          { label: "Questa settimana", to: 47 },
+          { label: "Entrate mese", to: 3240, prefix: "€" },
+        ].map((k) => (
+          <div key={k.label} className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-2">
+            <div className="text-[9px] uppercase tracking-wider text-zinc-400">{k.label}</div>
+            <div className="mt-1 text-lg font-bold">
+              <Counter to={k.to} prefix={k.prefix ?? ""} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 1.6, duration: 0.5 }}
+        className="mt-auto flex items-center gap-3 rounded-lg border border-zinc-700 bg-zinc-800/60 p-3"
+      >
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center text-[11px] font-bold text-zinc-900">
+          MR
+        </div>
+        <div className="flex-1 text-xs text-zinc-200">
+          <span className="font-semibold">Marco R.</span> — 15:30
+        </div>
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/30">
+          Confermato
+        </span>
+      </motion.div>
+    </div>
+  );
+}
+
+function ChatAnim() {
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    const delays = [800, 1200, 1400, 1200, 1400, 1500];
+    if (step >= 6) {
+      const t = setTimeout(() => setStep(0), 1800);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => setStep(step + 1), delays[step]);
+    return () => clearTimeout(t);
+  }, [step]);
+  const Bubble = ({ side, children, accent = false }: { side: "l" | "r"; children: ReactNode; accent?: boolean }) => (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className={`max-w-[80%] rounded-2xl px-3 py-2 text-xs ${side === "l" ? "self-start bg-zinc-700 text-zinc-100" : "self-end"} ${accent ? "border border-cyan-400/30 bg-cyan-400/20 text-cyan-100" : ""}`}
+    >
+      {children}
+    </motion.div>
+  );
+  return (
+    <div className="w-full h-full bg-zinc-900 p-4 flex flex-col gap-2 overflow-hidden">
+      <AnimatePresence>
+        {step >= 1 && <Bubble key="1" side="l">Ciao, avete disponibilità domani alle 15?</Bubble>}
+        {step === 2 && (
+          <motion.div key="typing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="self-end flex gap-1 rounded-2xl bg-cyan-400/20 border border-cyan-400/30 px-3 py-2">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="w-1.5 h-1.5 rounded-full bg-cyan-300 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </motion.div>
+        )}
+        {step >= 3 && <Bubble key="3" side="r" accent>Certo! Ho disponibile domani 15:00 e 16:30. Quale preferisci?</Bubble>}
+        {step >= 4 && <Bubble key="4" side="l">15:00 perfetto grazie</Bubble>}
+        {step >= 5 && <Bubble key="5" side="r" accent>✓ Appuntamento confermato per domani alle 15:00. Riceverai un promemoria!</Bubble>}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+
   useEffect(() => {
     const prev = document.documentElement.style.scrollBehavior;
     document.documentElement.style.scrollBehavior = "smooth";
