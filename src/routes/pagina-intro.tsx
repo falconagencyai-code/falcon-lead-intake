@@ -89,6 +89,7 @@ function ServiceVisual({ imageUrl, animation }: { imageUrl: string; animation: R
             key="img"
             src={imageUrl}
             alt=""
+            loading="lazy"
             className="absolute inset-0 w-full h-full object-cover"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -163,7 +164,7 @@ function ScrollRevealBlock({
   const opacity = useTransform(scrollYProgress, [0, 0.4], [0, 1]);
   return (
     <div ref={ref} style={{ overflow: "hidden" }}>
-      <motion.div style={{ x, opacity }}>{children}</motion.div>
+      <motion.div style={{ x, opacity, willChange: "transform, opacity" }}>{children}</motion.div>
     </div>
   );
 }
@@ -449,6 +450,7 @@ function ProblemLabel({
         lineHeight: 1.4,
         maxWidth: "130px",
         textAlign: isRight ? "left" : "right",
+        willChange: "transform, opacity",
       }}
     >
       {PROBLEMS[index]}
@@ -495,6 +497,7 @@ function ProblemTimeline() {
           style={{
             pathLength: scrollYProgress,
             filter: "drop-shadow(0 0 4px rgba(34,211,238,0.6))",
+            willChange: "stroke-dashoffset",
           }}
         />
         {NODE_POSITIONS.map((node, i) => (
