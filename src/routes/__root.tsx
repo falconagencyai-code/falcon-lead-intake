@@ -1,6 +1,7 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, Link, createRootRoute, HeadContent, Scripts, useRouterState } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
@@ -78,10 +79,25 @@ function RootComponent() {
     defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
   }));
   const [mounted, setMounted] = useState(false);
+  const routerState = useRouterState();
+  const pathname = routerState.location.pathname;
+
   useEffect(() => setMounted(true), []);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={pathname}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease: "easeInOut" }}
+          style={{ minHeight: "100vh" }}
+        >
+          <Outlet />
+        </motion.div>
+      </AnimatePresence>
       {mounted && <Toaster theme="dark" position="top-right" />}
     </QueryClientProvider>
   );
