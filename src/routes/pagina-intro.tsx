@@ -393,7 +393,21 @@ function PaginaIntro() {
               Per qualsiasi tipo di attività.
             </p>
           </Reveal>
-          <Reveal delay={0.25}>
+          <Reveal delay={0.2}>
+            <div className="mt-12 flex justify-center">
+              <img
+                src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/08c593725f05c57921d5e38c586b836f-1777472162177.png"
+                alt="Mockup gestionale Falcon Agency"
+                className="hero-float w-full"
+                style={{
+                  maxWidth: "780px",
+                  borderRadius: "12px",
+                  boxShadow: "0 0 60px rgba(34,211,238,0.12)",
+                }}
+              />
+            </div>
+          </Reveal>
+          <Reveal delay={0.3}>
             <div className="mt-10 flex justify-center">
               <CtaButton>Raccontaci il tuo progetto →</CtaButton>
             </div>
@@ -425,7 +439,12 @@ function PaginaIntro() {
             </p>
           </Reveal>
           <Reveal delay={0.15}>
-            <ImagePlaceholder label="screenshot progetto reale" />
+            <img
+              src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
+              alt="Screenshot progetto reale"
+              className="w-full object-cover"
+              style={{ borderRadius: "12px" }}
+            />
           </Reveal>
         </section>
 
@@ -485,9 +504,11 @@ function PaginaIntro() {
           </Reveal>
 
           <Reveal delay={0.1}>
-            <ImagePlaceholder
-              label="screenshot gestionale / sito cliente 1"
-              height="h-80"
+            <img
+              src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
+              alt="Gestionale prenotazioni"
+              className="w-full object-cover"
+              style={{ borderRadius: "12px" }}
             />
             <p className="mt-3 text-center text-sm" style={{ color: "#6677aa" }}>
               Gestionale prenotazioni — consegnato in 5 giorni
@@ -496,9 +517,11 @@ function PaginaIntro() {
 
           <Reveal delay={0.15}>
             <div className="mt-8">
-              <ImagePlaceholder
-                label="screenshot sito cliente 2"
-                height="h-80"
+              <img
+                src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/81ae04c1b141e95da9dc73575c11e785-1777472375825.png"
+                alt="Sito web con integrazione booking"
+                className="w-full object-cover"
+                style={{ borderRadius: "12px" }}
               />
               <p
                 className="mt-3 text-center text-sm"
