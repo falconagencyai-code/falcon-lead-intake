@@ -795,10 +795,9 @@ function PaginaIntro() {
           <Reveal delay={0.05}>
             <p
               className="mx-auto mt-4 max-w-lg text-lg leading-relaxed"
-              style={{ color: "#a8b5d1" }}
+              style={{ color: "#c9d6ea" }}
             >
               Raccontaci il tuo progetto. Troveremo insieme la soluzione più adatta a te.
-              aiutarti, senza impegno.
             </p>
           </Reveal>
           <Reveal delay={0.1}>
