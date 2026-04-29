@@ -478,7 +478,7 @@ function PaginaIntro() {
         </section>
 
         {/* BLOCCO 2 — PROBLEMA */}
-        <section className="mt-28 space-y-6">
+        <section className="mt-28 space-y-6 text-center">
           <Reveal>
             <h2
               className="text-3xl font-bold"
@@ -495,19 +495,9 @@ function PaginaIntro() {
             </p>
           </Reveal>
           <Reveal delay={0.1}>
-            <p className="text-lg leading-relaxed" style={{ color: "#a8b5d1" }}>
-              Il problema non sei tu — è che nessuno ti ha ancora dato gli strumenti
-              giusti. Strumenti che oggi esistono, costano meno di quello che pensi,
-              e si costruiscono in giorni, non mesi.
-            </p>
-          </Reveal>
-          <Reveal delay={0.15}>
-            <img
-              src="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
-              alt="Screenshot progetto reale"
-              className="w-full object-cover"
-              style={{ borderRadius: "12px" }}
-            />
+            <div className="mt-8 flex justify-center">
+              <ProblemTimeline />
+            </div>
           </Reveal>
         </section>
 
