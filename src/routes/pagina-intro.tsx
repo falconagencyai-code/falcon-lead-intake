@@ -744,17 +744,17 @@ function PaginaIntro() {
             {
               n: "1",
               title: "Ci parli del tuo progetto",
-              text: "Una call gratuita di 20 minuti. Ascoltiamo cosa hai bisogno, senza tecnicismi.",
+              text: <>Una call gratuita di <strong style={STRONG_STYLE}>20 minuti</strong>. Ascoltiamo cosa hai bisogno, senza tecnicismi.</>,
             },
             {
               n: "2",
               title: "Definiamo insieme il prodotto",
-              text: "Ti diciamo esattamente cosa costruiamo, in quanto tempo e a quanto. Nessuna sorpresa dopo.",
+              text: <>Ti diciamo esattamente cosa costruiamo, in quanto tempo e a quanto. <strong style={STRONG_STYLE}>Nessuna sorpresa</strong> dopo.</>,
             },
             {
               n: "3",
               title: "Ti consegniamo il risultato",
-              text: "Veloce, testato, pronto all'uso. E restiamo al tuo fianco anche dopo la consegna.",
+              text: <><strong style={STRONG_STYLE}>Veloce, testato, pronto all'uso</strong>. E restiamo al tuo fianco anche dopo la consegna.</>,
             },
           ].map((s, i) => (
             <Reveal key={s.n} delay={i * 0.08}>
