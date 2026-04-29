@@ -558,12 +558,24 @@ function PaginaIntro() {
         }}
       >
         <div className="mx-auto flex h-16 max-w-2xl items-center justify-between px-6">
-          <span
-            className="text-[12px] font-medium tracking-[0.3em] uppercase"
-            style={{ color: ACCENT }}
-          >
-            Falcon Agency
-          </span>
+          <div className="flex items-center gap-2">
+            <img
+              src="https://tpzpydnvcbcdkuthyweh.supabase.co/storage/v1/object/public/assets/falcon-wings-closed.png"
+              alt="Falcon"
+              style={{
+                width: "36px",
+                height: "36px",
+                objectFit: "contain",
+                filter: "drop-shadow(0 0 8px rgba(0,212,255,0.6)) drop-shadow(0 0 3px rgba(0,212,255,0.4))",
+              }}
+            />
+            <span
+              className="text-[12px] font-medium tracking-[0.3em] uppercase"
+              style={{ color: "#22d3ee" }}
+            >
+              Falcon Agency
+            </span>
+          </div>
           <Link
             to={FORM_PATH}
             className="rounded-lg px-4 py-2 text-sm font-semibold transition-colors"
