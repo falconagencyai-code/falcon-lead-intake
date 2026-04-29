@@ -671,7 +671,7 @@ function PaginaIntro() {
               <ServiceBlock
                 badge="SITI WEB"
                 title="La tua presenza online, curata nei dettagli."
-                text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi — e rispecchia esattamente chi sei."
+                text="Design professionale, veloce e ottimizzato. Il tuo sito è pronto in giorni, non mesi, e rispecchia esattamente chi sei."
                 imageUrl="https://ytrnunswsbgyghzyhyqs.supabase.co/storage/v1/object/public/product-images/nano-banana/287ab373-0c94-4fda-82d8-bd28fa1f249a/f430ce1d4679856f68bdf00811688554-1777472192246.png"
                 animation={<BrowserTypewriter />}
               />
