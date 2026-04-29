@@ -606,7 +606,7 @@ function PaginaIntro() {
               className="mx-auto mt-6 max-w-xl text-lg leading-relaxed"
               style={{ color: "#8a9bbf" }}
             >
-              Siti web, gestionali su misura e automazioni intelligenti.
+              <strong style={STRONG_STYLE}>Siti web</strong>, <strong style={STRONG_STYLE}>gestionali su misura</strong> e <strong style={STRONG_STYLE}>automazioni intelligenti</strong>.
               Per qualsiasi tipo di attività.
             </p>
           </Reveal>
