@@ -91,8 +91,8 @@ function FormPage() {
     if (step === 4)
       return (
         state.fullName.trim().length > 1 &&
-        /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(state.email) &&
-        state.phone.trim().length >= 6
+        /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(state.email.trim()) &&
+        state.phone.replace(/\D/g, "").length >= 11 // +39 (2) + at least 9 digits
       );
     return true;
   };
