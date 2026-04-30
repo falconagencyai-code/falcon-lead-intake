@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const FORM_PATH = "/form-contatto-1";
@@ -133,30 +133,18 @@ function ScrollRevealBlock({
   direction: "left" | "right";
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0.12 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  const xOffset = direction === "left" ? "-80px" : "80px";
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start 0.95", "start 0.1"],
+  });
+  const xStart = direction === "left" ? -320 : 320;
+  const x = useTransform(scrollYProgress, [0, 0.7], [xStart, 0]);
+  const opacity = useTransform(scrollYProgress, [0, 0.45], [0, 1]);
   return (
-    <div ref={ref} style={{ overflow: "hidden" }}>
-      <div
-        style={{
-          transform: visible ? "translateX(0)" : `translateX(${xOffset})`,
-          opacity: visible ? 1 : 0,
-          transition: "transform 0.7s cubic-bezier(0.22,1,0.36,1), opacity 0.6s ease",
-          willChange: "transform, opacity",
-        }}
-      >
+    <div ref={ref}>
+      <motion.div style={{ x, opacity, willChange: "transform, opacity" }}>
         {children}
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -173,38 +161,18 @@ function ScrollTypewriter({
   const ref = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const caretRef = useRef<HTMLSpanElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const countRef = useRef(0);
-
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start 0.8", "start 0.1"],
+  });
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          countRef.current = 0;
-          intervalRef.current = setInterval(() => {
-            countRef.current += 1;
-            if (textRef.current) textRef.current.textContent = text.slice(0, countRef.current);
-            if (caretRef.current) caretRef.current.style.opacity = countRef.current < text.length ? "1" : "0";
-            if (countRef.current >= text.length && intervalRef.current) clearInterval(intervalRef.current);
-          }, 38);
-        } else {
-          if (intervalRef.current) clearInterval(intervalRef.current);
-          if (textRef.current) textRef.current.textContent = "";
-          if (caretRef.current) caretRef.current.style.opacity = "0";
-          countRef.current = 0;
-        }
-      },
-      { threshold: 0.5 },
-    );
-    observer.observe(el);
-    return () => {
-      observer.disconnect();
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [text]);
-
+    return scrollYProgress.on("change", (v) => {
+      const count = Math.round(Math.max(0, Math.min(1, v)) * text.length);
+      if (textRef.current) textRef.current.textContent = text.slice(0, count);
+      if (caretRef.current)
+        caretRef.current.style.opacity = count > 0 && count < text.length ? "1" : "0";
+    });
+  }, [scrollYProgress, text]);
   return (
     <div ref={ref} className={className} style={{ ...style, position: "relative" }}>
       <span style={{ visibility: "hidden" }}>{text}</span>
@@ -400,89 +368,79 @@ const NODE_POSITIONS = [
   { x: 50, y: 280, progress: 0.9 },
 ];
 
+function ProblemNode({
+  scrollYProgress,
+  node,
+}: {
+  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
+  node: (typeof NODE_POSITIONS)[number];
+}) {
+  const opacity = useTransform(scrollYProgress, [node.progress - 0.05, node.progress + 0.05], [0, 1]);
+  return <motion.circle cx={node.x} cy={node.y} r="6" fill="#22d3ee" style={{ opacity }} />;
+}
+
+function ProblemLabel({
+  scrollYProgress,
+  node,
+  index,
+}: {
+  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
+  node: (typeof NODE_POSITIONS)[number];
+  index: number;
+}) {
+  const opacity = useTransform(scrollYProgress, [node.progress, node.progress + 0.1], [0, 1]);
+  const isRight = index % 2 === 0;
+  return (
+    <motion.div
+      style={{
+        position: "absolute",
+        top: `${(node.y / 290) * 100}%`,
+        left: isRight ? "calc(50% + 20px)" : undefined,
+        right: !isRight ? "calc(50% + 20px)" : undefined,
+        transform: "translateY(-50%)",
+        opacity,
+        color: "#c9d6ea",
+        fontSize: "13px",
+        lineHeight: 1.4,
+        maxWidth: "130px",
+        textAlign: isRight ? "left" : "right",
+      }}
+    >
+      {PROBLEMS[index]}
+    </motion.div>
+  );
+}
+
 function ProblemTimeline() {
-  const ref = useRef<HTMLDivElement>(null);
-  const pathRef = useRef<SVGPathElement>(null);
-  const [visible, setVisible] = useState(false);
-  const [totalLength, setTotalLength] = useState(420);
-
-  useEffect(() => {
-    if (pathRef.current) setTotalLength(pathRef.current.getTotalLength());
-  }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0.15 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start 0.55", "end 0.15"],
+  });
 
   return (
-    <div ref={ref} className="relative mx-auto" style={{ width: 320, height: 320 }}>
+    <div ref={containerRef} className="relative mx-auto" style={{ width: 320, height: 320 }}>
       <svg
         viewBox="0 0 100 290"
         style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}
         overflow="visible"
       >
         <path d={PATH_D} fill="none" stroke="rgba(34,211,238,0.1)" strokeWidth="2" />
-        <path
-          ref={pathRef}
+        <motion.path
           d={PATH_D}
           fill="none"
           stroke="#22d3ee"
           strokeWidth="2.5"
           strokeLinecap="round"
-          strokeDasharray={totalLength}
-          strokeDashoffset={visible ? 0 : totalLength}
-          style={{
-            transition: `stroke-dashoffset ${visible ? "1.5s" : "0.6s"} cubic-bezier(0.4, 0, 0.2, 1)`,
-          }}
+          style={{ pathLength: scrollYProgress, willChange: "stroke-dashoffset" }}
         />
         {NODE_POSITIONS.map((node, i) => (
-          <circle
-            key={i}
-            cx={node.x}
-            cy={node.y}
-            r="6"
-            fill="#22d3ee"
-            style={{
-              opacity: visible ? 1 : 0,
-              transform: visible ? "scale(1)" : "scale(0)",
-              transformOrigin: `${node.x}px ${node.y}px`,
-              transition: `opacity 0.3s ease ${visible ? 0.35 + i * 0.28 : 0}s, transform 0.3s ease ${visible ? 0.35 + i * 0.28 : 0}s`,
-            }}
-          />
+          <ProblemNode key={i} scrollYProgress={scrollYProgress} node={node} />
         ))}
       </svg>
-
-      {NODE_POSITIONS.map((node, i) => {
-        const isRight = i % 2 === 0;
-        return (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              top: `${(node.y / 290) * 100}%`,
-              left: isRight ? "calc(50% + 20px)" : undefined,
-              right: !isRight ? "calc(50% + 20px)" : undefined,
-              transform: "translateY(-50%)",
-              opacity: visible ? 1 : 0,
-              transition: `opacity 0.4s ease ${visible ? 0.45 + i * 0.28 : 0}s`,
-              color: "#c9d6ea",
-              fontSize: "13px",
-              lineHeight: 1.4,
-              maxWidth: "130px",
-              textAlign: isRight ? "left" : "right",
-            }}
-          >
-            {PROBLEMS[i]}
-          </div>
-        );
-      })}
+      {NODE_POSITIONS.map((node, i) => (
+        <ProblemLabel key={i} scrollYProgress={scrollYProgress} node={node} index={i} />
+      ))}
     </div>
   );
 }
