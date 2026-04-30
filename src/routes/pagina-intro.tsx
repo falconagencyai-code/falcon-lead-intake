@@ -132,20 +132,17 @@ function ScrollRevealBlock({
   children: ReactNode;
   direction: "left" | "right";
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 0.95", "start 0.25"],
-  });
-  const xStart = direction === "left" ? -140 : 140;
-  const x = useTransform(scrollYProgress, [0, 0.8], [xStart, 0]);
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
+  const xStart = direction === "left" ? -60 : 60;
   return (
-    <div ref={ref}>
-      <motion.div style={{ x, opacity, willChange: "transform, opacity" }}>
-        {children}
-      </motion.div>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, x: xStart }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true, margin: "-10%" }}
+      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+      style={{ willChange: "transform, opacity" }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -499,7 +496,7 @@ function ProblemTimeline() {
 function PaginaIntro() {
   return (
     <div
-      className="relative min-h-screen overflow-hidden"
+      className="relative min-h-screen"
       style={{ background: "#070b14" }}
     >
       {/* Ambient blobs — cyan only, fixed so persistono allo scroll. GPU-promoted to avoid recompositing on scroll. */}
@@ -509,12 +506,12 @@ function PaginaIntro() {
         style={{ transform: "translateZ(0)", willChange: "transform" }}
       >
         <div
-          className="absolute -top-32 -left-32 w-[340px] h-[340px] rounded-full blur-2xl"
-          style={{ background: "rgba(34,211,238,0.15)" }}
+          className="absolute -top-32 -left-32 w-[340px] h-[340px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(34,211,238,0.18) 0%, transparent 70%)" }}
         />
         <div
-          className="absolute -bottom-32 left-1/4 w-[360px] h-[360px] rounded-full blur-2xl"
-          style={{ background: "rgba(34,211,238,0.11)" }}
+          className="absolute -bottom-32 left-1/4 w-[360px] h-[360px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(34,211,238,0.13) 0%, transparent 70%)" }}
         />
       </div>
       <div
