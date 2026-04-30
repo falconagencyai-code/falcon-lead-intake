@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const FORM_PATH = "/form-contatto-1";
@@ -133,18 +133,30 @@ function ScrollRevealBlock({
   direction: "left" | "right";
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 0.98", "start 0.2"],
-  });
-  const xStart = direction === "left" ? -120 : 120;
-  const x = useTransform(scrollYProgress, [0, 1], [xStart, 0]);
-  const opacity = useTransform(scrollYProgress, [0, 0.4], [0, 1]);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { threshold: 0.12 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  const xOffset = direction === "left" ? "-80px" : "80px";
   return (
-    <div ref={ref}>
-      <motion.div style={{ x, opacity, willChange: "transform, opacity" }}>
+    <div ref={ref} style={{ overflow: "hidden" }}>
+      <div
+        style={{
+          transform: visible ? "translateX(0)" : `translateX(${xOffset})`,
+          opacity: visible ? 1 : 0,
+          transition: "transform 0.7s cubic-bezier(0.22,1,0.36,1), opacity 0.6s ease",
+          willChange: "transform, opacity",
+        }}
+      >
         {children}
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -158,23 +170,43 @@ function ScrollTypewriter({
   className?: string;
   style?: React.CSSProperties;
 }) {
-  const ref = useRef<HTMLHeadingElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const caretRef = useRef<HTMLSpanElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 0.95", "start 0.45"],
-  });
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countRef = useRef(0);
+
   useEffect(() => {
-    return scrollYProgress.on("change", (v) => {
-      const count = Math.round(Math.max(0, Math.min(1, v)) * text.length);
-      if (textRef.current) textRef.current.textContent = text.slice(0, count);
-      if (caretRef.current)
-        caretRef.current.style.opacity = count > 0 && count < text.length ? "1" : "0";
-    });
-  }, [scrollYProgress, text]);
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          countRef.current = 0;
+          intervalRef.current = setInterval(() => {
+            countRef.current += 1;
+            if (textRef.current) textRef.current.textContent = text.slice(0, countRef.current);
+            if (caretRef.current) caretRef.current.style.opacity = countRef.current < text.length ? "1" : "0";
+            if (countRef.current >= text.length && intervalRef.current) clearInterval(intervalRef.current);
+          }, 38);
+        } else {
+          if (intervalRef.current) clearInterval(intervalRef.current);
+          if (textRef.current) textRef.current.textContent = "";
+          if (caretRef.current) caretRef.current.style.opacity = "0";
+          countRef.current = 0;
+        }
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [text]);
+
   return (
-    <h2 ref={ref} className={className} style={{ ...style, position: "relative" }}>
+    <div ref={ref} className={className} style={{ ...style, position: "relative" }}>
       <span style={{ visibility: "hidden" }}>{text}</span>
       <span style={{ position: "absolute", left: 0, right: 0, top: 0 }}>
         <span ref={textRef} />
@@ -192,7 +224,7 @@ function ScrollTypewriter({
           }}
         />
       </span>
-    </h2>
+    </div>
   );
 }
 
@@ -629,14 +661,13 @@ function PaginaIntro() {
         {/* BLOCCO 3 — SERVIZI */}
         <section className="mt-28 -mx-6 md:-mx-[calc((min(64rem,100vw)-42rem)/2)]">
           <div className="mx-auto max-w-5xl px-6 space-y-12 overflow-hidden">
-            <ScrollTypewriter
-              text="Cosa costruiamo per te."
-              className="relative text-3xl font-bold text-center mx-auto"
-              style={{
-                textShadow: "0 0 24px rgba(34,211,238,0.2)",
-                minHeight: "1.2em",
-              }}
-            />
+            <h2 style={{ minHeight: "1.2em" }}>
+              <ScrollTypewriter
+                text="Cosa costruiamo per te."
+                className="relative text-3xl font-bold text-center mx-auto"
+                style={{ textShadow: "0 0 24px rgba(34,211,238,0.2)" }}
+              />
+            </h2>
 
             <ScrollRevealBlock direction="left">
               <ServiceBlock
