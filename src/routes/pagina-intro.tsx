@@ -368,131 +368,89 @@ const NODE_POSITIONS = [
   { x: 50, y: 280, progress: 0.9 },
 ];
 
-function ProblemNode({
-  scrollYProgress,
-  node,
-}: {
-  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
-  node: (typeof NODE_POSITIONS)[number];
-}) {
-  const opacity = useTransform(
-    scrollYProgress,
-    [node.progress - 0.04, node.progress + 0.04],
-    [0, 1],
-  );
-  return (
-    <motion.circle
-      cx={node.x}
-      cy={node.y}
-      r="6"
-      fill="#22d3ee"
-      style={{ opacity }}
-    />
-  );
-}
-
-function ProblemLabel({
-  scrollYProgress,
-  node,
-  index,
-}: {
-  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
-  node: (typeof NODE_POSITIONS)[number];
-  index: number;
-}) {
-  const opacity = useTransform(
-    scrollYProgress,
-    [node.progress - 0.04, node.progress + 0.08],
-    [0, 1],
-  );
-  const yShift = useTransform(
-    scrollYProgress,
-    [node.progress - 0.04, node.progress + 0.08],
-    [6, 0],
-  );
-  const isRight = index % 2 === 0;
-  return (
-    <motion.div
-      style={{
-        position: "absolute",
-        top: `${(node.y / 290) * 100}%`,
-        left: isRight ? "calc(50% + 20px)" : undefined,
-        right: !isRight ? "calc(50% + 20px)" : undefined,
-        transform: "translateY(-50%)",
-        opacity,
-        y: yShift,
-        color: "#c9d6ea",
-        fontSize: "13px",
-        lineHeight: 1.4,
-        maxWidth: "130px",
-        textAlign: isRight ? "left" : "right",
-        willChange: "transform, opacity",
-      }}
-    >
-      {PROBLEMS[index]}
-    </motion.div>
-  );
-}
-
 function ProblemTimeline() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start 0.85", "end 0.4"],
-  });
-  const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 60,
-    damping: 20,
-    restDelta: 0.0005,
-  });
+  const ref = useRef<HTMLDivElement>(null);
+  const pathRef = useRef<SVGPathElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [totalLength, setTotalLength] = useState(420);
+
+  useEffect(() => {
+    if (pathRef.current) setTotalLength(pathRef.current.getTotalLength());
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { threshold: 0.15 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className="relative mx-auto"
-      style={{ width: 320, height: 320 }}
-    >
+    <div ref={ref} className="relative mx-auto" style={{ width: 320, height: 320 }}>
       <svg
         viewBox="0 0 100 290"
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: "100%",
-          height: "100%",
-        }}
+        style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}
         overflow="visible"
       >
+        <path d={PATH_D} fill="none" stroke="rgba(34,211,238,0.1)" strokeWidth="2" />
         <path
-          d={PATH_D}
-          fill="none"
-          stroke="rgba(34,211,238,0.1)"
-          strokeWidth="2"
-        />
-        <motion.path
+          ref={pathRef}
           d={PATH_D}
           fill="none"
           stroke="#22d3ee"
           strokeWidth="2.5"
           strokeLinecap="round"
+          strokeDasharray={totalLength}
+          strokeDashoffset={visible ? 0 : totalLength}
           style={{
-            pathLength: smoothProgress,
-            willChange: "stroke-dashoffset",
+            transition: `stroke-dashoffset ${visible ? "1.5s" : "0.6s"} cubic-bezier(0.4, 0, 0.2, 1)`,
           }}
         />
         {NODE_POSITIONS.map((node, i) => (
-          <ProblemNode key={i} scrollYProgress={smoothProgress} node={node} />
+          <circle
+            key={i}
+            cx={node.x}
+            cy={node.y}
+            r="6"
+            fill="#22d3ee"
+            style={{
+              opacity: visible ? 1 : 0,
+              transform: visible ? "scale(1)" : "scale(0)",
+              transformOrigin: `${node.x}px ${node.y}px`,
+              transition: `opacity 0.3s ease ${visible ? 0.35 + i * 0.28 : 0}s, transform 0.3s ease ${visible ? 0.35 + i * 0.28 : 0}s`,
+            }}
+          />
         ))}
       </svg>
 
-      {NODE_POSITIONS.map((node, i) => (
-        <ProblemLabel
-          key={i}
-          scrollYProgress={smoothProgress}
-          node={node}
-          index={i}
-        />
-      ))}
+      {NODE_POSITIONS.map((node, i) => {
+        const isRight = i % 2 === 0;
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              top: `${(node.y / 290) * 100}%`,
+              left: isRight ? "calc(50% + 20px)" : undefined,
+              right: !isRight ? "calc(50% + 20px)" : undefined,
+              transform: "translateY(-50%)",
+              opacity: visible ? 1 : 0,
+              transition: `opacity 0.4s ease ${visible ? 0.45 + i * 0.28 : 0}s`,
+              color: "#c9d6ea",
+              fontSize: "13px",
+              lineHeight: 1.4,
+              maxWidth: "130px",
+              textAlign: isRight ? "left" : "right",
+            }}
+          >
+            {PROBLEMS[i]}
+          </div>
+        );
+      })}
     </div>
   );
 }
