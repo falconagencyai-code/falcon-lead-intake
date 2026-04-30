@@ -132,17 +132,20 @@ function ScrollRevealBlock({
   children: ReactNode;
   direction: "left" | "right";
 }) {
-  const xStart = direction === "left" ? -60 : 60;
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start 0.98", "start 0.2"],
+  });
+  const xStart = direction === "left" ? -120 : 120;
+  const x = useTransform(scrollYProgress, [0, 1], [xStart, 0]);
+  const opacity = useTransform(scrollYProgress, [0, 0.4], [0, 1]);
   return (
-    <motion.div
-      initial={{ opacity: 0, x: xStart }}
-      whileInView={{ opacity: 1, x: 0 }}
-      viewport={{ once: true, margin: "-10%" }}
-      transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
-      style={{ willChange: "transform, opacity" }}
-    >
-      {children}
-    </motion.div>
+    <div ref={ref}>
+      <motion.div style={{ x, opacity, willChange: "transform, opacity" }}>
+        {children}
+      </motion.div>
+    </div>
   );
 }
 
@@ -381,12 +384,9 @@ function ProblemNode({
     <motion.circle
       cx={node.x}
       cy={node.y}
-      r="5"
+      r="6"
       fill="#22d3ee"
-      style={{
-        opacity,
-        filter: "drop-shadow(0 0 6px rgba(34,211,238,0.8))",
-      }}
+      style={{ opacity }}
     />
   );
 }
@@ -468,11 +468,10 @@ function ProblemTimeline() {
           d={PATH_D}
           fill="none"
           stroke="#22d3ee"
-          strokeWidth="2"
+          strokeWidth="2.5"
           strokeLinecap="round"
           style={{
             pathLength: scrollYProgress,
-            filter: "drop-shadow(0 0 4px rgba(34,211,238,0.6))",
             willChange: "stroke-dashoffset",
           }}
         />
