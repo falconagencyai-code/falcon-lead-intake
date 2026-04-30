@@ -114,6 +114,21 @@ function FormPage() {
           status: "pending",
         });
         if (error) throw error;
+        // Fire-and-forget: don't block the thank-you step on email delivery
+        supabase.functions
+          .invoke("send-confirmation-email", {
+            body: {
+              full_name: state.fullName,
+              email: state.email,
+              phone: state.phone,
+              company: state.company || null,
+              service_interest: state.service,
+              budget_range: state.budget,
+              timeline: state.timeline,
+              form_answers: state.answers,
+            },
+          })
+          .catch((err) => console.warn("Email send failed:", err));
       } else {
         console.warn("Supabase non configurato — skip insert", state);
       }
