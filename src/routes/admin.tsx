@@ -1,4 +1,7 @@
-import { Link, Outlet, createFileRoute, useLocation } from "@tanstack/react-router";
+import { Link, Outlet, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import { LogOut } from "lucide-react";
+import { useEffect } from "react";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import {
   BarChart2,
   CheckCircle,
@@ -35,7 +38,7 @@ export const Route = createFileRoute("/admin")({
       { name: "description", content: "Dashboard amministrativa Falcon Agency con dati mock." },
     ],
   }),
-  component: AdminLayout,
+  component: AdminRoot,
 });
 
 type NavStatus = "active" | "mock";
@@ -54,9 +57,48 @@ const navItems: { label: string; to: string; icon: typeof Users; status: NavStat
 
 const contractColors = ["var(--falcon-cyan)", "var(--falcon-deep)", "#f59e0b"];
 
+function AdminRoot() {
+  return (
+    <AuthProvider>
+      <AdminLayout />
+    </AuthProvider>
+  );
+}
+
+// Nav items visible per role
+const VENDOR_ROUTES = new Set(["/admin/leads", "/admin/clienti"]);
+
 function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, role, loading, signOut } = useAuth();
+
+  const isLoginPage = location.pathname === "/admin/login";
   const isDashboard = location.pathname === "/admin";
+
+  // Auth guard
+  useEffect(() => {
+    if (loading) return;
+    if (!user && !isLoginPage) navigate({ to: "/admin/login" });
+    if (user && isLoginPage) navigate({ to: "/admin/leads" });
+    // Venditore cannot access dashboard or restricted pages
+    if (user && role === "venditore" && !VENDOR_ROUTES.has(location.pathname)) {
+      navigate({ to: "/admin/leads" });
+    }
+  }, [loading, user, role, isLoginPage, location.pathname]);
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "#070b14" }}>
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#00d4ff", borderTopColor: "transparent" }} />
+    </div>
+  );
+
+  if (isLoginPage) return <Outlet />;
+  if (!user) return null;
+
+  const visibleNav = role === "admin"
+    ? navItems
+    : navItems.filter((n) => VENDOR_ROUTES.has(n.to));
 
   const itemIsActive = (to: string) =>
     to === "/admin" ? location.pathname === to : location.pathname.startsWith(to);
@@ -88,7 +130,7 @@ function AdminLayout() {
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-3 md:px-4">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             const isMock = item.status === "mock";
             const iconClass = isMock ? "text-[#4a5568]" : "text-primary";
@@ -110,11 +152,25 @@ function AdminLayout() {
             );
           })}
         </nav>
+
+        {/* Signout */}
+        <div className="px-3 pb-4 md:px-4">
+          <button
+            onClick={signOut}
+            className="group flex h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-medium transition-all md:px-4"
+            style={{ color: "#4a5568" }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#f87171"; (e.currentTarget as HTMLElement).style.background = "rgba(248,113,113,0.06)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#4a5568"; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            <span className="hidden md:inline">Esci</span>
+          </button>
+        </div>
       </aside>
 
       <main className="ml-20 min-h-screen overflow-x-hidden px-4 py-8 md:ml-60 md:px-8">
         <div className="pointer-events-none fixed inset-0 circuit-bg" />
-        <div className="relative mx-auto max-w-7xl">{isDashboard ? <DashboardPage /> : <Outlet />}</div>
+        <div className="relative mx-auto max-w-7xl">{isDashboard && role === "admin" ? <DashboardPage /> : <Outlet />}</div>
       </main>
     </div>
   );

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth-context";
 import { Calendar, Cpu, FileText, Loader2, Plus, Receipt, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -32,11 +33,16 @@ const sectionTabs: { id: SectionTab; label: string; icon: typeof Users }[] = [
 
 function ClientiPage() {
   const [section, setSection] = useState<SectionTab>("clienti");
+  const { role } = useAuth();
+
+  const visibleTabs = role === "admin"
+    ? sectionTabs
+    : sectionTabs.filter((t) => t.id === "clienti" || t.id === "contratti");
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-1 rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-1">
-        {sectionTabs.map((t) => {
+        {visibleTabs.map((t) => {
           const Icon = t.icon;
           const active = section === t.id;
           return (

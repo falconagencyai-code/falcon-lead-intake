@@ -44,18 +44,12 @@ function ComingSoon() {
         <p className="mt-6 text-lg" style={{ color: "#6677aa" }}>
           Stiamo costruendo qualcosa di potente. Nel frattempo, parla con il tuo Falcon.
         </p>
-        <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="mt-10 flex justify-center">
           <Link
             to="/form-contatto-1"
             className="btn-primary inline-flex items-center gap-2 animate-pulse-glow"
           >
             Inizia il tuo progetto →
-          </Link>
-          <Link
-            to="/admin"
-            className="glass glass-hover inline-flex min-h-12 items-center justify-center rounded-2xl px-6 text-sm font-semibold text-foreground"
-          >
-            Area Admin
           </Link>
         </div>
       </div>
