@@ -224,6 +224,7 @@ function ClientiInner() {
     const { data, error } = await supabase
       .from("leads")
       .select("id, full_name, company")
+      .eq("pipeline_stage", "chiuso_vinto")
       .order("created_at", { ascending: false });
     if (!error) setLeadOptions((data ?? []) as LeadOption[]);
   };
@@ -232,6 +233,24 @@ function ClientiInner() {
     loadClients();
     loadProposals();
     loadLeadOptions();
+
+    if (!supabase) return;
+
+    // Realtime sync — any change on leads/quotes refreshes this page instantly
+    const channel = supabase
+      .channel("clienti-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => {
+        loadClients();
+        loadLeadOptions();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "quotes" }, () => {
+        loadProposals();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const active = clients.find((c) => c.id === activeId) ?? null;

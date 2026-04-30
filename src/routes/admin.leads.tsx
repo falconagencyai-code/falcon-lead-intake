@@ -317,6 +317,20 @@ function LeadsPage() {
     enabled: isSupabaseConfigured,
   });
 
+  // Realtime sync — refetches when leads table changes from any page (e.g. clienti page)
+  useEffect(() => {
+    if (!supabase || !isSupabaseConfigured) return;
+    const channel = supabase
+      .channel("leads-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => {
+        void refetch();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
+
   const allLeads = data ?? [];
 
   const filtered = useMemo(() => {
