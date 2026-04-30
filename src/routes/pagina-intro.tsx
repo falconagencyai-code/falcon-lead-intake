@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const FORM_PATH = "/form-contatto-1";
@@ -440,6 +440,11 @@ function ProblemTimeline() {
     target: containerRef,
     offset: ["start 0.85", "end 0.4"],
   });
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 60,
+    damping: 20,
+    restDelta: 0.0005,
+  });
 
   return (
     <div
@@ -471,19 +476,19 @@ function ProblemTimeline() {
           strokeWidth="2.5"
           strokeLinecap="round"
           style={{
-            pathLength: scrollYProgress,
+            pathLength: smoothProgress,
             willChange: "stroke-dashoffset",
           }}
         />
         {NODE_POSITIONS.map((node, i) => (
-          <ProblemNode key={i} scrollYProgress={scrollYProgress} node={node} />
+          <ProblemNode key={i} scrollYProgress={smoothProgress} node={node} />
         ))}
       </svg>
 
       {NODE_POSITIONS.map((node, i) => (
         <ProblemLabel
           key={i}
-          scrollYProgress={scrollYProgress}
+          scrollYProgress={smoothProgress}
           node={node}
           index={i}
         />
