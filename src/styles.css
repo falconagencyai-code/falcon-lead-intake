@@ -234,16 +234,6 @@
 }
 
 /* === Animations === */
-@keyframes circuit-drift {
-  from { background-position: 0 0; }
-  to { background-position: 0 -560px; }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .circuit-bg {
-    animation: circuit-drift 120s linear infinite;
-  }
-}
 
 /* Falcon: corpo che galleggia con leggera rotazione */
 @keyframes falcon-float {

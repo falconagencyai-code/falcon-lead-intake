@@ -30,10 +30,10 @@ function Reveal({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.7, delay, ease: [0.22, 1, 0.36, 1] }}
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.55, delay, ease: "easeOut" }}
       className={className}
     >
       {children}
@@ -133,30 +133,18 @@ function ScrollRevealBlock({
   direction: "left" | "right";
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0.08, rootMargin: "-5% 0px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  const xOffset = direction === "left" ? "-340px" : "340px";
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start 0.95", "start 0.25"],
+  });
+  const xStart = direction === "left" ? -140 : 140;
+  const x = useTransform(scrollYProgress, [0, 0.8], [xStart, 0]);
+  const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
   return (
-    <div ref={ref} style={{ overflow: "hidden" }}>
-      <div
-        style={{
-          transform: visible ? "translateX(0)" : `translateX(${xOffset})`,
-          opacity: visible ? 1 : 0,
-          transition: "transform 0.75s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.55s ease",
-          willChange: "transform, opacity",
-        }}
-      >
+    <div ref={ref}>
+      <motion.div style={{ x, opacity, willChange: "transform, opacity" }}>
         {children}
-      </div>
+      </motion.div>
     </div>
   );
 }
