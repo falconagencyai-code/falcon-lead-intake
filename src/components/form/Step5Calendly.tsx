@@ -1,7 +1,12 @@
 import { useEffect } from "react";
 import { CalendarDays } from "lucide-react";
 
-export function Step5Calendly() {
+interface Props {
+  fullName: string;
+  email: string;
+}
+
+export function Step5Calendly({ fullName, email }: Props) {
   useEffect(() => {
     if (document.querySelector('script[src*="calendly"]')) return;
     const s = document.createElement("script");
@@ -9,6 +14,19 @@ export function Step5Calendly() {
     s.async = true;
     document.head.appendChild(s);
   }, []);
+
+  const params = new URLSearchParams({
+    hide_event_type_details: "1",
+    hide_gdpr_banner: "1",
+    background_color: "070b14",
+    text_color: "c8d8e8",
+    primary_color: "00d4ff",
+    locale: "it",
+    name: fullName,
+    email: email,
+  });
+
+  const calendlyUrl = `https://calendly.com/falconagency-ai/30min?${params.toString()}`;
 
   return (
     <div className="space-y-5 animate-slide-in">
@@ -27,13 +45,11 @@ export function Step5Calendly() {
         </p>
       </div>
 
-      {/* Calendly inline widget */}
       <div
         className="calendly-inline-widget overflow-hidden rounded-2xl"
-        data-url="https://calendly.com/falconagency-ai/30min?hide_event_type_details=1&hide_gdpr_banner=1&background_color=070b14&text_color=c8d8e8&primary_color=00d4ff"
+        data-url={calendlyUrl}
         style={{ minWidth: 280, height: 620 }}
       />
-
     </div>
   );
 }

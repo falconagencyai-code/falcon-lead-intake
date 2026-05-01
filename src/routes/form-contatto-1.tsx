@@ -255,7 +255,7 @@ function FormPage() {
               />
             )}
             {step === 4 && <Step3Contact state={state} update={update} />}
-            {step === 5 && <Step5Calendly />}
+            {step === 5 && <Step5Calendly fullName={state.fullName} email={state.email} />}
             {step === 6 && <Step4ThankYou />}
           </div>
 
