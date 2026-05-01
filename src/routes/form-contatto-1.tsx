@@ -7,6 +7,7 @@ import { Step2Details } from "@/components/form/Step2Details";
 import { Step3BudgetTimeline } from "@/components/form/Step3BudgetTimeline";
 import { Step3Contact } from "@/components/form/Step3Contact";
 import { Step4ThankYou } from "@/components/form/Step4ThankYou";
+import { Step5Calendly } from "@/components/form/Step5Calendly";
 import { initialState, type FormState, type ServiceKey } from "@/components/form/types";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/form-contatto-1")({
   component: FormPage,
 });
 
-function StepDots({ step, total = 5 }: { step: number; total?: number }) {
+function StepDots({ step, total = 6 }: { step: number; total?: number }) {
   return (
     <div className="flex items-center gap-3" aria-label={`Step ${step} di ${total}`}>
       {Array.from({ length: total }).map((_, i) => {
@@ -132,7 +133,7 @@ function FormPage() {
       } else {
         console.warn("Supabase non configurato — skip insert", state);
       }
-      setStep(5);
+      setStep(5); // Step 5 = Calendly booking
     } catch (e) {
       console.error(e);
       toast.error("Errore nell'invio. Riprova tra poco.");
@@ -155,7 +156,7 @@ function FormPage() {
   };
   const back = () => changeStep(Math.max(1, step - 1));
 
-  const progress = (step / 5) * 100;
+  const progress = (step / 6) * 100;
 
   return (
     <main className="relative min-h-screen overflow-hidden" style={{ background: "#070b14" }}>
@@ -254,7 +255,8 @@ function FormPage() {
               />
             )}
             {step === 4 && <Step3Contact state={state} update={update} />}
-            {step === 5 && <Step4ThankYou />}
+            {step === 5 && <Step5Calendly onSkip={() => changeStep(6)} />}
+            {step === 6 && <Step4ThankYou />}
           </div>
 
           {step < 5 && (
@@ -289,13 +291,14 @@ function FormPage() {
 
         {/* Mascot */}
         <aside className="hidden lg:flex flex-col items-center justify-center sticky top-10">
-          <FalconMascot step={step} celebrate={step === 5} size={400} />
+          <FalconMascot step={step} celebrate={step === 6} size={400} />
           <p className="mt-8 text-center text-sm max-w-xs" style={{ color: "#6677aa" }}>
             {step === 1 && "Scegli il tuo punto di partenza. Sono qui per aiutarti a decollare."}
             {step === 2 && "Perfetto! Dimmi di più sul tuo progetto."}
             {step === 3 && "Bene! Più sei preciso, meglio costruirò la proposta."}
             {step === 4 && "Ultimo passo. Lascia i tuoi contatti e parto subito."}
-            {step === 5 && "Missione ricevuta! Decollerò entro 24 ore."}
+            {step === 5 && "Vuoi parlare subito con il team? Prenota una call gratuita."}
+            {step === 6 && "Missione ricevuta! Decollerò entro 24 ore."}
           </p>
         </aside>
       </div>

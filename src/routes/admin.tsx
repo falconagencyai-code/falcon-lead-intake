@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import {
   BarChart2,
+  CalendarDays,
   CheckCircle,
   Clock,
   LayoutDashboard,
@@ -49,6 +50,7 @@ const navItems: { label: string; to: string; icon: typeof Users; status: NavStat
   { label: "Analytics", to: "/admin/analytics", icon: BarChart2, status: "active" },
   { label: "Clienti", to: "/admin/clienti", icon: Users, status: "active" },
   { label: "Team", to: "/admin/team", icon: Shield, status: "active" },
+  { label: "Calendario", to: "/admin/calendario", icon: CalendarDays, status: "active" },
   { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2, status: "active" },
   { label: "Road-map", to: "/admin/roadmap", icon: Map, status: "active" },
   { label: "Competitor", to: "/admin/competitor", icon: Radar, status: "mock" },
@@ -66,7 +68,7 @@ function AdminRoot() {
 }
 
 // Nav items visible per role
-const VENDOR_ROUTES = new Set(["/admin/leads", "/admin/clienti", "/admin/team"]);
+const VENDOR_ROUTES = new Set(["/admin/leads", "/admin/clienti", "/admin/team", "/admin/calendario"]);
 
 function AdminLayout() {
   const location = useLocation();
