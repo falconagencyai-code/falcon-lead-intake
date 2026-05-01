@@ -1,11 +1,7 @@
 import { useEffect } from "react";
 import { CalendarDays } from "lucide-react";
 
-interface Props {
-  onSkip: () => void;
-}
-
-export function Step5Calendly({ onSkip }: Props) {
+export function Step5Calendly() {
   useEffect(() => {
     if (document.querySelector('script[src*="calendly"]')) return;
     const s = document.createElement("script");
@@ -38,16 +34,6 @@ export function Step5Calendly({ onSkip }: Props) {
         style={{ minWidth: 280, height: 620 }}
       />
 
-      <button
-        type="button"
-        onClick={onSkip}
-        className="w-full text-center text-sm py-2 transition-colors"
-        style={{ color: "#4a5568" }}
-        onMouseEnter={e => (e.currentTarget.style.color = "#6677aa")}
-        onMouseLeave={e => (e.currentTarget.style.color = "#4a5568")}
-      >
-        Salta per ora →
-      </button>
     </div>
   );
 }

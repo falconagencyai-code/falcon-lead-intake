@@ -255,7 +255,7 @@ function FormPage() {
               />
             )}
             {step === 4 && <Step3Contact state={state} update={update} />}
-            {step === 5 && <Step5Calendly onSkip={() => changeStep(6)} />}
+            {step === 5 && <Step5Calendly />}
             {step === 6 && <Step4ThankYou />}
           </div>
 
