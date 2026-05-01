@@ -140,8 +140,7 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 
 // ── Main page ───────────────────────────────────────────────────────
 function TeamPage() {
-  const { role } = useAuth();
-  const { user } = useAuth();
+  const { role, user } = useAuth();
   const [venditori, setVenditori] = useState<Venditore[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
@@ -162,20 +161,12 @@ function TeamPage() {
     const { data: profiles } = await q;
     if (!profiles) { setLoading(false); return; }
 
-    // Per ogni venditore calcola i lead gestiti e i clienti chiusi
-    const withStats = await Promise.all(
-      profiles.map(async (p) => {
-        const [{ count: leadCount }, { count: chiusiCount }] = await Promise.all([
-          supabase!.from("leads").select("id", { count: "exact", head: true }).eq("venditore_id", p.id),
-          supabase!.from("leads").select("id", { count: "exact", head: true }).eq("venditore_id", p.id).eq("pipeline_stage", "chiuso_vinto"),
-        ]);
-        return {
-          ...p,
-          lead_gestiti: leadCount ?? 0,
-          chiusi: chiusiCount ?? 0,
-        };
-      })
-    );
+    // venditore_id sarà aggiunto ai leads in uno step successivo — per ora 0
+    const withStats = profiles.map((p) => ({
+      ...p,
+      lead_gestiti: 0,
+      chiusi: 0,
+    }));
 
     setVenditori(withStats);
     setLoading(false);
