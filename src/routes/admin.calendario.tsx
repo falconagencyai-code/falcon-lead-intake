@@ -1,13 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
-import { CalendarDays, Video, XCircle, Clock } from "lucide-react";
+import { AdminCard } from "./admin/-admin-ui";
+import { CalendarDays, Video, XCircle, Clock, CheckCircle2, ChevronDown } from "lucide-react";
 
 export const Route = createFileRoute("/admin/calendario")({
-  head: () => ({
-    meta: [{ title: "Falcon Admin — Calendario" }],
-  }),
+  head: () => ({ meta: [{ title: "Falcon Admin — Calendario" }] }),
   component: CalendarioPage,
 });
 
@@ -17,10 +15,9 @@ interface Booking {
   invitee_email: string | null;
   start_time: string;
   end_time: string;
-  status: string;
+  status: string; // active | canceled | completata
   event_type_name: string | null;
   meeting_link: string | null;
-  created_at: string;
 }
 
 function formatDate(iso: string) {
@@ -28,34 +25,97 @@ function formatDate(iso: string) {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
 }
-
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 }
+function isPast(iso: string) {
+  return new Date(iso) < new Date();
+}
 
-function isUpcoming(iso: string) {
-  return new Date(iso) >= new Date();
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  active: { label: "In programma", color: "#00d4ff", bg: "rgba(0,212,255,0.08)", border: "rgba(0,212,255,0.2)" },
+  completata: { label: "Effettuata", color: "#4ade80", bg: "rgba(74,222,128,0.08)", border: "rgba(74,222,128,0.2)" },
+  canceled: { label: "Annullata", color: "#f87171", bg: "rgba(248,113,113,0.08)", border: "rgba(248,113,113,0.2)" },
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_LABELS[status] ?? STATUS_LABELS.active;
+  return (
+    <span className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium"
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+      {status === "completata" && <CheckCircle2 className="w-3 h-3" />}
+      {status === "canceled" && <XCircle className="w-3 h-3" />}
+      {s.label}
+    </span>
+  );
+}
+
+function StatusDropdown({ booking, onUpdate }: { booking: Booking; onUpdate: (id: string, status: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const options = [
+    { value: "active", label: "In programma" },
+    { value: "completata", label: "Segna come effettuata" },
+    { value: "canceled", label: "Annulla call" },
+  ].filter(o => o.value !== booking.status);
+
+  const change = async (status: string) => {
+    setOpen(false);
+    setLoading(true);
+    await onUpdate(booking.id, status);
+    setLoading(false);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        disabled={loading}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
+        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6677aa" }}
+      >
+        {loading ? "…" : "Cambia stato"}
+        <ChevronDown className="w-3 h-3" />
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-full mt-1 z-20 min-w-[180px] rounded-xl overflow-hidden shadow-xl"
+          style={{ background: "#0d1525", border: "1px solid rgba(0,212,255,0.15)" }}
+        >
+          {options.map(o => (
+            <button
+              key={o.value}
+              onClick={() => change(o.value)}
+              className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+              style={{ color: o.value === "canceled" ? "#f87171" : o.value === "completata" ? "#4ade80" : "#c8d8e8" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function CalendarioPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"upcoming" | "all" | "canceled">("upcoming");
+  const [filter, setFilter] = useState<"upcoming" | "all" | "canceled" | "completata">("upcoming");
 
   const load = async () => {
     if (!supabase) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("bookings")
-      .select("*")
-      .order("start_time", { ascending: true });
+    const { data } = await supabase.from("bookings").select("*").order("start_time", { ascending: true });
     setBookings(data ?? []);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
 
-  // Realtime
   useEffect(() => {
     if (!supabase) return;
     const channel = supabase
@@ -65,13 +125,31 @@ export default function CalendarioPage() {
     return () => { supabase!.removeChannel(channel); };
   }, []);
 
+  const updateStatus = async (id: string, status: string) => {
+    if (!supabase) return;
+    await supabase.from("bookings").update({ status }).eq("id", id);
+    setBookings(bs => bs.map(b => b.id === id ? { ...b, status } : b));
+  };
+
   const filtered = bookings.filter(b => {
-    if (filter === "upcoming") return b.status === "active" && isUpcoming(b.start_time);
+    if (filter === "upcoming") return b.status === "active" && !isPast(b.start_time);
     if (filter === "canceled") return b.status === "canceled";
+    if (filter === "completata") return b.status === "completata";
     return true;
   });
 
-  const upcomingCount = bookings.filter(b => b.status === "active" && isUpcoming(b.start_time)).length;
+  const counts = {
+    upcoming: bookings.filter(b => b.status === "active" && !isPast(b.start_time)).length,
+    completata: bookings.filter(b => b.status === "completata").length,
+    canceled: bookings.filter(b => b.status === "canceled").length,
+  };
+
+  const filters: { key: typeof filter; label: string }[] = [
+    { key: "upcoming", label: `Prossime (${counts.upcoming})` },
+    { key: "all", label: "Tutte" },
+    { key: "completata", label: `Effettuate (${counts.completata})` },
+    { key: "canceled", label: `Annullate (${counts.canceled})` },
+  ];
 
   return (
     <div className="space-y-8">
@@ -82,19 +160,16 @@ export default function CalendarioPage() {
             Calendario <span className="text-primary text-glow">Call</span>
           </h1>
         </div>
-        <div className="flex gap-2">
-          {(["upcoming", "all", "canceled"] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
+        <div className="flex flex-wrap gap-2">
+          {filters.map(f => (
+            <button key={f.key} onClick={() => setFilter(f.key)}
               className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
               style={{
-                background: filter === f ? "rgba(0,212,255,0.12)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${filter === f ? "rgba(0,212,255,0.4)" : "rgba(255,255,255,0.08)"}`,
-                color: filter === f ? "#00d4ff" : "#6677aa",
-              }}
-            >
-              {f === "upcoming" ? `Prossime (${upcomingCount})` : f === "all" ? "Tutte" : "Annullate"}
+                background: filter === f.key ? "rgba(0,212,255,0.12)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${filter === f.key ? "rgba(0,212,255,0.4)" : "rgba(255,255,255,0.08)"}`,
+                color: filter === f.key ? "#00d4ff" : "#6677aa",
+              }}>
+              {f.label}
             </button>
           ))}
         </div>
@@ -107,80 +182,61 @@ export default function CalendarioPage() {
       ) : filtered.length === 0 ? (
         <AdminCard className="p-12 text-center">
           <CalendarDays className="w-12 h-12 mx-auto mb-4" style={{ color: "#2a3a5c" }} />
-          <p className="text-muted-foreground">
-            {filter === "upcoming" ? "Nessuna call programmata." : "Nessuna call trovata."}
-          </p>
+          <p className="text-muted-foreground">Nessuna call trovata.</p>
         </AdminCard>
       ) : (
         <div className="space-y-4">
-          {filtered.map(b => {
-            const upcoming = isUpcoming(b.start_time);
-            const canceled = b.status === "canceled";
-            return (
-              <AdminCard key={b.id} className="p-5">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  {/* Left: date + info */}
-                  <div className="flex items-start gap-4">
-                    {/* Date badge */}
-                    <div
-                      className="flex flex-col items-center justify-center rounded-2xl px-4 py-3 min-w-[64px] text-center shrink-0"
-                      style={{
-                        background: canceled ? "rgba(255,255,255,0.04)" : "rgba(0,212,255,0.08)",
-                        border: `1px solid ${canceled ? "rgba(255,255,255,0.08)" : "rgba(0,212,255,0.2)"}`,
-                      }}
-                    >
-                      <span className="text-xs font-semibold uppercase" style={{ color: canceled ? "#4a5568" : "#00d4ff" }}>
-                        {new Date(b.start_time).toLocaleDateString("it-IT", { month: "short" })}
-                      </span>
-                      <span className="text-2xl font-black" style={{ color: canceled ? "#4a5568" : "#ffffff" }}>
-                        {new Date(b.start_time).getDate()}
-                      </span>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-foreground">{b.invitee_name ?? "—"}</p>
-                        {canceled && (
-                          <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(248,113,113,0.1)", color: "#f87171", border: "1px solid rgba(248,113,113,0.2)" }}>
-                            <XCircle className="w-3 h-3" /> Annullata
-                          </span>
-                        )}
-                        {!canceled && upcoming && (
-                          <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full" style={{ background: "rgba(0,212,255,0.08)", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.2)" }}>
-                            In programma
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm" style={{ color: "#6677aa" }}>{b.invitee_email ?? "—"}</p>
-                      <div className="flex items-center gap-3 mt-1.5 text-sm" style={{ color: "#4a5568" }}>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {formatTime(b.start_time)} – {formatTime(b.end_time)}
-                        </span>
-                        <span>·</span>
-                        <span>{formatDate(b.start_time)}</span>
-                      </div>
-                    </div>
+          {filtered.map(b => (
+            <AdminCard key={b.id} className="p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-4">
+                  {/* Date badge */}
+                  <div className="flex flex-col items-center justify-center rounded-2xl px-4 py-3 min-w-[64px] text-center shrink-0"
+                    style={{
+                      background: b.status === "canceled" ? "rgba(255,255,255,0.04)" : b.status === "completata" ? "rgba(74,222,128,0.06)" : "rgba(0,212,255,0.08)",
+                      border: `1px solid ${b.status === "canceled" ? "rgba(255,255,255,0.08)" : b.status === "completata" ? "rgba(74,222,128,0.2)" : "rgba(0,212,255,0.2)"}`,
+                    }}>
+                    <span className="text-xs font-semibold uppercase" style={{ color: b.status === "canceled" ? "#4a5568" : b.status === "completata" ? "#4ade80" : "#00d4ff" }}>
+                      {new Date(b.start_time).toLocaleDateString("it-IT", { month: "short" })}
+                    </span>
+                    <span className="text-2xl font-black" style={{ color: b.status === "canceled" ? "#4a5568" : "#ffffff" }}>
+                      {new Date(b.start_time).getDate()}
+                    </span>
                   </div>
 
-                  {/* Right: meeting link */}
-                  {b.meeting_link && !canceled && (
-                    <a
-                      href={b.meeting_link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium shrink-0 transition-all"
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-foreground">{b.invitee_name ?? "—"}</p>
+                      <StatusBadge status={b.status} />
+                    </div>
+                    <p className="text-sm" style={{ color: "#6677aa" }}>{b.invitee_email ?? "—"}</p>
+                    <div className="flex items-center gap-3 mt-1.5 text-sm" style={{ color: "#4a5568" }}>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        {formatTime(b.start_time)} – {formatTime(b.end_time)}
+                      </span>
+                      <span>·</span>
+                      <span>{formatDate(b.start_time)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {b.meeting_link && b.status === "active" && (
+                    <a href={b.meeting_link} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
                       style={{ background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.3)", color: "#00d4ff" }}
                       onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,212,255,0.18)")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(0,212,255,0.1)")}
-                    >
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(0,212,255,0.1)")}>
                       <Video className="w-4 h-4" /> Entra nella call
                     </a>
                   )}
+                  <StatusDropdown booking={b} onUpdate={updateStatus} />
                 </div>
-              </AdminCard>
-            );
-          })}
+              </div>
+            </AdminCard>
+          ))}
         </div>
       )}
     </div>
