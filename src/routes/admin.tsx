@@ -125,8 +125,12 @@ function AdminLayout() {
     <div className="min-h-screen bg-background text-foreground">
       <aside className="fixed inset-y-0 left-0 z-30 flex w-20 flex-col border-r border-[rgba(0,212,255,0.08)] bg-[rgba(255,255,255,0.02)] backdrop-blur-xl md:w-60">
         <div className="flex h-24 items-center gap-3 px-4 md:px-6">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[rgba(0,212,255,0.35)] bg-[rgba(0,212,255,0.08)] text-xl font-black text-primary shadow-[0_0_28px_rgba(0,212,255,0.25)]">
-            F
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[rgba(0,212,255,0.35)] bg-[rgba(0,212,255,0.08)] shadow-[0_0_28px_rgba(0,212,255,0.25)]">
+            <img
+              src="https://tpzpydnvcbcdkuthyweh.supabase.co/storage/v1/object/public/assets/falcon-wings-closed.png"
+              alt="Falcon"
+              style={{ width: 28, height: 28, objectFit: "contain", filter: "drop-shadow(0 0 6px rgba(0,212,255,0.6))" }}
+            />
           </div>
           <div className="hidden md:block">
             <p className="text-sm font-semibold text-foreground">Falcon Admin</p>
