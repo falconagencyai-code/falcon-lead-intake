@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { FalconMascot } from "@/components/FalconMascot";
 
 export const Route = createFileRoute("/")({
@@ -12,6 +13,19 @@ export const Route = createFileRoute("/")({
 });
 
 function ComingSoon() {
+  // Handle Supabase auth redirects that land on homepage with hash params
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    if (hash.includes("access_token")) {
+      // Valid token → forward to setup page preserving hash for Supabase client
+      window.location.replace("/admin/setup-profilo" + hash);
+    } else if (hash.includes("error=")) {
+      // Auth error (expired OTP, etc.) → go to login
+      window.location.replace("/admin/login");
+    }
+  }, []);
+
   return (
     <main className="relative min-h-screen overflow-hidden flex items-center justify-center px-6" style={{ background: "#070b14" }}>
       {/* Ambient blobs */}
