@@ -74,18 +74,20 @@ function AdminLayout() {
   const { user, role, loading, signOut } = useAuth();
 
   const isLoginPage = location.pathname === "/admin/login";
+  const isSetupPage = location.pathname === "/admin/setup-profilo";
   const isDashboard = location.pathname === "/admin";
 
   // Auth guard
   useEffect(() => {
     if (loading) return;
+    if (isSetupPage) return; // setup page handles its own session
     if (!user && !isLoginPage) navigate({ to: "/admin/login" });
     if (user && isLoginPage) navigate({ to: "/admin/leads" });
     // Venditore cannot access dashboard or restricted pages
     if (user && role === "venditore" && !VENDOR_ROUTES.has(location.pathname)) {
       navigate({ to: "/admin/leads" });
     }
-  }, [loading, user, role, isLoginPage, location.pathname]);
+  }, [loading, user, role, isLoginPage, isSetupPage, location.pathname]);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#070b14" }}>
@@ -93,7 +95,7 @@ function AdminLayout() {
     </div>
   );
 
-  if (isLoginPage) return <Outlet />;
+  if (isLoginPage || isSetupPage) return <Outlet />;
   if (!user) return null;
 
   const visibleNav = role === "admin"

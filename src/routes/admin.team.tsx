@@ -73,10 +73,9 @@ function OrgLine({ count }: { count: number }) {
 // ── Invite modal ────────────────────────────────────────────────────
 function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [email, setEmail] = useState("");
-  const [nome, setNome] = useState("");
   const [commissione, setCommissione] = useState("10");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,18 +83,19 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     setError(null);
     setLoading(true);
     try {
+      const { data: { session } } = await supabase!.auth.getSession();
       const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-venditore`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          Authorization: `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ email, full_name: nome, password, percentuale_commissione: parseFloat(commissione) }),
+        body: JSON.stringify({ email, percentuale_commissione: parseFloat(commissione) }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Errore nella creazione");
+      if (!res.ok) throw new Error(data.error ?? "Errore nell'invio");
+      setSent(true);
       onSuccess();
-      onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");
     } finally {
@@ -107,32 +107,39 @@ function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}>
       <div className="relative w-full max-w-md rounded-2xl p-8 space-y-6" style={{ background: "rgba(7,11,20,0.98)", border: "1px solid rgba(0,212,255,0.2)" }}>
         <button onClick={onClose} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
-        <div>
-          <p className="label-section">Team</p>
-          <h2 className="mt-2 text-xl font-bold text-foreground">Aggiungi venditore</h2>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="label-section block mb-2">Nome completo</label>
-            <input className="input-premium" value={nome} onChange={e => setNome(e.target.value)} placeholder="Mario Rossi" required />
+
+        {sent ? (
+          <div className="text-center space-y-4 py-4">
+            <div className="inline-flex w-16 h-16 items-center justify-center rounded-full" style={{ background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.3)" }}>
+              <Check className="w-8 h-8" style={{ color: "#00d4ff" }} />
+            </div>
+            <h2 className="text-xl font-bold text-foreground">Invito inviato!</h2>
+            <p className="text-sm" style={{ color: "#6677aa" }}>Il venditore riceverà un'email con il link per completare il profilo e impostare la password.</p>
+            <button onClick={onClose} className="btn-primary mx-auto flex items-center gap-2">Chiudi</button>
           </div>
-          <div>
-            <label className="label-section block mb-2">Email</label>
-            <input className="input-premium" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="mario@falconagencyai.com" required />
-          </div>
-          <div>
-            <label className="label-section block mb-2">Password temporanea</label>
-            <input className="input-premium" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={8} />
-          </div>
-          <div>
-            <label className="label-section block mb-2">Commissione %</label>
-            <input className="input-premium" type="number" min="0" max="100" step="0.5" value={commissione} onChange={e => setCommissione(e.target.value)} required />
-          </div>
-          {error && <p className="text-sm" style={{ color: "#f87171" }}>{error}</p>}
-          <button type="submit" disabled={loading} className="btn-primary w-full justify-center flex items-center gap-2">
-            {loading ? "Creazione…" : <><Check className="w-4 h-4" /> Crea account</>}
-          </button>
-        </form>
+        ) : (
+          <>
+            <div>
+              <p className="label-section">Team</p>
+              <h2 className="mt-2 text-xl font-bold text-foreground">Invita venditore</h2>
+              <p className="mt-1 text-sm" style={{ color: "#6677aa" }}>Riceverà un'email per completare il profilo autonomamente.</p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="label-section block mb-2">Email</label>
+                <input className="input-premium" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="mario@esempio.com" required />
+              </div>
+              <div>
+                <label className="label-section block mb-2">Commissione %</label>
+                <input className="input-premium" type="number" min="0" max="100" step="0.5" value={commissione} onChange={e => setCommissione(e.target.value)} required />
+              </div>
+              {error && <p className="text-sm" style={{ color: "#f87171" }}>{error}</p>}
+              <button type="submit" disabled={loading} className="btn-primary w-full justify-center flex items-center gap-2">
+                {loading ? "Invio…" : "Invia invito →"}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
