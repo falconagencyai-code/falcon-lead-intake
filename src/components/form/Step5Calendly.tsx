@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CalendarDays } from "lucide-react";
 
 interface Props {
@@ -6,28 +6,45 @@ interface Props {
   email: string;
 }
 
+declare global {
+  interface Window {
+    Calendly?: {
+      initInlineWidget: (opts: {
+        url: string;
+        parentElement: HTMLElement;
+        prefill?: { name?: string; email?: string };
+        locale?: string;
+      }) => void;
+    };
+  }
+}
+
 export function Step5Calendly({ fullName, email }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (document.querySelector('script[src*="calendly"]')) return;
-    const s = document.createElement("script");
-    s.src = "https://assets.calendly.com/assets/external/widget.js";
-    s.async = true;
-    document.head.appendChild(s);
-  }, []);
+    const init = () => {
+      if (!containerRef.current || !window.Calendly) return;
+      containerRef.current.innerHTML = ""; // reset per re-render
+      window.Calendly.initInlineWidget({
+        url: "https://calendly.com/falconagency-ai/30min?hide_event_type_details=1&hide_gdpr_banner=1&background_color=070b14&text_color=c8d8e8&primary_color=00d4ff",
+        parentElement: containerRef.current,
+        prefill: { name: fullName, email },
+        locale: "it",
+      });
+    };
 
-  const params = new URLSearchParams({
-    hide_event_type_details: "1",
-    hide_gdpr_banner: "1",
-    background_color: "070b14",
-    text_color: "c8d8e8",
-    primary_color: "00d4ff",
-    locale: "it",
-    name: fullName,
-    email: email,
-  });
+    if (window.Calendly) {
+      init();
+      return;
+    }
 
-  // URLSearchParams encodes spaces as '+', Calendly needs '%20'
-  const calendlyUrl = `https://calendly.com/falconagency-ai/30min?${params.toString().replace(/\+/g, "%20")}`;
+    const script = document.createElement("script");
+    script.src = "https://assets.calendly.com/assets/external/widget.js";
+    script.async = true;
+    script.onload = init;
+    document.head.appendChild(script);
+  }, [fullName, email]);
 
   return (
     <div className="space-y-5 animate-slide-in">
@@ -47,8 +64,8 @@ export function Step5Calendly({ fullName, email }: Props) {
       </div>
 
       <div
-        className="calendly-inline-widget overflow-hidden rounded-2xl"
-        data-url={calendlyUrl}
+        ref={containerRef}
+        className="overflow-hidden rounded-2xl"
         style={{ minWidth: 280, height: 620 }}
       />
     </div>
