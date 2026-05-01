@@ -13,6 +13,7 @@ function SetupProfiloPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
   const [nome, setNome] = useState("");
   const [cognome, setCognome] = useState("");
   const [telefono, setTelefono] = useState("");
@@ -24,19 +25,19 @@ function SetupProfiloPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
 
-  // Supabase gestisce il token nell'URL hash automaticamente
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
+        setEmail(session.user.email ?? "");
         setSessionReady(true);
       }
     });
-    // Controlla sessione già attiva
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
         setUserId(data.session.user.id);
+        setEmail(data.session.user.email ?? "");
         setSessionReady(true);
       }
     });
@@ -118,14 +119,18 @@ function SetupProfiloPage() {
         {/* Header */}
         <div className="text-center space-y-2">
           <div
-            className="inline-flex w-14 h-14 items-center justify-center rounded-2xl text-2xl font-black mx-auto"
-            style={{ background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.35)", color: "#00d4ff", boxShadow: "0 0 28px rgba(0,212,255,0.2)" }}
+            className="inline-flex w-14 h-14 items-center justify-center rounded-2xl mx-auto"
+            style={{ background: "rgba(0,212,255,0.08)", border: "1px solid rgba(0,212,255,0.35)", boxShadow: "0 0 28px rgba(0,212,255,0.2)" }}
           >
-            F
+            <img
+              src="https://tpzpydnvcbcdkuthyweh.supabase.co/storage/v1/object/public/assets/falcon-wings-closed.png"
+              alt="Falcon"
+              style={{ width: 30, height: 30, objectFit: "contain", filter: "drop-shadow(0 0 6px rgba(0,212,255,0.6))" }}
+            />
           </div>
           <p className="text-xs tracking-[0.3em] uppercase font-semibold" style={{ color: "#00d4ff" }}>Falcon Agency</p>
-          <h1 className="text-2xl font-bold text-white">Completa il tuo profilo</h1>
-          <p className="text-sm" style={{ color: "#6677aa" }}>Sei quasi dentro. Inserisci i tuoi dati per accedere al pannello.</p>
+          <h1 className="text-2xl font-bold text-white">Crea il tuo account</h1>
+          <p className="text-sm" style={{ color: "#6677aa" }}>Sei stato invitato nel team. Completa la registrazione per accedere.</p>
         </div>
 
         <div className="rounded-2xl p-8 space-y-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(0,212,255,0.15)" }}>
@@ -155,6 +160,17 @@ function SetupProfiloPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label-section block mb-2">Email</label>
+              <input
+                className="input-premium opacity-60 cursor-not-allowed"
+                type="email"
+                value={email}
+                readOnly
+                tabIndex={-1}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="label-section block mb-2">Nome</label>
