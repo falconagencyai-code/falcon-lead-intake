@@ -26,7 +26,8 @@ export function Step5Calendly({ fullName, email }: Props) {
     email: email,
   });
 
-  const calendlyUrl = `https://calendly.com/falconagency-ai/30min?${params.toString()}`;
+  // URLSearchParams encodes spaces as '+', Calendly needs '%20'
+  const calendlyUrl = `https://calendly.com/falconagency-ai/30min?${params.toString().replace(/\+/g, "%20")}`;
 
   return (
     <div className="space-y-5 animate-slide-in">
