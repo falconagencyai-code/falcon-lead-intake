@@ -168,12 +168,25 @@ function TeamPage() {
     const { data: profiles } = await q;
     if (!profiles) { setLoading(false); return; }
 
-    // venditore_id sarà aggiunto ai leads in uno step successivo — per ora 0
-    const withStats = profiles.map((p) => ({
-      ...p,
-      lead_gestiti: 0,
-      chiusi: 0,
-    }));
+    // Fetch real lead stats per venditore
+    let stats: { venditore_id: string; pipeline_stage: string | null }[] = [];
+    if (profiles.length > 0) {
+      const ids = profiles.map((p) => p.id);
+      const { data: statsData } = await supabase!
+        .from("leads")
+        .select("venditore_id, pipeline_stage")
+        .in("venditore_id", ids);
+      stats = (statsData ?? []) as typeof stats;
+    }
+
+    const withStats = profiles.map((p) => {
+      const myLeads = stats.filter((s) => s.venditore_id === p.id);
+      return {
+        ...p,
+        lead_gestiti: myLeads.length,
+        chiusi: myLeads.filter((s) => s.pipeline_stage === "chiuso_vinto").length,
+      };
+    });
 
     setVenditori(withStats);
     setLoading(false);

@@ -23,6 +23,7 @@ import { it } from "date-fns/locale";
 import { toast } from "sonner";
 
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
 import { AdminCard } from "./admin/-admin-ui";
 
 export const Route = createFileRoute("/admin/leads")({
@@ -56,6 +57,8 @@ type LeadRow = {
   client_status: string | null;
   project_start_date: string | null;
   next_meeting: string | null;
+  venditore_id: string | null;
+  venditore: { id: string; full_name: string | null } | null;
 };
 
 type LeadNote = {
@@ -273,7 +276,7 @@ async function fetchLeads(): Promise<LeadRow[]> {
   const { data, error } = await supabase
     .from("leads")
     .select(
-      "id, full_name, email, phone, company, status, pipeline_stage, lost_reason, service_interest, budget_range, timeline, form_answers, created_at, client_status, project_start_date, next_meeting",
+      "id, full_name, email, phone, company, status, pipeline_stage, lost_reason, service_interest, budget_range, timeline, form_answers, created_at, client_status, project_start_date, next_meeting, venditore_id, venditore:profiles!venditore_id(id, full_name)",
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -603,7 +606,7 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
         <ActionIconButton title="Dettaglio" onClick={onOpen}>
           <Eye className="h-3.5 w-3.5" />
         </ActionIconButton>
-        <ActionIconButton title="Assegna" onClick={() => {}}>
+        <ActionIconButton title="Assegna venditore" onClick={(e) => { e.stopPropagation(); onOpen(); }}>
           <UserPlus className="h-3.5 w-3.5" />
         </ActionIconButton>
         <ActionIconButton title="Elimina" danger onClick={handleDelete} disabled={deleteMutation.isPending}>
@@ -988,6 +991,8 @@ function DrawerContent({
           )}
         </section>
 
+        <VenditoreSection lead={lead} />
+
         {lead.pipeline_stage === "chiuso_vinto" && <ProjectSection lead={lead} />}
 
         <ProposalsSection leadId={lead.id} />
@@ -1160,6 +1165,77 @@ function DrawerContent({
         </section>
       </div>
     </div>
+  );
+}
+
+// ============================================================
+// Venditore assignment section (admin only, inside drawer)
+// ============================================================
+
+function VenditoreSection({ lead }: { lead: LeadRow }) {
+  const { role } = useAuth();
+  const queryClient = useQueryClient();
+  const [draft, setDraft] = useState(lead.venditore_id ?? "");
+
+  useEffect(() => { setDraft(lead.venditore_id ?? ""); }, [lead.id, lead.venditore_id]);
+
+  const { data: venditori = [] } = useQuery({
+    queryKey: ["venditori-list"],
+    queryFn: async () => {
+      if (!supabase) return [];
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("role", "venditore")
+        .order("full_name");
+      return (data ?? []) as { id: string; full_name: string | null }[];
+    },
+    enabled: role === "admin" && !!supabase,
+    staleTime: 60_000,
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: async (vendId: string | null) => {
+      if (!supabase) throw new Error("Supabase non configurato");
+      const { error } = await supabase
+        .from("leads")
+        .update({ venditore_id: vendId || null })
+        .eq("id", lead.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      toast.success(draft ? "Venditore assegnato" : "Venditore rimosso");
+    },
+    onError: (e: Error) => toast.error(`Errore: ${e.message}`),
+  });
+
+  if (role !== "admin") return null;
+
+  return (
+    <section>
+      <p className="label-section mb-2 flex items-center gap-2">
+        <UserPlus className="h-3.5 w-3.5" />
+        Venditore assegnato
+      </p>
+      <div className="flex items-center gap-3">
+        <select
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            assignMutation.mutate(e.target.value || null);
+          }}
+          disabled={assignMutation.isPending}
+          className="glass h-11 flex-1 px-3 text-sm text-foreground outline-none"
+        >
+          <option value="">— Nessun venditore —</option>
+          {venditori.map((v) => (
+            <option key={v.id} value={v.id}>{v.full_name ?? v.id}</option>
+          ))}
+        </select>
+        {assignMutation.isPending && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+      </div>
+    </section>
   );
 }
 

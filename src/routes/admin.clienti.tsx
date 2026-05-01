@@ -98,6 +98,7 @@ type ClientRow = {
   project_start_date: string | null;
   next_meeting: string | null;
   created_at: string | null;
+  venditore: { id: string; full_name: string | null } | null;
 };
 
 const CLIENT_STATUS_OPTIONS: ProjectStatus[] = ["In corso", "Consegnato", "In pausa"];
@@ -202,7 +203,7 @@ function ClientiInner() {
     setLoading(true);
     const { data, error } = await supabase
       .from("leads")
-      .select("id, full_name, company, service_interest, client_status, project_start_date, next_meeting, created_at")
+      .select("id, full_name, company, service_interest, client_status, project_start_date, next_meeting, created_at, venditore:profiles!venditore_id(id, full_name)")
       .eq("pipeline_stage", "chiuso_vinto")
       .order("created_at", { ascending: false });
     if (error) {
@@ -380,9 +381,16 @@ function ClientiInner() {
                       {statusKey}
                     </span>
                   </div>
-                  <span className="mt-4 inline-flex items-center rounded-full border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.06)] px-3 py-1 text-xs font-semibold text-primary">
-                    {serviceLabel}
-                  </span>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center rounded-full border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.06)] px-3 py-1 text-xs font-semibold text-primary">
+                      {serviceLabel}
+                    </span>
+                    {c.venditore && (
+                      <span className="inline-flex items-center rounded-full border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-xs font-semibold text-muted-foreground">
+                        👤 {c.venditore.full_name ?? "—"}
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-5 space-y-2 text-sm">
                     <div className="flex items-center justify-between text-muted-foreground">
                       <span>Inizio progetto</span>
