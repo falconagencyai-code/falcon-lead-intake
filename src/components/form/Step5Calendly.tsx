@@ -15,6 +15,7 @@ declare global {
         prefill?: { name?: string; email?: string };
         locale?: string;
       }) => void;
+    };
   }
 }
 
