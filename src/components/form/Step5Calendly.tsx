@@ -46,19 +46,6 @@ export function Step5Calendly({ fullName, email }: Props) {
     document.head.appendChild(script);
   }, [fullName, email]);
 
-  useEffect(() => {
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data?.event === 'calendly.event_scheduled') {
-        const eventUri: string = e.data?.payload?.event?.uri ?? '';
-        const eventUuid = eventUri.split('/').pop() ?? '';
-        const eventId = eventUuid ? `cal-${eventUuid}` : `cal-${Date.now()}`;
-        window.fbq?.('track', 'Lead', {}, { eventID: eventId });
-      }
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
   return (
     <div className="space-y-5 animate-slide-in">
       <div className="text-center space-y-2">
