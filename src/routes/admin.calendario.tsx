@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
 import { AdminCard } from "./admin/-admin-ui";
 import { CalendarDays, Video, XCircle, Clock, CheckCircle2, ChevronDown } from "lucide-react";
 
@@ -18,6 +19,7 @@ interface Booking {
   status: string; // active | canceled | completata
   event_type_name: string | null;
   meeting_link: string | null;
+  lead: { venditore_id: string | null; venditore: { id: string; full_name: string | null } | null } | null;
 }
 
 function formatDate(iso: string) {
@@ -102,15 +104,20 @@ function StatusDropdown({ booking, onUpdate }: { booking: Booking; onUpdate: (id
 }
 
 export default function CalendarioPage() {
+  const { role } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"upcoming" | "all" | "canceled" | "completata">("upcoming");
+  const [venditoreFilter, setVenditoreFilter] = useState<string>("");
 
   const load = async () => {
     if (!supabase) return;
     setLoading(true);
-    const { data } = await supabase.from("bookings").select("*").order("start_time", { ascending: true });
-    setBookings(data ?? []);
+    const { data } = await supabase
+      .from("bookings")
+      .select("*, lead:leads!lead_id(venditore_id, venditore:profiles!venditore_id(id, full_name))")
+      .order("start_time", { ascending: true });
+    setBookings((data ?? []) as Booking[]);
     setLoading(false);
   };
 
@@ -132,11 +139,21 @@ export default function CalendarioPage() {
   };
 
   const filtered = bookings.filter(b => {
-    if (filter === "upcoming") return b.status === "active" && !isPast(b.start_time);
-    if (filter === "canceled") return b.status === "canceled";
-    if (filter === "completata") return b.status === "completata";
+    if (filter === "upcoming" && !(b.status === "active" && !isPast(b.start_time))) return false;
+    if (filter === "canceled" && b.status !== "canceled") return false;
+    if (filter === "completata" && b.status !== "completata") return false;
+    if (venditoreFilter && (b.lead?.venditore_id ?? "") !== venditoreFilter) return false;
     return true;
   });
+
+  // Unique venditori for filter dropdown
+  const venditori = Array.from(
+    new Map(
+      bookings
+        .filter(b => b.lead?.venditore)
+        .map(b => [b.lead!.venditore_id!, b.lead!.venditore!.full_name ?? b.lead!.venditore_id!])
+    )
+  );
 
   const counts = {
     upcoming: bookings.filter(b => b.status === "active" && !isPast(b.start_time)).length,
@@ -172,6 +189,17 @@ export default function CalendarioPage() {
               {f.label}
             </button>
           ))}
+          {role === "admin" && venditori.length > 0 && (
+            <select
+              value={venditoreFilter}
+              onChange={e => setVenditoreFilter(e.target.value)}
+              className="rounded-xl px-3 py-2 text-sm font-medium outline-none"
+              style={{ background: venditoreFilter ? "rgba(0,212,255,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${venditoreFilter ? "rgba(0,212,255,0.4)" : "rgba(255,255,255,0.08)"}`, color: venditoreFilter ? "#00d4ff" : "#6677aa" }}
+            >
+              <option value="">Tutti i venditori</option>
+              {venditori.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+            </select>
+          )}
         </div>
       </header>
 
@@ -208,6 +236,12 @@ export default function CalendarioPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-foreground">{b.invitee_name ?? "—"}</p>
                       <StatusBadge status={b.status} />
+                      {b.lead?.venditore && (
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                          style={{ background: "rgba(0,212,255,0.07)", color: "#7dd9ff", border: "1px solid rgba(0,212,255,0.15)" }}>
+                          {b.lead.venditore.full_name ?? "—"}
+                        </span>
+                      )}
                     </div>
                     <p className="text-sm" style={{ color: "#6677aa" }}>{b.invitee_email ?? "—"}</p>
                     <div className="flex items-center gap-3 mt-1.5 text-sm" style={{ color: "#4a5568" }}>

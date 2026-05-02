@@ -310,8 +310,10 @@ async function fetchEvents(leadId: string): Promise<LeadEvent[]> {
 // ============================================================
 
 function LeadsPage() {
+  const { role } = useAuth();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [venditoreFilter, setVenditoreFilter] = useState<string>("");
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
@@ -339,6 +341,7 @@ function LeadsPage() {
   const filtered = useMemo(() => {
     return allLeads.filter((l) => {
       if (statusFilter && (l.status ?? "") !== statusFilter) return false;
+      if (venditoreFilter && (l.venditore_id ?? "") !== venditoreFilter) return false;
       if (!query) return true;
       const q = query.toLowerCase();
       return (
@@ -348,7 +351,7 @@ function LeadsPage() {
         (l.service_interest ?? "").toLowerCase().includes(q)
       );
     });
-  }, [allLeads, query, statusFilter]);
+  }, [allLeads, query, statusFilter, venditoreFilter]);
 
   // KPIs
   const kpis = useMemo(() => {
@@ -402,6 +405,24 @@ function LeadsPage() {
               </option>
             ))}
           </select>
+          {role === "admin" && (
+            <select
+              value={venditoreFilter}
+              onChange={(e) => setVenditoreFilter(e.target.value)}
+              className="glass h-12 px-4 text-sm text-foreground outline-none"
+            >
+              <option value="">Tutti i venditori</option>
+              {Array.from(
+                new Map(
+                  allLeads
+                    .filter(l => l.venditore)
+                    .map(l => [l.venditore_id!, l.venditore!.full_name ?? l.venditore_id!])
+                )
+              ).map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+          )}
         </div>
       </header>
 
@@ -430,12 +451,13 @@ function LeadsPage() {
       {/* Lead list */}
       <AdminCard className="overflow-hidden p-0">
         {/* Header row */}
-        <div className="hidden grid-cols-[minmax(260px,2fr)_minmax(130px,1fr)_minmax(100px,0.9fr)_minmax(110px,0.9fr)_minmax(170px,1.3fr)_minmax(100px,0.9fr)_minmax(120px,auto)] items-center gap-4 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
+        <div className="hidden grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(90px,0.8fr)_minmax(100px,0.8fr)_minmax(155px,1.2fr)_minmax(130px,1fr)_minmax(90px,0.8fr)_minmax(110px,auto)] items-center gap-4 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground lg:grid">
           <span>Lead</span>
           <span>Servizio</span>
           <span>Budget</span>
           <span>Timing</span>
           <span>Stage</span>
+          <span>Venditore</span>
           <span>Data</span>
           <span className="text-right">Azioni</span>
         </div>
@@ -545,7 +567,7 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
   return (
     <div
       onClick={onOpen}
-      className="group grid min-h-[72px] cursor-pointer grid-cols-1 items-center gap-4 border-b border-[rgba(255,255,255,0.05)] px-6 py-4 transition-colors duration-150 last:border-b-0 hover:bg-[rgba(0,212,255,0.04)] lg:grid-cols-[minmax(260px,2fr)_minmax(130px,1fr)_minmax(100px,0.9fr)_minmax(110px,0.9fr)_minmax(170px,1.3fr)_minmax(100px,0.9fr)_minmax(120px,auto)]"
+      className="group grid min-h-[72px] cursor-pointer grid-cols-1 items-center gap-4 border-b border-[rgba(255,255,255,0.05)] px-6 py-4 transition-colors duration-150 last:border-b-0 hover:bg-[rgba(0,212,255,0.04)] lg:grid-cols-[minmax(220px,2fr)_minmax(120px,1fr)_minmax(90px,0.8fr)_minmax(100px,0.8fr)_minmax(155px,1.2fr)_minmax(130px,1fr)_minmax(90px,0.8fr)_minmax(110px,auto)]"
     >
       {/* Lead */}
       <div className="flex items-center gap-3 min-w-0">
@@ -594,6 +616,22 @@ function LeadRowItem({ lead, onOpen }: { lead: LeadRow; onOpen: () => void }) {
       {/* Stage */}
       <div className="min-w-0">
         <StageBadge stage={stage} />
+      </div>
+
+      {/* Venditore */}
+      <div className="min-w-0">
+        {lead.venditore ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold truncate max-w-[120px]"
+            style={{ background: "rgba(0,212,255,0.07)", color: "#7dd9ff", border: "1px solid rgba(0,212,255,0.18)" }}>
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-black"
+              style={{ background: "rgba(0,212,255,0.18)", color: "#00d4ff" }}>
+              {(lead.venditore.full_name ?? "?")[0].toUpperCase()}
+            </span>
+            <span className="truncate">{lead.venditore.full_name ?? "—"}</span>
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground/50">—</span>
+        )}
       </div>
 
       {/* Data */}

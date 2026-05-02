@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
-import { UserPlus, X, Check } from "lucide-react";
+import { UserPlus, X, Check, Video, Phone } from "lucide-react";
 
 export const Route = createFileRoute("/admin/team")({
   head: () => ({
@@ -107,6 +107,231 @@ function OrgLine({ count }: { count: number }) {
   );
 }
 
+// ── Types for drawer ────────────────────────────────────────────────
+interface VendLead {
+  id: string;
+  full_name: string | null;
+  service_interest: string | null;
+  budget_range: string | null;
+  pipeline_stage: string | null;
+}
+
+interface VendBooking {
+  id: string;
+  invitee_name: string | null;
+  invitee_email: string | null;
+  start_time: string;
+  status: string;
+  meeting_link: string | null;
+}
+
+const STAGE_LABEL: Record<string, string> = {
+  form_compilato: "Form",
+  contattato: "Contattato",
+  call_schedulata: "Call sched.",
+  call_effettuata: "Call fatta",
+  no_show: "No show",
+  preventivo_inviato: "Preventivo",
+  chiuso_vinto: "Vinto ✓",
+  chiuso_perso: "Perso ✗",
+};
+
+const STAGE_COLOR: Record<string, string> = {
+  chiuso_vinto: "#4ade80",
+  chiuso_perso: "#f87171",
+  preventivo_inviato: "#f59e0b",
+  call_effettuata: "#34d399",
+  call_schedulata: "#60a5fa",
+  contattato: "#00d4ff",
+};
+
+// ── Venditore Detail Drawer ─────────────────────────────────────────
+function VenditoreDrawer({ v, onClose, initials: ini }: { v: Venditore; onClose: () => void; initials: (n: string | null) => string }) {
+  const [leads, setLeads] = useState<VendLead[]>([]);
+  const [bookings, setBookings] = useState<VendBooking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!supabase) return;
+    setLoading(true);
+    (async () => {
+      const { data: leadsData } = await supabase!
+        .from("leads")
+        .select("id, full_name, service_interest, budget_range, pipeline_stage")
+        .eq("venditore_id", v.id)
+        .order("created_at", { ascending: false });
+      const myLeads = (leadsData ?? []) as VendLead[];
+      setLeads(myLeads);
+
+      if (myLeads.length > 0) {
+        const ids = myLeads.map(l => l.id);
+        const { data: bookData } = await supabase!
+          .from("bookings")
+          .select("id, invitee_name, invitee_email, start_time, status, meeting_link")
+          .in("lead_id", ids)
+          .order("start_time", { ascending: true });
+        setBookings((bookData ?? []) as VendBooking[]);
+      }
+      setLoading(false);
+    })();
+  }, [v.id]);
+
+  const activeLeads = leads.filter(l => l.pipeline_stage !== "chiuso_vinto" && l.pipeline_stage !== "chiuso_perso");
+  const closedWon = leads.filter(l => l.pipeline_stage === "chiuso_vinto");
+  const upcomingCalls = bookings.filter(b => b.status === "active" && new Date(b.start_time) > new Date());
+  const convRate = leads.length > 0 ? Math.round((closedWon.length / leads.length) * 100) : 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end"
+      style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="relative h-full w-full max-w-lg overflow-y-auto"
+        style={{ background: "rgba(7,11,20,0.98)", borderLeft: "1px solid rgba(0,212,255,0.15)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button onClick={onClose} className="absolute top-5 right-5 text-muted-foreground hover:text-foreground transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="p-6 space-y-7">
+          {/* Profile header */}
+          <div className="flex items-center gap-4 pt-2">
+            <div
+              className="relative flex h-16 w-16 items-center justify-center rounded-full overflow-hidden text-lg font-black shrink-0"
+              style={{
+                border: "2px solid rgba(0,212,255,0.45)",
+                color: "#00d4ff",
+                background: v.avatar_url ? "transparent" : "rgba(0,212,255,0.12)",
+                boxShadow: "0 0 24px rgba(0,212,255,0.2)",
+              }}
+            >
+              {v.avatar_url
+                ? <img src={v.avatar_url} alt={v.full_name ?? ""} className="w-full h-full object-cover" />
+                : ini(v.full_name)
+              }
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-foreground">{v.full_name ?? "—"}</h2>
+              <p className="text-sm text-muted-foreground">Venditore</p>
+              <span className="mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold"
+                style={{ background: "rgba(0,212,255,0.1)", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.25)" }}>
+                {v.percentuale_commissione}% commissione
+              </span>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#00d4ff", borderTopColor: "transparent" }} />
+            </div>
+          ) : (
+            <>
+              {/* KPIs */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Lead totali", value: leads.length, color: "#7dd9ff" },
+                  { label: "Clienti chiusi", value: closedWon.length, color: "#4ade80" },
+                  { label: "Tasso conv.", value: `${convRate}%`, color: "#a78bfa" },
+                ].map(k => (
+                  <div key={k.label} className="rounded-2xl p-4 text-center"
+                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <p className="text-2xl font-black" style={{ color: k.color }}>{k.value}</p>
+                    <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{k.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Lead attivi */}
+              <section>
+                <p className="label-section mb-3 flex items-center gap-1.5">
+                  Lead in carico <span className="text-foreground font-bold">({activeLeads.length})</span>
+                </p>
+                {activeLeads.length === 0
+                  ? <p className="text-sm text-muted-foreground">Nessun lead attivo.</p>
+                  : <div className="space-y-2">
+                    {activeLeads.slice(0, 10).map(l => (
+                      <div key={l.id} className="flex items-center justify-between rounded-xl px-4 py-3"
+                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <div className="min-w-0 mr-3">
+                          <p className="text-sm font-semibold text-foreground truncate">{l.full_name ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground truncate">{l.service_interest ?? "—"} · {l.budget_range ?? "—"}</p>
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold rounded-full px-2.5 py-1"
+                          style={{ background: "rgba(0,0,0,0.3)", color: STAGE_COLOR[l.pipeline_stage ?? ""] ?? "#6677aa", border: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap" }}>
+                          {STAGE_LABEL[l.pipeline_stage ?? "form_compilato"] ?? l.pipeline_stage}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                }
+              </section>
+
+              {/* Clienti chiusi */}
+              <section>
+                <p className="label-section mb-3 flex items-center gap-1.5">
+                  Clienti chiusi <span className="text-foreground font-bold">({closedWon.length})</span>
+                </p>
+                {closedWon.length === 0
+                  ? <p className="text-sm text-muted-foreground">Nessun cliente chiuso ancora.</p>
+                  : <div className="space-y-2">
+                    {closedWon.slice(0, 8).map(l => (
+                      <div key={l.id} className="flex items-center justify-between rounded-xl px-4 py-3"
+                        style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.15)" }}>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{l.full_name ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground">{l.service_interest ?? "—"}</p>
+                        </div>
+                        <span className="text-xs font-bold" style={{ color: "#4ade80" }}>Vinto ✓</span>
+                      </div>
+                    ))}
+                  </div>
+                }
+              </section>
+
+              {/* Call in programma */}
+              <section>
+                <p className="label-section mb-3 flex items-center gap-1.5">
+                  Call in programma <span className="text-foreground font-bold">({upcomingCalls.length})</span>
+                </p>
+                {upcomingCalls.length === 0
+                  ? <p className="text-sm text-muted-foreground">Nessuna call in programma.</p>
+                  : <div className="space-y-2">
+                    {upcomingCalls.slice(0, 6).map(b => (
+                      <div key={b.id} className="flex items-center justify-between rounded-xl px-4 py-3"
+                        style={{ background: "rgba(0,212,255,0.04)", border: "1px solid rgba(0,212,255,0.15)" }}>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{b.invitee_name ?? b.invitee_email ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(b.start_time).toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })}
+                            {" — "}
+                            {new Date(b.start_time).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        {b.meeting_link ? (
+                          <a href={b.meeting_link} target="_blank" rel="noopener noreferrer"
+                            className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl transition-all"
+                            style={{ background: "rgba(0,212,255,0.1)", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.25)" }}>
+                            <Video className="w-3 h-3" /> Entra
+                          </a>
+                        ) : (
+                          <Phone className="w-4 h-4 shrink-0" style={{ color: "#4a5568" }} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                }
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Invite modal ────────────────────────────────────────────────────
 function InviteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [email, setEmail] = useState("");
@@ -188,6 +413,7 @@ function TeamPage() {
   const [venditori, setVenditori] = useState<Venditore[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
+  const [selectedVenditore, setSelectedVenditore] = useState<Venditore | null>(null);
 
   const loadVenditori = async () => {
     if (!supabase) return;
@@ -241,6 +467,9 @@ function TeamPage() {
     <>
       {showInvite && role === "admin" && (
         <InviteModal onClose={() => setShowInvite(false)} onSuccess={loadVenditori} />
+      )}
+      {selectedVenditore && (
+        <VenditoreDrawer v={selectedVenditore} onClose={() => setSelectedVenditore(null)} initials={initials} />
       )}
 
       <div className="space-y-10">
@@ -323,7 +552,8 @@ function TeamPage() {
                 {venditori.map((v) => (
                   <div
                     key={v.id}
-                    className="flex flex-col items-center gap-2 rounded-2xl px-5 py-4 text-center"
+                    onClick={() => setSelectedVenditore(v)}
+                    className="flex flex-col items-center gap-2 rounded-2xl px-5 py-4 text-center cursor-pointer transition-all hover:scale-105"
                     style={{ background: "rgba(0,212,255,0.05)", border: "1px solid rgba(0,212,255,0.18)", minWidth: 130 }}
                   >
                     {/* Avatar: photo o initials fallback */}
