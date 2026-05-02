@@ -1537,8 +1537,9 @@ function ProposalsSection({
 
   const updateStatus = async (id: string, newStatus: string) => {
     if (!supabase) return;
+    const now = new Date().toISOString();
     const patch: Record<string, unknown> = { status: newStatus };
-    if (newStatus === "Pagato") patch.pagato_at = new Date().toISOString();
+    if (newStatus === "Pagato") patch.pagato_at = now;
 
     setQuotes((list) => list.map((q) => (q.id === id ? { ...q, status: newStatus } : q)));
     const { error } = await supabase.from("quotes").update(patch).eq("id", id);
@@ -1548,7 +1549,7 @@ function ProposalsSection({
       return;
     }
 
-    // Sync lead pipeline_stage based on quote outcome
+    // Sync lead pipeline_stage
     if (newStatus === "Accettata" || newStatus === "Pagato") {
       await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", leadId);
       onLeadStageChanged();
@@ -1557,7 +1558,22 @@ function ProposalsSection({
       onLeadStageChanged();
     }
 
-    toast.success("Proposta aggiornata");
+    // When marked Pagato: auto-create payment record (idempotent via quote_id unique index)
+    if (newStatus === "Pagato") {
+      const quote = quotes.find((q) => q.id === id);
+      if (quote) {
+        await supabase.from("payments").upsert({
+          lead_id: leadId,
+          quote_id: id,
+          amount: quote.amount ?? 0,
+          status: "paid",
+          description: quote.service ?? "Pagamento",
+          paid_at: now,
+        }, { onConflict: "quote_id" });
+      }
+    }
+
+    toast.success(newStatus === "Pagato" ? "Pagamento registrato nel fatturato ✓" : "Proposta aggiornata");
   };
 
   const handleCreate = async (e: React.FormEvent) => {

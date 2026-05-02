@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
-import { Calendar, CheckCircle2, Cpu, FileText, Loader2, Receipt, Users, X } from "lucide-react";
+import { Calendar, CheckCircle2, Cpu, FileText, Loader2, Receipt, TrendingUp, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
@@ -65,30 +65,148 @@ function ClientiPage() {
 
       {section === "clienti" && <ClientiInner />}
       {section === "contratti" && <ContractsPage />}
-      {section === "fatture" && <FattureEmpty />}
+      {section === "fatture" && <FattureSection />}
       {section === "ai-monitor" && <AIMonitorPage />}
     </div>
   );
 }
 
-function FattureEmpty() {
+function FattureSection() {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    if (!supabase) { setLoading(false); return; }
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("payments")
+      .select("*, lead:leads!lead_id(full_name, company, venditore:profiles!venditore_id(full_name))")
+      .eq("status", "paid")
+      .order("paid_at", { ascending: false });
+    if (error) toast.error(`Errore fatture: ${error.message}`);
+    else setPayments((data ?? []) as unknown as Payment[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    if (!supabase) return;
+    const channel = supabase
+      .channel("payments-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => load())
+      .subscribe();
+    return () => { supabase!.removeChannel(channel); };
+  }, []);
+
+  const totale = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
+
   return (
-    <AdminCard className="p-12">
-      <div className="flex flex-col items-center justify-center text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)]">
-          <Receipt className="h-7 w-7 text-primary" />
-        </div>
-        <AdminSectionTitle eyebrow="Coming soon" title="In arrivo" />
-        <p className="mt-3 max-w-md text-sm text-muted-foreground">
-          Sezione in costruzione — il modulo fatturazione sarà disponibile a breve.
+    <div className="space-y-6">
+      <header>
+        <p className="label-section">Fatturato</p>
+        <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-4xl">
+          Pagamenti <span className="text-primary text-glow">Confermati</span>
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Registrati automaticamente quando una proposta viene segnata come Pagata.
         </p>
-      </div>
-    </AdminCard>
+      </header>
+
+      {/* KPI totale */}
+      {payments.length > 0 && (
+        <div className="flex items-center gap-4 rounded-2xl border border-[rgba(74,222,128,0.2)] bg-[rgba(74,222,128,0.05)] px-6 py-4">
+          <TrendingUp className="h-8 w-8 shrink-0" style={{ color: "#4ade80" }} />
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Totale incassato</p>
+            <p className="text-3xl font-black" style={{ color: "#4ade80" }}>
+              {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(totale)}
+            </p>
+          </div>
+          <div className="ml-auto text-right">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Transazioni</p>
+            <p className="text-2xl font-black text-foreground">{payments.length}</p>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 py-16 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm">Caricamento…</span>
+        </div>
+      ) : payments.length === 0 ? (
+        <AdminCard className="p-12 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)]">
+            <Receipt className="h-7 w-7 text-primary" />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-foreground">Nessun pagamento ancora</h3>
+          <p className="mt-2 text-sm text-muted-foreground">
+            I pagamenti appaiono qui automaticamente quando segni una proposta come Pagata.
+          </p>
+        </AdminCard>
+      ) : (
+        <AdminCard className="p-5">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                <tr className="border-b border-[rgba(0,212,255,0.1)]">
+                  <th className="py-4">Cliente</th>
+                  <th>Servizio</th>
+                  <th>Venditore</th>
+                  <th>Importo</th>
+                  <th>Data pagamento</th>
+                  <th>Stato</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payments.map((p) => (
+                  <tr key={p.id} className="border-b border-[rgba(255,255,255,0.04)] text-foreground/90">
+                    <td className="py-4">
+                      <p className="font-semibold text-foreground">{p.lead?.full_name ?? "—"}</p>
+                      {p.lead?.company && (
+                        <p className="text-xs text-muted-foreground">{p.lead.company}</p>
+                      )}
+                    </td>
+                    <td className="text-muted-foreground">{p.description ?? "—"}</td>
+                    <td className="text-muted-foreground">{p.lead?.venditore?.full_name ?? "—"}</td>
+                    <td className="font-black" style={{ color: "#4ade80" }}>
+                      {new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(p.amount)}
+                    </td>
+                    <td className="text-muted-foreground">{fmtDate(p.paid_at)}</td>
+                    <td>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.1)] px-3 py-1 text-xs font-semibold" style={{ color: "#a78bfa" }}>
+                        🔒 Pagato
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AdminCard>
+      )}
+    </div>
   );
 }
 
 // ── Types ───────────────────────────────────────────────────────────
 type ProjectStatus = "In corso" | "Consegnato" | "In pausa";
+
+type Payment = {
+  id: string;
+  lead_id: string | null;
+  quote_id: string | null;
+  amount: number;
+  status: string;
+  description: string | null;
+  paid_at: string | null;
+  created_at: string;
+  lead: {
+    full_name: string | null;
+    company: string | null;
+    venditore: { full_name: string | null } | null;
+  } | null;
+};
 
 type ClientRow = {
   id: string;
