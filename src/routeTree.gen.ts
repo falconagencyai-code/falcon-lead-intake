@@ -14,6 +14,7 @@ import { Route as FormContatto1RouteImport } from './routes/form-contatto-1'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as AdminSetupProfiloRouteImport } from './routes/admin.setup-profilo'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminRoadmapRouteImport } from './routes/admin.roadmap'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
@@ -24,6 +25,7 @@ import { Route as AdminContractsRouteImport } from './routes/admin.contracts'
 import { Route as AdminContabilitaRouteImport } from './routes/admin.contabilita'
 import { Route as AdminCompetitorRouteImport } from './routes/admin.competitor'
 import { Route as AdminClientiRouteImport } from './routes/admin.clienti'
+import { Route as AdminCalendarioRouteImport } from './routes/admin.calendario'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminAiMonitorRouteImport } from './routes/admin.ai-monitor'
 import { Route as AdminAdsRouteImport } from './routes/admin.ads'
@@ -51,6 +53,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminTeamRoute = AdminTeamRouteImport.update({
   id: '/team',
   path: '/team',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSetupProfiloRoute = AdminSetupProfiloRouteImport.update({
+  id: '/setup-profilo',
+  path: '/setup-profilo',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
@@ -103,6 +110,11 @@ const AdminClientiRoute = AdminClientiRouteImport.update({
   path: '/clienti',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCalendarioRoute = AdminCalendarioRouteImport.update({
+  id: '/calendario',
+  path: '/calendario',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -127,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/admin/ads': typeof AdminAdsRoute
   '/admin/ai-monitor': typeof AdminAiMonitorRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/calendario': typeof AdminCalendarioRoute
   '/admin/clienti': typeof AdminClientiRoute
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
@@ -137,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/setup-profilo': typeof AdminSetupProfiloRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRoutesByTo {
@@ -147,6 +161,7 @@ export interface FileRoutesByTo {
   '/admin/ads': typeof AdminAdsRoute
   '/admin/ai-monitor': typeof AdminAiMonitorRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/calendario': typeof AdminCalendarioRoute
   '/admin/clienti': typeof AdminClientiRoute
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
@@ -157,6 +172,7 @@ export interface FileRoutesByTo {
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/setup-profilo': typeof AdminSetupProfiloRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRoutesById {
@@ -168,6 +184,7 @@ export interface FileRoutesById {
   '/admin/ads': typeof AdminAdsRoute
   '/admin/ai-monitor': typeof AdminAiMonitorRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/calendario': typeof AdminCalendarioRoute
   '/admin/clienti': typeof AdminClientiRoute
   '/admin/competitor': typeof AdminCompetitorRoute
   '/admin/contabilita': typeof AdminContabilitaRoute
@@ -178,6 +195,7 @@ export interface FileRoutesById {
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/setup-profilo': typeof AdminSetupProfiloRoute
   '/admin/team': typeof AdminTeamRoute
 }
 export interface FileRouteTypes {
@@ -190,6 +208,7 @@ export interface FileRouteTypes {
     | '/admin/ads'
     | '/admin/ai-monitor'
     | '/admin/analytics'
+    | '/admin/calendario'
     | '/admin/clienti'
     | '/admin/competitor'
     | '/admin/contabilita'
@@ -200,6 +219,7 @@ export interface FileRouteTypes {
     | '/admin/pipeline'
     | '/admin/roadmap'
     | '/admin/settings'
+    | '/admin/setup-profilo'
     | '/admin/team'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -210,6 +230,7 @@ export interface FileRouteTypes {
     | '/admin/ads'
     | '/admin/ai-monitor'
     | '/admin/analytics'
+    | '/admin/calendario'
     | '/admin/clienti'
     | '/admin/competitor'
     | '/admin/contabilita'
@@ -220,6 +241,7 @@ export interface FileRouteTypes {
     | '/admin/pipeline'
     | '/admin/roadmap'
     | '/admin/settings'
+    | '/admin/setup-profilo'
     | '/admin/team'
   id:
     | '__root__'
@@ -230,6 +252,7 @@ export interface FileRouteTypes {
     | '/admin/ads'
     | '/admin/ai-monitor'
     | '/admin/analytics'
+    | '/admin/calendario'
     | '/admin/clienti'
     | '/admin/competitor'
     | '/admin/contabilita'
@@ -240,6 +263,7 @@ export interface FileRouteTypes {
     | '/admin/pipeline'
     | '/admin/roadmap'
     | '/admin/settings'
+    | '/admin/setup-profilo'
     | '/admin/team'
   fileRoutesById: FileRoutesById
 }
@@ -285,6 +309,13 @@ declare module '@tanstack/react-router' {
       path: '/team'
       fullPath: '/admin/team'
       preLoaderRoute: typeof AdminTeamRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/setup-profilo': {
+      id: '/admin/setup-profilo'
+      path: '/setup-profilo'
+      fullPath: '/admin/setup-profilo'
+      preLoaderRoute: typeof AdminSetupProfiloRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/settings': {
@@ -357,6 +388,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminClientiRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/calendario': {
+      id: '/admin/calendario'
+      path: '/calendario'
+      fullPath: '/admin/calendario'
+      preLoaderRoute: typeof AdminCalendarioRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/analytics': {
       id: '/admin/analytics'
       path: '/analytics'
@@ -385,6 +423,7 @@ interface AdminRouteChildren {
   AdminAdsRoute: typeof AdminAdsRoute
   AdminAiMonitorRoute: typeof AdminAiMonitorRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminCalendarioRoute: typeof AdminCalendarioRoute
   AdminClientiRoute: typeof AdminClientiRoute
   AdminCompetitorRoute: typeof AdminCompetitorRoute
   AdminContabilitaRoute: typeof AdminContabilitaRoute
@@ -395,6 +434,7 @@ interface AdminRouteChildren {
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminRoadmapRoute: typeof AdminRoadmapRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSetupProfiloRoute: typeof AdminSetupProfiloRoute
   AdminTeamRoute: typeof AdminTeamRoute
 }
 
@@ -402,6 +442,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdsRoute: AdminAdsRoute,
   AdminAiMonitorRoute: AdminAiMonitorRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminCalendarioRoute: AdminCalendarioRoute,
   AdminClientiRoute: AdminClientiRoute,
   AdminCompetitorRoute: AdminCompetitorRoute,
   AdminContabilitaRoute: AdminContabilitaRoute,
@@ -412,6 +453,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminPipelineRoute: AdminPipelineRoute,
   AdminRoadmapRoute: AdminRoadmapRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminSetupProfiloRoute: AdminSetupProfiloRoute,
   AdminTeamRoute: AdminTeamRoute,
 }
 
