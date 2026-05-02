@@ -154,11 +154,25 @@ const STAGE_COLOR: Record<string, string> = {
 };
 
 // ── Venditore Detail Drawer ─────────────────────────────────────────
-function VenditoreDrawer({ v, onClose, initials: ini }: { v: Venditore; onClose: () => void; initials: (n: string | null) => string }) {
+function VenditoreDrawer({
+  v,
+  onClose,
+  initials: ini,
+  onCommissioneUpdated,
+}: {
+  v: Venditore;
+  onClose: () => void;
+  initials: (n: string | null) => string;
+  onCommissioneUpdated: (id: string, pct: number) => void;
+}) {
+  const { role } = useAuth();
   const [leads, setLeads] = useState<VendLead[]>([]);
   const [bookings, setBookings] = useState<VendBooking[]>([]);
   const [quotes, setQuotes] = useState<VendQuote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingComm, setEditingComm] = useState(false);
+  const [commDraft, setCommDraft] = useState(String(v.percentuale_commissione));
+  const [commSaving, setCommSaving] = useState(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -198,6 +212,21 @@ function VenditoreDrawer({ v, onClose, initials: ini }: { v: Venditore; onClose:
   const upcomingCalls = bookings.filter(b => b.status === "active" && new Date(b.start_time) > new Date());
   const convRate = leads.length > 0 ? Math.round((closedWon.length / leads.length) * 100) : 0;
 
+  const saveCommissione = async () => {
+    if (!supabase) return;
+    const pct = parseFloat(commDraft);
+    if (isNaN(pct) || pct < 0 || pct > 100) return;
+    setCommSaving(true);
+    const { error } = await supabase.from("profiles").update({ percentuale_commissione: pct }).eq("id", v.id);
+    setCommSaving(false);
+    if (error) {
+      alert(`Errore: ${error.message}`);
+    } else {
+      setEditingComm(false);
+      onCommissioneUpdated(v.id, pct);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 flex justify-end"
@@ -230,13 +259,46 @@ function VenditoreDrawer({ v, onClose, initials: ini }: { v: Venditore; onClose:
                 : ini(v.full_name)
               }
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-xl font-bold text-foreground">{v.full_name ?? "—"}</h2>
               <p className="text-sm text-muted-foreground">Venditore</p>
-              <span className="mt-1.5 inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold"
-                style={{ background: "rgba(0,212,255,0.1)", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.25)" }}>
-                {v.percentuale_commissione}% commissione
-              </span>
+              {/* Commissione — editabile solo da admin */}
+              {role === "admin" && editingComm ? (
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.5"
+                    value={commDraft}
+                    onChange={e => setCommDraft(e.target.value)}
+                    className="w-20 rounded-xl border px-2 py-1 text-sm font-bold outline-none"
+                    style={{ background: "rgba(0,212,255,0.08)", border: "1px solid rgba(0,212,255,0.4)", color: "#00d4ff" }}
+                    autoFocus
+                    onKeyDown={e => { if (e.key === "Enter") saveCommissione(); if (e.key === "Escape") setEditingComm(false); }}
+                  />
+                  <span className="text-sm font-bold" style={{ color: "#00d4ff" }}>%</span>
+                  <button onClick={saveCommissione} disabled={commSaving}
+                    className="rounded-lg px-2 py-1 text-xs font-semibold transition-colors"
+                    style={{ background: "rgba(0,212,255,0.15)", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.3)" }}>
+                    {commSaving ? "…" : "✓"}
+                  </button>
+                  <button onClick={() => setEditingComm(false)}
+                    className="rounded-lg px-2 py-1 text-xs font-semibold text-muted-foreground hover:text-foreground">
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => role === "admin" ? setEditingComm(true) : undefined}
+                  className="mt-1.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-bold transition-all"
+                  style={{ background: "rgba(0,212,255,0.1)", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.25)", cursor: role === "admin" ? "pointer" : "default" }}
+                  title={role === "admin" ? "Clicca per modificare" : undefined}
+                >
+                  {v.percentuale_commissione}% commissione
+                  {role === "admin" && <span className="opacity-50 text-[10px]">✎</span>}
+                </button>
+              )}
             </div>
           </div>
 
@@ -523,7 +585,15 @@ function TeamPage() {
         <InviteModal onClose={() => setShowInvite(false)} onSuccess={loadVenditori} />
       )}
       {selectedVenditore && (
-        <VenditoreDrawer v={selectedVenditore} onClose={() => setSelectedVenditore(null)} initials={initials} />
+        <VenditoreDrawer
+          v={selectedVenditore}
+          onClose={() => setSelectedVenditore(null)}
+          initials={initials}
+          onCommissioneUpdated={(id, pct) => {
+            setVenditori(vs => vs.map(v => v.id === id ? { ...v, percentuale_commissione: pct } : v));
+            setSelectedVenditore(sv => sv && sv.id === id ? { ...sv, percentuale_commissione: pct } : sv);
+          }}
+        />
       )}
 
       <div className="space-y-10">
