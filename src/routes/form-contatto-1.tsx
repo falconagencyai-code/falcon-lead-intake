@@ -13,6 +13,12 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
+declare global {
+  interface Window {
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
 export const Route = createFileRoute("/form-contatto-1")({
   head: () => ({
     meta: [
