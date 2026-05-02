@@ -116,6 +116,14 @@ interface VendLead {
   pipeline_stage: string | null;
 }
 
+interface VendQuote {
+  id: string;
+  lead_id: string;
+  amount: number | null;
+  status: string | null;
+  service: string | null;
+}
+
 interface VendBooking {
   id: string;
   invitee_name: string | null;
@@ -149,6 +157,7 @@ const STAGE_COLOR: Record<string, string> = {
 function VenditoreDrawer({ v, onClose, initials: ini }: { v: Venditore; onClose: () => void; initials: (n: string | null) => string }) {
   const [leads, setLeads] = useState<VendLead[]>([]);
   const [bookings, setBookings] = useState<VendBooking[]>([]);
+  const [quotes, setQuotes] = useState<VendQuote[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -165,12 +174,20 @@ function VenditoreDrawer({ v, onClose, initials: ini }: { v: Venditore; onClose:
 
       if (myLeads.length > 0) {
         const ids = myLeads.map(l => l.id);
-        const { data: bookData } = await supabase!
-          .from("bookings")
-          .select("id, invitee_name, invitee_email, start_time, status, meeting_link")
-          .in("lead_id", ids)
-          .order("start_time", { ascending: true });
-        setBookings((bookData ?? []) as VendBooking[]);
+        const [bookRes, quoteRes] = await Promise.all([
+          supabase!
+            .from("bookings")
+            .select("id, invitee_name, invitee_email, start_time, status, meeting_link")
+            .in("lead_id", ids)
+            .order("start_time", { ascending: true }),
+          supabase!
+            .from("quotes")
+            .select("id, lead_id, amount, status, service")
+            .in("lead_id", ids)
+            .in("status", ["Accettata", "Pagato"]),
+        ]);
+        setBookings((bookRes.data ?? []) as VendBooking[]);
+        setQuotes((quoteRes.data ?? []) as VendQuote[]);
       }
       setLoading(false);
     })();
@@ -230,19 +247,43 @@ function VenditoreDrawer({ v, onClose, initials: ini }: { v: Venditore; onClose:
           ) : (
             <>
               {/* KPIs */}
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label: "Lead totali", value: leads.length, color: "#7dd9ff" },
-                  { label: "Clienti chiusi", value: closedWon.length, color: "#4ade80" },
-                  { label: "Tasso conv.", value: `${convRate}%`, color: "#a78bfa" },
-                ].map(k => (
-                  <div key={k.label} className="rounded-2xl p-4 text-center"
-                    style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <p className="text-2xl font-black" style={{ color: k.color }}>{k.value}</p>
-                    <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{k.label}</p>
-                  </div>
-                ))}
-              </div>
+              {(() => {
+                const totalFatturato = quotes.reduce((s, q) => s + (q.amount ?? 0), 0);
+                const commissione = totalFatturato * (v.percentuale_commissione / 100);
+                const fmtEuro = (n: number) =>
+                  new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+                return (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: "Lead totali", value: leads.length, color: "#7dd9ff" },
+                        { label: "Clienti chiusi", value: closedWon.length, color: "#4ade80" },
+                        { label: "Tasso conv.", value: `${convRate}%`, color: "#a78bfa" },
+                      ].map(k => (
+                        <div key={k.label} className="rounded-2xl p-4 text-center"
+                          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          <p className="text-2xl font-black" style={{ color: k.color }}>{k.value}</p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">{k.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {totalFatturato > 0 && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="rounded-2xl p-4 text-center"
+                          style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.15)" }}>
+                          <p className="text-xl font-black" style={{ color: "#4ade80" }}>{fmtEuro(totalFatturato)}</p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Fatturato chiuso</p>
+                        </div>
+                        <div className="rounded-2xl p-4 text-center"
+                          style={{ background: "rgba(167,139,250,0.04)", border: "1px solid rgba(167,139,250,0.15)" }}>
+                          <p className="text-xl font-black" style={{ color: "#a78bfa" }}>{fmtEuro(commissione)}</p>
+                          <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Commissione dovuta</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Lead attivi */}
               <section>
@@ -277,16 +318,29 @@ function VenditoreDrawer({ v, onClose, initials: ini }: { v: Venditore; onClose:
                 {closedWon.length === 0
                   ? <p className="text-sm text-muted-foreground">Nessun cliente chiuso ancora.</p>
                   : <div className="space-y-2">
-                    {closedWon.slice(0, 8).map(l => (
-                      <div key={l.id} className="flex items-center justify-between rounded-xl px-4 py-3"
-                        style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.15)" }}>
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{l.full_name ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">{l.service_interest ?? "—"}</p>
+                    {closedWon.slice(0, 8).map(l => {
+                      const q = quotes.find(q => q.lead_id === l.id);
+                      const euro = q?.amount
+                        ? new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(q.amount)
+                        : null;
+                      return (
+                        <div key={l.id} className="flex items-center justify-between rounded-xl px-4 py-3"
+                          style={{ background: "rgba(74,222,128,0.04)", border: "1px solid rgba(74,222,128,0.15)" }}>
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{l.full_name ?? "—"}</p>
+                            <p className="text-xs text-muted-foreground">{l.service_interest ?? "—"}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {euro && (
+                              <p className="text-sm font-bold" style={{ color: q?.status === "Pagato" ? "#a78bfa" : "#4ade80" }}>{euro}</p>
+                            )}
+                            <p className="text-xs font-semibold" style={{ color: q?.status === "Pagato" ? "#a78bfa" : "#4ade80" }}>
+                              {q?.status === "Pagato" ? "🔒 Pagato" : "Vinto ✓"}
+                            </p>
+                          </div>
                         </div>
-                        <span className="text-xs font-bold" style={{ color: "#4ade80" }}>Vinto ✓</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 }
               </section>

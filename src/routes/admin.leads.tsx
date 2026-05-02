@@ -1075,7 +1075,14 @@ function DrawerContent({
 
         {lead.pipeline_stage === "chiuso_vinto" && <ProjectSection lead={lead} />}
 
-        <ProposalsSection leadId={lead.id} />
+        <ProposalsSection
+          leadId={lead.id}
+          role={role}
+          userId={user?.id ?? null}
+          onLeadStageChanged={() => {
+            queryClient.invalidateQueries({ queryKey: ["leads"] });
+          }}
+        />
 
         {/* Risposte form — profilo completo in ordine */}
         <section>
@@ -1466,9 +1473,12 @@ type Quote = {
   rejection_reason: string | null;
   sent_at: string | null;
   created_at: string;
+  venditore_id: string | null;
+  pagato_at: string | null;
 };
 
 const QUOTE_STATUS_OPTIONS = ["Inviata", "Vista", "Accettata", "Rifiutata", "Scaduta"] as const;
+const QUOTE_STATUS_OPTIONS_ADMIN = ["Inviata", "Vista", "Accettata", "Rifiutata", "Scaduta", "Pagato"] as const;
 
 const QUOTE_STATUS_TONE: Record<string, { color: string; bg: string; border: string }> = {
   Inviata: { color: "#7dd9ff", bg: "rgba(0,212,255,0.1)", border: "rgba(0,212,255,0.32)" },
@@ -1476,6 +1486,7 @@ const QUOTE_STATUS_TONE: Record<string, { color: string; bg: string; border: str
   Accettata: { color: "#34d399", bg: "rgba(52,211,153,0.1)", border: "rgba(52,211,153,0.32)" },
   Rifiutata: { color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.32)" },
   Scaduta: { color: "#94a3b8", bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.12)" },
+  Pagato: { color: "#a78bfa", bg: "rgba(167,139,250,0.1)", border: "rgba(167,139,250,0.32)" },
 };
 
 function formatEuro(n: number | null) {
@@ -1483,7 +1494,17 @@ function formatEuro(n: number | null) {
   return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 }
 
-function ProposalsSection({ leadId }: { leadId: string }) {
+function ProposalsSection({
+  leadId,
+  role,
+  userId,
+  onLeadStageChanged,
+}: {
+  leadId: string;
+  role: string | null;
+  userId: string | null;
+  onLeadStageChanged: () => void;
+}) {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -1514,16 +1535,29 @@ function ProposalsSection({ leadId }: { leadId: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId]);
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (id: string, newStatus: string) => {
     if (!supabase) return;
-    setQuotes((list) => list.map((q) => (q.id === id ? { ...q, status } : q)));
-    const { error } = await supabase.from("quotes").update({ status }).eq("id", id);
+    const patch: Record<string, unknown> = { status: newStatus };
+    if (newStatus === "Pagato") patch.pagato_at = new Date().toISOString();
+
+    setQuotes((list) => list.map((q) => (q.id === id ? { ...q, status: newStatus } : q)));
+    const { error } = await supabase.from("quotes").update(patch).eq("id", id);
     if (error) {
       toast.error(`Errore: ${error.message}`);
       load();
-    } else {
-      toast.success("Status aggiornato");
+      return;
     }
+
+    // Sync lead pipeline_stage based on quote outcome
+    if (newStatus === "Accettata" || newStatus === "Pagato") {
+      await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", leadId);
+      onLeadStageChanged();
+    } else if (newStatus === "Rifiutata") {
+      await supabase.from("leads").update({ pipeline_stage: "chiuso_perso" }).eq("id", leadId);
+      onLeadStageChanged();
+    }
+
+    toast.success("Proposta aggiornata");
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -1532,6 +1566,7 @@ function ProposalsSection({ leadId }: { leadId: string }) {
     setSaving(true);
     const { error } = await supabase.from("quotes").insert({
       lead_id: leadId,
+      venditore_id: userId ?? null,
       service,
       amount: parseFloat(amount),
       content: notes || null,
@@ -1552,6 +1587,8 @@ function ProposalsSection({ leadId }: { leadId: string }) {
     }
   };
 
+  const statusOptions = role === "admin" ? QUOTE_STATUS_OPTIONS_ADMIN : QUOTE_STATUS_OPTIONS;
+
   return (
     <section>
       <p className="label-section mb-3 flex items-center gap-2">
@@ -1568,6 +1605,7 @@ function ProposalsSection({ leadId }: { leadId: string }) {
         <div className="space-y-2">
           {quotes.map((q) => {
             const tone = QUOTE_STATUS_TONE[q.status ?? "Inviata"] ?? QUOTE_STATUS_TONE.Inviata;
+            const isLocked = q.status === "Pagato" && role === "venditore";
             return (
               <div
                 key={q.id}
@@ -1579,19 +1617,31 @@ function ProposalsSection({ leadId }: { leadId: string }) {
                     <p className="text-xs text-muted-foreground">
                       {formatEuro(q.amount)} · {q.sent_at ? format(new Date(q.sent_at), "d MMM yyyy", { locale: it }) : "—"}
                     </p>
+                    {(q.status === "Accettata" || q.status === "Pagato") && q.amount && (
+                      <p className="mt-1 text-xs font-semibold" style={{ color: q.status === "Pagato" ? "#a78bfa" : "#34d399" }}>
+                        {q.status === "Pagato" ? "✓ Pagata" : "✓ Accettata"}
+                      </p>
+                    )}
                   </div>
-                  <select
-                    value={q.status ?? "Inviata"}
-                    onChange={(e) => updateStatus(q.id, e.target.value)}
-                    className="rounded-lg border px-2 py-1 text-[11px] font-semibold outline-none"
-                    style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}
-                  >
-                    {QUOTE_STATUS_OPTIONS.map((s) => (
-                      <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  {isLocked ? (
+                    <span className="rounded-lg border px-2 py-1 text-[11px] font-semibold"
+                      style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}>
+                      🔒 Pagato
+                    </span>
+                  ) : (
+                    <select
+                      value={q.status ?? "Inviata"}
+                      onChange={(e) => updateStatus(q.id, e.target.value)}
+                      className="rounded-lg border px-2 py-1 text-[11px] font-semibold outline-none"
+                      style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}
+                    >
+                      {statusOptions.map((s) => (
+                        <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 {q.content && (
                   <p className="mt-2 text-xs text-muted-foreground whitespace-pre-wrap">{q.content}</p>

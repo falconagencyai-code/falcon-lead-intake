@@ -87,7 +87,7 @@ function FattureEmpty() {
 }
 
 type ProjectStatus = "In corso" | "Consegnato" | "In pausa";
-type ProposalStatus = "Inviata" | "Vista" | "Accettata" | "Rifiutata" | "Scaduta";
+type ProposalStatus = "Inviata" | "Vista" | "Accettata" | "Rifiutata" | "Scaduta" | "Pagato";
 
 type ClientRow = {
   id: string;
@@ -160,6 +160,7 @@ const proposalStatusTone: Record<ProposalStatus, { color: string; bg: string; bo
   Accettata: { color: "#34d399", bg: "rgba(52,211,153,0.1)", border: "rgba(52,211,153,0.32)" },
   Rifiutata: { color: "#f87171", bg: "rgba(248,113,113,0.1)", border: "rgba(248,113,113,0.32)" },
   Scaduta: { color: "var(--falcon-subtle)", bg: "rgba(255,255,255,0.05)", border: "rgba(255,255,255,0.12)" },
+  Pagato: { color: "#a78bfa", bg: "rgba(167,139,250,0.1)", border: "rgba(167,139,250,0.32)" },
 };
 
 type Quote = {
@@ -172,12 +173,20 @@ type Quote = {
   rejection_reason: string | null;
   sent_at: string | null;
   created_at: string;
-  leads?: { full_name: string | null; company: string | null } | null;
+  venditore_id: string | null;
+  pagato_at: string | null;
+  leads?: {
+    full_name: string | null;
+    company: string | null;
+    venditore_id: string | null;
+    venditore: { percentuale_commissione: number | null } | null;
+  } | null;
 };
 
 type LeadOption = { id: string; full_name: string | null; company: string | null };
 
 const QUOTE_STATUS_OPTIONS: ProposalStatus[] = ["Inviata", "Vista", "Accettata", "Rifiutata", "Scaduta"];
+const QUOTE_STATUS_OPTIONS_ADMIN: ProposalStatus[] = ["Inviata", "Vista", "Accettata", "Rifiutata", "Scaduta", "Pagato"];
 
 function formatEuro(n: number | null) {
   if (n == null) return "—";
@@ -219,7 +228,7 @@ function ClientiInner() {
     setProposalsLoading(true);
     const { data, error } = await supabase
       .from("quotes")
-      .select("*, leads(full_name, company)")
+      .select("*, leads(full_name, company, venditore_id, venditore:profiles!venditore_id(percentuale_commissione))")
       .order("created_at", { ascending: false });
     if (error) toast.error(`Errore proposte: ${error.message}`);
     else setProposals((data ?? []) as Quote[]);
@@ -280,14 +289,23 @@ function ClientiInner() {
 
   const updateQuote = async (id: string, patch: Partial<Quote>) => {
     if (!supabase) return;
+    const quote = proposals.find(q => q.id === id);
     setProposals((list) => list.map((q) => (q.id === id ? { ...q, ...patch } : q)));
     const { error } = await supabase.from("quotes").update(patch).eq("id", id);
     if (error) {
       toast.error(`Errore: ${error.message}`);
       loadProposals();
-    } else {
-      toast.success("Proposta aggiornata");
+      return;
     }
+    // Sync lead pipeline_stage
+    if (quote && (patch.status === "Accettata" || patch.status === "Pagato")) {
+      await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", quote.lead_id);
+      loadClients();
+      loadLeadOptions();
+    } else if (quote && patch.status === "Rifiutata") {
+      await supabase.from("leads").update({ pipeline_stage: "chiuso_perso" }).eq("id", quote.lead_id);
+    }
+    toast.success("Proposta aggiornata");
   };
 
   return (
@@ -449,9 +467,10 @@ function ClientiInner() {
                         <td className="text-muted-foreground">{fmtDate(p.sent_at)}</td>
                         <td>
                           <span
-                            className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold"
+                            className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold"
                             style={{ color: tone.color, background: tone.bg, borderColor: tone.border }}
                           >
+                            {p.status === "Pagato" && "🔒 "}
                             {p.status}
                           </span>
                         </td>
@@ -735,6 +754,7 @@ function ProposalDrawer({
   onClose: () => void;
   onUpdate: (patch: Partial<Quote>) => void;
 }) {
+  const { role } = useAuth();
   const [status, setStatus] = useState<ProposalStatus>(quote.status);
   const [rejectionReason, setRejectionReason] = useState(quote.rejection_reason ?? "");
 
@@ -743,22 +763,32 @@ function ProposalDrawer({
     setRejectionReason(quote.rejection_reason ?? "");
   }, [quote.id]);
 
+  const isLocked = quote.status === "Pagato" && role === "venditore";
   const tone = proposalStatusTone[status] ?? proposalStatusTone.Inviata;
   const lead = quote.leads;
   const clientLabel = lead
     ? `${lead.full_name ?? "(senza nome)"}${lead.company ? ` — ${lead.company}` : ""}`
     : "—";
 
+  const commissionePct = lead?.venditore?.percentuale_commissione ?? null;
+  const commissioneEuro =
+    (status === "Accettata" || status === "Pagato") && quote.amount && commissionePct != null
+      ? (quote.amount * commissionePct) / 100
+      : null;
+
   const handleStatus = (v: ProposalStatus) => {
     setStatus(v);
     const patch: Partial<Quote> = { status: v };
     if (v !== "Rifiutata") patch.rejection_reason = null;
+    if (v === "Pagato") patch.pagato_at = new Date().toISOString();
     onUpdate(patch);
   };
 
   const handleRejectionBlur = () => {
     if (status === "Rifiutata") onUpdate({ rejection_reason: rejectionReason || null });
   };
+
+  const statusOptions = role === "admin" ? QUOTE_STATUS_OPTIONS_ADMIN : QUOTE_STATUS_OPTIONS;
 
   return (
     <div className="fixed inset-0 z-40 flex justify-end">
@@ -775,6 +805,12 @@ function ProposalDrawer({
           </button>
         </div>
 
+        {isLocked && (
+          <div className="mt-4 rounded-2xl border border-[rgba(167,139,250,0.3)] bg-[rgba(167,139,250,0.06)] px-4 py-3 text-sm font-semibold" style={{ color: "#a78bfa" }}>
+            🔒 Proposta pagata — non modificabile
+          </div>
+        )}
+
         <div className="mt-6 space-y-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Data invio</span>
@@ -784,26 +820,44 @@ function ProposalDrawer({
             <span className="text-muted-foreground">Creata il</span>
             <span className="text-foreground">{fmtDate(quote.created_at)}</span>
           </div>
+          {quote.pagato_at && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Pagata il</span>
+              <span className="font-semibold" style={{ color: "#a78bfa" }}>{fmtDate(quote.pagato_at)}</span>
+            </div>
+          )}
 
-          <div>
-            <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Status
-            </label>
-            <select
-              value={status}
-              onChange={(e) => handleStatus(e.target.value as ProposalStatus)}
-              className="mt-1.5 w-full rounded-2xl border px-3 py-3 text-sm font-semibold outline-none"
-              style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}
-            >
-              {QUOTE_STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
+          {commissioneEuro != null && (
+            <div className="rounded-2xl border border-[rgba(74,222,128,0.2)] bg-[rgba(74,222,128,0.05)] px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Commissione venditore</p>
+              <p className="mt-1 text-xl font-black" style={{ color: "#4ade80" }}>
+                {formatEuro(commissioneEuro)}
+                <span className="ml-2 text-sm font-semibold opacity-60">({commissionePct}%)</span>
+              </p>
+            </div>
+          )}
 
-          {status === "Rifiutata" && (
+          {!isLocked && (
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Status
+              </label>
+              <select
+                value={status}
+                onChange={(e) => handleStatus(e.target.value as ProposalStatus)}
+                className="mt-1.5 w-full rounded-2xl border px-3 py-3 text-sm font-semibold outline-none"
+                style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}
+              >
+                {statusOptions.map((s) => (
+                  <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {status === "Rifiutata" && !isLocked && (
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 Motivo del rifiuto
