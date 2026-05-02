@@ -19,52 +19,89 @@ interface Venditore {
   id: string;
   full_name: string | null;
   email?: string;
+  avatar_url: string | null;
   percentuale_commissione: number;
   lead_gestiti: number;
   chiusi: number;
 }
 
-// ── Animated SVG connector ──────────────────────────────────────────
+// ── Vital-connection SVG ─────────────────────────────────────────────
 function OrgLine({ count }: { count: number }) {
-  const pathRef = useRef<SVGPathElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
   useEffect(() => {
-    const el = pathRef.current;
-    if (!el) return;
-    const len = el.getTotalLength();
-    el.style.strokeDasharray = `${len}`;
-    el.style.strokeDashoffset = `${len}`;
-    el.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], {
-      duration: 900,
-      easing: "ease-out",
-      fill: "forwards",
-      delay: 200,
+    const svg = svgRef.current;
+    if (!svg) return;
+    const paths = svg.querySelectorAll<SVGPathElement>("[data-branch]");
+    paths.forEach((path, i) => {
+      const len = path.getTotalLength();
+      path.style.strokeDasharray = `${len}`;
+      path.style.strokeDashoffset = `${len}`;
+      path.animate(
+        [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
+        { duration: 1000, easing: "cubic-bezier(0.4,0,0.2,1)", fill: "forwards", delay: 150 + i * 120 }
+      );
     });
   }, [count]);
 
-  // trunk goes down 60px, then branches fan out to `count` children
-  const W = Math.max(count * 140, 140);
-  const H = 80;
+  const W = Math.max(count * 150, 150);
+  const H = 90;
   const cx = W / 2;
-  const trunkY = 40;
+  const trunkY = 44;
   const branchY = H - 4;
 
   const branches = Array.from({ length: count }, (_, i) => {
     const x = count === 1 ? cx : (W / (count - 1 || 1)) * i;
-    return `M ${cx} ${trunkY} L ${cx} ${trunkY + 20} L ${x} ${branchY}`;
+    return { d: `M ${cx} ${trunkY} L ${cx} ${trunkY + 22} L ${x} ${branchY}`, x };
   });
 
   return (
-    <svg width={W} height={H} className="overflow-visible" style={{ maxWidth: "100%" }}>
-      {/* trunk */}
-      <line x1={cx} y1={0} x2={cx} y2={trunkY} stroke="rgba(0,212,255,0.5)" strokeWidth={2} strokeDasharray="4 4" />
-      {/* branches */}
-      {branches.map((d, i) => (
-        <path key={i} ref={i === 0 ? pathRef : undefined} d={d} fill="none" stroke="rgba(0,212,255,0.4)" strokeWidth={1.5} strokeLinecap="round" />
-      ))}
-      {/* glow dots at branch ends */}
-      {Array.from({ length: count }, (_, i) => {
-        const x = count === 1 ? cx : (W / (count - 1 || 1)) * i;
-        return <circle key={i} cx={x} cy={branchY} r={4} fill="#00d4ff" opacity={0.7} />;
+    <svg ref={svgRef} width={W} height={H} className="overflow-visible" style={{ maxWidth: "100%" }}>
+      <defs>
+        <filter id="org-packet-glow" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+        <filter id="org-dot-glow" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+        </filter>
+      </defs>
+
+      {/* Trunk — dashed with slow pulse */}
+      <line x1={cx} y1={0} x2={cx} y2={trunkY} stroke="rgba(0,212,255,0.35)" strokeWidth={2} strokeDasharray="5 4" />
+      <line x1={cx} y1={0} x2={cx} y2={trunkY} stroke="rgba(0,212,255,0.9)" strokeWidth={1.5}>
+        <animate attributeName="opacity" values="0.9;0.2;0.9" dur="2s" repeatCount="indefinite" />
+      </line>
+
+      {branches.map(({ d, x }, i) => {
+        const dur = `${2.4 + i * 0.5}s`;
+        const begin = `${i * 0.8}s`;
+        return (
+          <g key={i}>
+            {/* Soft glow halo behind the line */}
+            <path d={d} fill="none" stroke="rgba(0,212,255,0.1)" strokeWidth={7} strokeLinecap="round" />
+            {/* Main branch — draws in on mount */}
+            <path data-branch d={d} fill="none" stroke="rgba(0,212,255,0.5)" strokeWidth={1.5} strokeLinecap="round" />
+
+            {/* Traveling data-packet */}
+            <circle r={3.5} fill="#00d4ff" filter="url(#org-packet-glow)">
+              <animateMotion dur={dur} repeatCount="indefinite" begin={begin} path={d} />
+              <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.06;0.88;1" dur={dur} repeatCount="indefinite" begin={begin} />
+              <animate attributeName="r" values="2;3.5;2" keyTimes="0;0.5;1" dur={dur} repeatCount="indefinite" begin={begin} />
+            </circle>
+
+            {/* Endpoint pulse ring */}
+            <circle cx={x} cy={branchY} r={6} fill="none" stroke="#00d4ff">
+              <animate attributeName="r" values="5;13;5" dur="2.8s" repeatCount="indefinite" begin={begin} />
+              <animate attributeName="opacity" values="0.5;0;0.5" dur="2.8s" repeatCount="indefinite" begin={begin} />
+            </circle>
+            {/* Endpoint solid dot */}
+            <circle cx={x} cy={branchY} r={4} fill="#00d4ff" filter="url(#org-dot-glow)">
+              <animate attributeName="opacity" values="0.7;1;0.7" dur="2s" repeatCount="indefinite" begin={`${i * 0.4}s`} />
+            </circle>
+          </g>
+        );
       })}
     </svg>
   );
@@ -159,7 +196,7 @@ function TeamPage() {
     // Base query: venditori dal profilo
     let q = supabase
       .from("profiles")
-      .select("id, full_name, percentuale_commissione")
+      .select("id, full_name, avatar_url, percentuale_commissione")
       .eq("role", "venditore");
 
     // venditore vede solo se stesso
@@ -248,10 +285,14 @@ function TeamPage() {
             {/* Root — Falcon Agency */}
             <div className="flex flex-col items-center">
               <div
-                className="flex h-20 w-20 items-center justify-center rounded-2xl text-3xl font-black shadow-[0_0_40px_rgba(0,212,255,0.35)]"
-                style={{ background: "rgba(0,212,255,0.12)", border: "2px solid rgba(0,212,255,0.5)", color: "#00d4ff" }}
+                className="flex h-20 w-20 items-center justify-center rounded-2xl shadow-[0_0_48px_rgba(0,212,255,0.45)]"
+                style={{ background: "rgba(0,212,255,0.12)", border: "2px solid rgba(0,212,255,0.55)" }}
               >
-                F
+                <img
+                  src="https://tpzpydnvcbcdkuthyweh.supabase.co/storage/v1/object/public/assets/falcon-wings-closed.png"
+                  alt="Falcon"
+                  style={{ width: 46, height: 46, objectFit: "contain", filter: "drop-shadow(0 0 10px rgba(0,212,255,0.75))" }}
+                />
               </div>
               <p className="mt-3 text-xs tracking-[0.3em] uppercase font-semibold" style={{ color: "#00d4ff" }}>Falcon Agency</p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">Admin</p>
@@ -283,13 +324,18 @@ function TeamPage() {
                   <div
                     key={v.id}
                     className="flex flex-col items-center gap-2 rounded-2xl px-5 py-4 text-center"
-                    style={{ background: "rgba(0,212,255,0.05)", border: "1px solid rgba(0,212,255,0.18)", minWidth: 120 }}
+                    style={{ background: "rgba(0,212,255,0.05)", border: "1px solid rgba(0,212,255,0.18)", minWidth: 130 }}
                   >
+                    {/* Avatar: photo o initials fallback */}
                     <div
-                      className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-black"
-                      style={{ background: "rgba(0,212,255,0.12)", border: "1px solid rgba(0,212,255,0.35)", color: "#00d4ff" }}
+                      className="relative flex h-14 w-14 items-center justify-center rounded-full overflow-hidden text-sm font-black shrink-0"
+                      style={{ border: "2px solid rgba(0,212,255,0.45)", color: "#00d4ff", boxShadow: "0 0 18px rgba(0,212,255,0.25)", background: v.avatar_url ? "transparent" : "rgba(0,212,255,0.12)" }}
                     >
-                      {initials(v.full_name)}
+                      {v.avatar_url ? (
+                        <img src={v.avatar_url} alt={v.full_name ?? ""} className="w-full h-full object-cover" />
+                      ) : (
+                        initials(v.full_name)
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">{v.full_name ?? "—"}</p>
