@@ -571,7 +571,15 @@ function TeamPage() {
     setLoading(false);
   };
 
-  useEffect(() => { loadVenditori(); }, [role, user]);
+  useEffect(() => {
+    loadVenditori();
+    if (!supabase) return;
+    const channel = supabase
+      .channel("profiles-rt")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles" }, () => loadVenditori())
+      .subscribe();
+    return () => { supabase!.removeChannel(channel); };
+  }, [role, user]);
 
   const initials = (name: string | null) =>
     (name ?? "?").split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
