@@ -27,12 +27,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadRole = async (userId: string) => {
     if (!supabase) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", userId)
-      .single();
-    setRole((data?.role as Role) ?? "venditore");
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", userId)
+        .single();
+      setRole((data?.role as Role) ?? "venditore");
+    } catch {
+      setRole("venditore");
+    }
   };
 
   useEffect(() => {
@@ -45,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(u);
       if (u) loadRole(u.id).finally(() => setLoading(false));
       else setLoading(false);
-    });
+    }).catch(() => setLoading(false));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       setUser(u);

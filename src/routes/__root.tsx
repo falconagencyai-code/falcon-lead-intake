@@ -85,6 +85,8 @@ function RootComponent() {
   const [mounted, setMounted] = useState(false);
   const routerState = useRouterState();
   const pathname = routerState.location.pathname;
+  // Key on top-level segment only so admin sub-pages don't remount AuthProvider
+  const routeKey = pathname.split("/").slice(0, 2).join("/") || "/";
 
   useEffect(() => setMounted(true), []);
 
@@ -92,7 +94,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <AnimatePresence mode="sync">
         <motion.div
-          key={pathname}
+          key={routeKey}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
