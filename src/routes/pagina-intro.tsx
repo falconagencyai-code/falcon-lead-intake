@@ -284,7 +284,7 @@ function DashboardAnim() {
           <div key={k.label} className="rounded-lg border border-zinc-700 bg-zinc-800/60 p-2">
             <div className="text-[9px] uppercase tracking-wider text-zinc-400">{k.label}</div>
             <div className="mt-1 text-lg font-bold">
-              <Counter to={k.to} prefix={k.prefix ?? ""} />
+              <Counter to={k.to} prefix={"prefix" in k ? k.prefix : ""} />
             </div>
           </div>
         ))}

@@ -280,7 +280,7 @@ async function fetchLeads(): Promise<LeadRow[]> {
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as LeadRow[];
+  return (data ?? []) as unknown as LeadRow[];
 }
 
 async function fetchNotes(leadId: string): Promise<LeadNote[]> {
@@ -332,7 +332,7 @@ function LeadsPage() {
       })
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      supabase?.removeChannel(channel);
     };
   }, [refetch]);
 
