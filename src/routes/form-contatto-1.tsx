@@ -108,6 +108,7 @@ function FormPage() {
     setSubmitting(true);
     try {
       if (isSupabaseConfigured && supabase) {
+        const eventId = `lead-${crypto.randomUUID()}`;
         const { error } = await supabase.from("leads").insert({
           full_name: state.fullName,
           email: state.email,
@@ -121,6 +122,7 @@ function FormPage() {
           status: "pending",
         });
         if (error) throw error;
+        window.fbq?.('track', 'Lead', {}, { eventID: eventId });
         // Fire-and-forget: don't block the thank-you step on email delivery
         supabase.functions
           .invoke("send-confirmation-email", {
@@ -129,6 +131,7 @@ function FormPage() {
               email: state.email,
               phone: state.phone,
               company: state.company || null,
+              event_id: eventId,
               service_interest: state.service,
               budget_range: state.budget,
               timeline: state.timeline,
