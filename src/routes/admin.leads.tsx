@@ -739,7 +739,6 @@ function ActionIconButton({
 
 function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const { role, user } = useAuth();
   const [noteText, setNoteText] = useState("");
   const [stageDraft, setStageDraft] = useState<string>("");
   const [lostReasonDraft, setLostReasonDraft] = useState<string>("");
@@ -800,30 +799,6 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
       toast.success("Stage pipeline aggiornato");
     },
     onError: (e: Error) => toast.error(`Errore aggiornamento stage: ${e.message}`),
-  });
-
-  // "Prendi in carico" — venditore claims an unassigned lead
-  const claimMutation = useMutation({
-    mutationFn: async () => {
-      if (!supabase || !lead || !user) throw new Error();
-      const { error } = await supabase
-        .from("leads")
-        .update({ venditore_id: user.id, pipeline_stage: "contattato" })
-        .eq("id", lead.id);
-      if (error) throw error;
-      await supabase.from("lead_events").insert({
-        lead_id: lead.id,
-        stage_from: lead.pipeline_stage ?? "form_compilato",
-        stage_to: "contattato",
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-      queryClient.invalidateQueries({ queryKey: ["lead-events", lead?.id] });
-      toast.success("Lead preso in carico!");
-      onClose();
-    },
-    onError: (e: Error) => toast.error(`Errore: ${e.message}`),
   });
 
   const noteMutation = useMutation({
@@ -936,6 +911,32 @@ function DrawerContent({
   onAddNote: () => void;
   noteSaving: boolean;
 }) {
+  const { role, user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase || !user) throw new Error("Non autenticato");
+      const { error } = await supabase
+        .from("leads")
+        .update({ venditore_id: user.id, pipeline_stage: "contattato" })
+        .eq("id", lead.id);
+      if (error) throw error;
+      await supabase.from("lead_events").insert({
+        lead_id: lead.id,
+        stage_from: lead.pipeline_stage ?? "form_compilato",
+        stage_to: "contattato",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-events", lead.id] });
+      toast.success("Lead preso in carico!");
+      onClose();
+    },
+    onError: (e: Error) => toast.error(`Errore: ${e.message}`),
+  });
+
   const seed = lead.full_name || lead.email || lead.id;
   const tone = avatarTone(seed);
   const service = lead.service_interest ?? "altro";
