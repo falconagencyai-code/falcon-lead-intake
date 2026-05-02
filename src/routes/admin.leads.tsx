@@ -739,6 +739,7 @@ function ActionIconButton({
 
 function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => void }) {
   const queryClient = useQueryClient();
+  const { role, user } = useAuth();
   const [noteText, setNoteText] = useState("");
   const [stageDraft, setStageDraft] = useState<string>("");
   const [lostReasonDraft, setLostReasonDraft] = useState<string>("");
@@ -799,6 +800,30 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
       toast.success("Stage pipeline aggiornato");
     },
     onError: (e: Error) => toast.error(`Errore aggiornamento stage: ${e.message}`),
+  });
+
+  // "Prendi in carico" — venditore claims an unassigned lead
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      if (!supabase || !lead || !user) throw new Error();
+      const { error } = await supabase
+        .from("leads")
+        .update({ venditore_id: user.id, pipeline_stage: "contattato" })
+        .eq("id", lead.id);
+      if (error) throw error;
+      await supabase.from("lead_events").insert({
+        lead_id: lead.id,
+        stage_from: lead.pipeline_stage ?? "form_compilato",
+        stage_to: "contattato",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["leads"] });
+      queryClient.invalidateQueries({ queryKey: ["lead-events", lead?.id] });
+      toast.success("Lead preso in carico!");
+      onClose();
+    },
+    onError: (e: Error) => toast.error(`Errore: ${e.message}`),
   });
 
   const noteMutation = useMutation({
@@ -993,21 +1018,37 @@ function DrawerContent({
         {/* Stage pipeline */}
         <section>
           <p className="label-section mb-2">Stage pipeline</p>
-          <div className="flex items-center gap-3">
-            <select
-              value={stageDraft}
-              onChange={(e) => onStageChange(e.target.value)}
-              disabled={stageSaving}
-              className="glass h-11 flex-1 px-3 text-sm text-foreground outline-none"
+
+          {/* "Prendi in carico" — venditore only, unassigned lead, form_compilato */}
+          {role === "venditore" && !lead.venditore_id && lead.pipeline_stage === "form_compilato" ? (
+            <button
+              onClick={() => claimMutation.mutate()}
+              disabled={claimMutation.isPending}
+              className="btn-primary w-full justify-center flex items-center gap-2"
+              style={{ background: "linear-gradient(135deg, rgba(0,212,255,0.18) 0%, rgba(0,212,255,0.08) 100%)", border: "1px solid rgba(0,212,255,0.45)", color: "#00d4ff", boxShadow: "0 0 24px rgba(0,212,255,0.2)" }}
             >
-              {PIPELINE_STAGE_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {PIPELINE_STAGE_LABELS[s]}
-                </option>
-              ))}
-            </select>
-            {stageSaving && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-          </div>
+              {claimMutation.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <UserPlus className="h-4 w-4" />}
+              {claimMutation.isPending ? "Acquisizione…" : "Prendi in carico"}
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <select
+                value={stageDraft}
+                onChange={(e) => onStageChange(e.target.value)}
+                disabled={stageSaving || (role === "venditore" && lead.venditore_id !== user?.id)}
+                className="glass h-11 flex-1 px-3 text-sm text-foreground outline-none disabled:opacity-50"
+              >
+                {PIPELINE_STAGE_OPTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {PIPELINE_STAGE_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+              {stageSaving && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            </div>
+          )}
 
           {stageDraft === "chiuso_perso" && (
             <div className="mt-3">
@@ -1249,6 +1290,27 @@ function VenditoreSection({ lead }: { lead: LeadRow }) {
   });
 
   if (role !== "admin") return null;
+
+  // Read-only when a venditore has taken the lead in charge
+  if (lead.venditore) {
+    return (
+      <section>
+        <p className="label-section mb-2 flex items-center gap-2">
+          <UserPlus className="h-3.5 w-3.5" />
+          Venditore assegnato
+        </p>
+        <div className="flex items-center gap-3 rounded-xl px-4 py-3"
+          style={{ background: "rgba(0,212,255,0.06)", border: "1px solid rgba(0,212,255,0.2)" }}>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black"
+            style={{ background: "rgba(0,212,255,0.18)", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.35)" }}>
+            {(lead.venditore.full_name ?? "?")[0].toUpperCase()}
+          </span>
+          <span className="text-sm font-semibold text-foreground">{lead.venditore.full_name ?? "—"}</span>
+          <span className="ml-auto text-[11px] uppercase tracking-[0.14em] text-muted-foreground">In carico</span>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section>
