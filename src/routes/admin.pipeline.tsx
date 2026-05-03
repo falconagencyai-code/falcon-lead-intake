@@ -205,6 +205,15 @@ const AVATAR_PALETTE = [
 const QUOTE_STATUS_OPTIONS      = ["Inviata","Vista","Accettata","Rifiutata","Scaduta"] as const;
 const QUOTE_STATUS_OPTIONS_ADMIN= ["Inviata","Vista","Accettata","Rifiutata","Scaduta","Pagato"] as const;
 
+const QUOTE_STATUS_LABEL: Record<string, string> = {
+  Inviata:   "Inviato",
+  Vista:     "Vista",
+  Accettata: "Accettata",
+  Rifiutata: "Rifiutata",
+  Scaduta:   "Scaduta",
+  Pagato:    "Pagato",
+};
+
 const QUOTE_STATUS_TONE: Record<string, { color: string; bg: string; border: string }> = {
   Inviata:  { color: "#7dd9ff", bg: "rgba(0,212,255,0.1)",   border: "rgba(0,212,255,0.32)" },
   Vista:    { color: "#facc15", bg: "rgba(250,204,21,0.1)",  border: "rgba(250,204,21,0.32)" },
@@ -357,7 +366,7 @@ function QuoteStatusBadge({ status }: { status: string }) {
       style={{ color: s.color, background: s.bg, border: `1px solid ${s.border}` }}>
       {status === "Accettata" && <CheckCircle2 className="w-3 h-3" />}
       {status === "Rifiutata" && <XCircle className="w-3 h-3" />}
-      {status}
+      {QUOTE_STATUS_LABEL[status] ?? status}
     </span>
   );
 }
@@ -752,7 +761,7 @@ function PreventiviTab({ leads, quotes, role, onOpenQuotes, onOpen }: {
               </div>
               <div className="space-y-3">
                 {items.map(l => (
-                  <PreventivoCard key={l.id} lead={l} quotes={quoteMap.get(l.id) ?? []} showVenditore={role === "admin"} onOpen={() => onOpenQuotes(l.id)} />
+                  <PreventivoCard key={l.id} lead={l} quotes={quoteMap.get(l.id) ?? []} showVenditore={role === "admin"} role={role} onOpen={() => onOpenQuotes(l.id)} />
                 ))}
               </div>
             </div>
@@ -763,9 +772,21 @@ function PreventiviTab({ leads, quotes, role, onOpenQuotes, onOpen }: {
   );
 }
 
-function PreventivoCard({ lead: l, quotes, showVenditore, onOpen }: {
-  lead: LeadRow; quotes: QuoteRow[]; showVenditore: boolean; onOpen: () => void;
+function PreventivoCard({ lead: l, quotes, showVenditore, role, onOpen }: {
+  lead: LeadRow; quotes: QuoteRow[]; showVenditore: boolean; role: string | null; onOpen: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const [updating, setUpdating] = useState<string | null>(null);
+  const statusOptions = role === "admin" ? QUOTE_STATUS_OPTIONS_ADMIN : QUOTE_STATUS_OPTIONS;
+
+  const changeStatus = async (quoteId: string, status: string) => {
+    if (!supabase) return;
+    setUpdating(quoteId);
+    await supabase.from("quotes").update({ status }).eq("id", quoteId);
+    queryClient.invalidateQueries({ queryKey: ["pipeline-prev-quotes"] });
+    setUpdating(null);
+  };
+
   return (
     <div className="cursor-pointer" onClick={onOpen}><AdminCard className="p-4 transition-colors hover:bg-[rgba(167,139,250,0.04)]">
       <div className="flex items-start gap-4">
@@ -783,14 +804,29 @@ function PreventivoCard({ lead: l, quotes, showVenditore, onOpen }: {
           <div className="mt-3 space-y-2">
             {quotes.length === 0 ? (
               <p className="text-xs" style={{ color: "#4a5568" }}>Nessun preventivo trovato</p>
-            ) : quotes.map(q => (
-              <div key={q.id} className="flex items-center gap-3 rounded-xl px-3 py-2"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <QuoteStatusBadge status={q.status ?? "Inviata"} />
-                <span className="text-sm text-foreground flex-1 truncate">{q.service ?? "—"}</span>
-                <span className="text-sm font-bold" style={{ color: "#00d4ff" }}>{formatEuro(q.amount)}</span>
-              </div>
-            ))}
+            ) : quotes.map(q => {
+              const tone = QUOTE_STATUS_TONE[q.status ?? "Inviata"] ?? QUOTE_STATUS_TONE.Inviata;
+              return (
+                <div key={q.id} className="flex items-center gap-3 rounded-xl px-3 py-2"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  {/* Inline status select — stop propagation so card doesn't open */}
+                  <select
+                    value={q.status ?? "Inviata"}
+                    disabled={updating === q.id}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => { e.stopPropagation(); changeStatus(q.id, e.target.value); }}
+                    className="rounded-full px-2.5 py-0.5 text-xs font-semibold outline-none cursor-pointer appearance-none shrink-0"
+                    style={{ color: tone.color, background: tone.bg, border: `1px solid ${tone.border}` }}
+                  >
+                    {statusOptions.map(s => (
+                      <option key={s} value={s}>{QUOTE_STATUS_LABEL[s] ?? s}</option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-foreground flex-1 truncate">{q.service ?? "—"}</span>
+                  <span className="text-sm font-bold" style={{ color: "#00d4ff" }}>{formatEuro(q.amount)}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="flex items-center gap-1.5 text-xs shrink-0 mt-0.5" style={{ color: "#4a5568" }}>
@@ -1528,7 +1564,7 @@ function ProposalsSection({ lead, role, userId, onLeadStageChanged }: {
                     </p>
                     {(q.status === "Accettata" || q.status === "Pagato") && q.amount && (
                       <p className="mt-1 text-xs font-semibold" style={{ color: q.status === "Pagato" ? "#a78bfa" : "#34d399" }}>
-                        {q.status === "Pagato" ? "✓ Pagata" : "✓ Accettata"}
+                        {q.status === "Pagato" ? "✓ Pagato" : "✓ Accettato"}
                       </p>
                     )}
                     {q.pdf_url && (
@@ -1546,7 +1582,7 @@ function ProposalsSection({ lead, role, userId, onLeadStageChanged }: {
                     <select value={q.status ?? "Inviata"} onChange={e => updateStatus(q.id, e.target.value)}
                       className="rounded-lg border px-2 py-1 text-[11px] font-semibold outline-none"
                       style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}>
-                      {statusOptions.map(s => <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>{s}</option>)}
+                      {statusOptions.map(s => <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>{QUOTE_STATUS_LABEL[s] ?? s}</option>)}
                     </select>
                   )}
                 </div>
@@ -1746,7 +1782,7 @@ function PreventivDetailDrawer({ lead, onClose, onOpenFullDrawer }: {
                               className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none shrink-0"
                               style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}>
                               {statusOptions.map(s => (
-                                <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>{s}</option>
+                                <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>{QUOTE_STATUS_LABEL[s] ?? s}</option>
                               ))}
                             </select>
                           )}
