@@ -779,10 +779,35 @@ function PreventivoCard({ lead: l, quotes, showVenditore, role, onOpen }: {
   const [updating, setUpdating] = useState<string | null>(null);
   const statusOptions = role === "admin" ? QUOTE_STATUS_OPTIONS_ADMIN : QUOTE_STATUS_OPTIONS;
 
-  const changeStatus = async (quoteId: string, status: string) => {
+  const changeStatus = async (quoteId: string, newStatus: string) => {
     if (!supabase) return;
+    // Pagato requires payment modal — open lead drawer instead
+    if (newStatus === "Pagato") { onOpen(); return; }
+
+    const currentQuote = quotes.find(q => q.id === quoteId);
+    const wasPagato = currentQuote?.status === "Pagato";
     setUpdating(quoteId);
-    await supabase.from("quotes").update({ status }).eq("id", quoteId);
+
+    await supabase.from("quotes").update({ status: newStatus }).eq("id", quoteId);
+
+    // If was Pagato → revert payment + transaction
+    if (wasPagato) {
+      const { data: payment } = await supabase
+        .from("payments").select("id")
+        .eq("lead_id", l.id).eq("quote_id", quoteId).eq("status", "paid")
+        .maybeSingle();
+      if (payment) {
+        await supabase.from("payments").delete().eq("id", payment.id);
+        await supabase.from("transactions").delete().eq("lead_id", l.id).eq("type", "entrata");
+      }
+    }
+
+    // Update lead stage
+    const newStage = newStatus === "Accettata" ? "chiuso_vinto" : "preventivo_inviato";
+    await supabase.from("leads").update({ pipeline_stage: newStage }).eq("id", l.id);
+
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    queryClient.invalidateQueries({ queryKey: ["pipeline-payments"] });
     queryClient.invalidateQueries({ queryKey: ["pipeline-prev-quotes"] });
     setUpdating(null);
   };
@@ -1455,6 +1480,7 @@ function ProposalsSection({ lead, role, userId, onLeadStageChanged }: {
   lead: LeadRow; role: string | null; userId: string | null; onLeadStageChanged: () => void;
 }) {
   const leadId = lead.id;
+  const queryClient = useQueryClient();
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -1484,16 +1510,33 @@ function ProposalsSection({ lead, role, userId, onLeadStageChanged }: {
       const quote = quotes.find(q => q.id === id);
       if (quote) { setPendingPayQuote(quote); return; }
     }
+    const currentQuote = quotes.find(q => q.id === id);
+    const wasPagato = currentQuote?.status === "Pagato";
+
     setQuotes(list => list.map(q => q.id === id ? { ...q, status: newStatus } : q));
     const { error } = await supabase.from("quotes").update({ status: newStatus }).eq("id", id);
     if (error) { toast.error(`Errore: ${error.message}`); load(); return; }
-    if (newStatus === "Accettata") {
-      await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", leadId);
-      onLeadStageChanged();
-    } else if (newStatus === "Rifiutata") {
-      await supabase.from("leads").update({ pipeline_stage: "chiuso_perso" }).eq("id", leadId);
-      onLeadStageChanged();
+
+    // If was Pagato → revert payment + transaction
+    if (wasPagato) {
+      const { data: payment } = await supabase
+        .from("payments").select("id")
+        .eq("lead_id", leadId).eq("quote_id", id).eq("status", "paid")
+        .maybeSingle();
+      if (payment) {
+        await supabase.from("payments").delete().eq("id", payment.id);
+        await supabase.from("transactions").delete().eq("lead_id", leadId).eq("type", "entrata");
+      }
     }
+
+    // Update lead stage based on new status
+    const newStage = newStatus === "Accettata" ? "chiuso_vinto" : "preventivo_inviato";
+    await supabase.from("leads").update({ pipeline_stage: newStage }).eq("id", leadId);
+
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    queryClient.invalidateQueries({ queryKey: ["pipeline-payments"] });
+    queryClient.invalidateQueries({ queryKey: ["pipeline-prev-quotes"] });
+    onLeadStageChanged();
     toast.success("Proposta aggiornata");
   };
 
@@ -1668,16 +1711,32 @@ function PreventivDetailDrawer({ lead, onClose, onOpenFullDrawer }: {
       const quote = quotes.find(q => q.id === id);
       if (quote) { setPendingPayQuote(quote); return; }
     }
+    const currentQuote = quotes.find(q => q.id === id);
+    const wasPagato = currentQuote?.status === "Pagato";
+
     setQuotes(list => list.map(q => q.id === id ? { ...q, status: newStatus } : q));
     const { error } = await supabase.from("quotes").update({ status: newStatus }).eq("id", id);
     if (error) { toast.error(`Errore: ${error.message}`); load(lead.id); return; }
-    if (newStatus === "Accettata") {
-      await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", lead.id);
-    } else if (newStatus === "Rifiutata") {
-      await supabase.from("leads").update({ pipeline_stage: "chiuso_perso" }).eq("id", lead.id);
+
+    // If was Pagato → revert payment + transaction
+    if (wasPagato) {
+      const { data: payment } = await supabase
+        .from("payments").select("id")
+        .eq("lead_id", lead.id).eq("quote_id", id).eq("status", "paid")
+        .maybeSingle();
+      if (payment) {
+        await supabase.from("payments").delete().eq("id", payment.id);
+        await supabase.from("transactions").delete().eq("lead_id", lead.id).eq("type", "entrata");
+      }
     }
+
+    // Update lead stage based on new status
+    const newStage = newStatus === "Accettata" ? "chiuso_vinto" : "preventivo_inviato";
+    await supabase.from("leads").update({ pipeline_stage: newStage }).eq("id", lead.id);
+
     queryClient.invalidateQueries({ queryKey: ["leads"] });
     queryClient.invalidateQueries({ queryKey: ["pipeline-payments"] });
+    queryClient.invalidateQueries({ queryKey: ["pipeline-prev-quotes"] });
     toast.success("Stato aggiornato");
   };
 
