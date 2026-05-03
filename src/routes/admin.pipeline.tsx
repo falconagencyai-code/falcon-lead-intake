@@ -7,12 +7,14 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
+  Download,
   Euro,
   Eye,
   FileText,
   Loader2,
   Mail,
   MessageSquarePlus,
+  Paperclip,
   Phone,
   Plus,
   Send,
@@ -90,6 +92,7 @@ type QuoteRow = {
   created_at: string;
   venditore_id: string | null;
   pagato_at: string | null;
+  pdf_url: string | null;
 };
 
 type Payment = {
@@ -1378,6 +1381,7 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
   const [sentAt, setSentAt] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
@@ -1422,16 +1426,29 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
     e.preventDefault();
     if (!supabase || !service || !amount) return;
     setSaving(true);
+
+    // Upload PDF if provided
+    let pdf_url: string | null = null;
+    if (pdfFile) {
+      const ext = pdfFile.name.split(".").pop() ?? "pdf";
+      const path = `${leadId}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("preventivi").upload(path, pdfFile, { upsert: true });
+      if (upErr) { toast.error(`Errore upload PDF: ${upErr.message}`); setSaving(false); return; }
+      const { data: urlData } = supabase.storage.from("preventivi").getPublicUrl(path);
+      pdf_url = urlData.publicUrl;
+    }
+
     const { error } = await supabase.from("quotes").insert({
       lead_id: leadId, venditore_id: userId ?? null,
       service, amount: parseFloat(amount), content: notes || null,
       status: "Inviata", sent_at: sentAt || null,
+      pdf_url,
     });
     setSaving(false);
     if (error) { toast.error(`Errore: ${error.message}`); }
     else {
-      toast.success("Proposta creata");
-      setService(""); setAmount(""); setNotes(""); setSentAt(format(new Date(), "yyyy-MM-dd")); setShowForm(false);
+      toast.success("Preventivo creato");
+      setService(""); setAmount(""); setNotes(""); setSentAt(format(new Date(), "yyyy-MM-dd")); setPdfFile(null); setShowForm(false);
       load();
     }
   };
@@ -1463,6 +1480,13 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
                         {q.status === "Pagato" ? "✓ Pagata" : "✓ Accettata"}
                       </p>
                     )}
+                    {q.pdf_url && (
+                      <a href={q.pdf_url} target="_blank" rel="noopener noreferrer"
+                        className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium transition hover:underline"
+                        style={{ color: "#7dd9ff" }}>
+                        <Download className="h-3 w-3" />PDF allegato
+                      </a>
+                    )}
                   </div>
                   {isLocked ? (
                     <span className="rounded-lg border px-2 py-1 text-[11px] font-semibold"
@@ -1492,6 +1516,14 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
             className="glass w-full px-3 py-2 text-sm text-foreground outline-none resize-none" />
           <input type="date" value={sentAt} onChange={e => setSentAt(e.target.value)}
             className="glass h-9 w-full px-3 text-sm text-foreground outline-none" />
+          {/* PDF upload */}
+          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-dashed px-3 py-2.5 text-xs transition"
+            style={{ borderColor: pdfFile ? "rgba(0,212,255,0.5)" : "rgba(255,255,255,0.12)", background: pdfFile ? "rgba(0,212,255,0.06)" : "rgba(255,255,255,0.02)", color: pdfFile ? "#7dd9ff" : "#6677aa" }}>
+            <Paperclip className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{pdfFile ? pdfFile.name : "Allega PDF preventivo (opzionale)"}</span>
+            <input type="file" accept="application/pdf" className="hidden"
+              onChange={e => setPdfFile(e.target.files?.[0] ?? null)} />
+          </label>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setShowForm(false)} className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground">Annulla</button>
             <button type="submit" disabled={saving}
