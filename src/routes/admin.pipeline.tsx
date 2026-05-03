@@ -390,6 +390,7 @@ function PipelinePage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<Tab>("lead");
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const [openQuoteLeadId, setOpenQuoteLeadId] = useState<string | null>(null);
 
   const { data: allLeads = [], isLoading: leadsLoading, refetch: refetchLeads } = useQuery<LeadRow[]>({
     queryKey: ["leads"],
@@ -443,6 +444,7 @@ function PipelinePage() {
   });
 
   const openLead = openLeadId ? allLeads.find(l => l.id === openLeadId) ?? null : null;
+  const openQuoteLead = openQuoteLeadId ? allLeads.find(l => l.id === openQuoteLeadId) ?? null : null;
 
   const tabs: { key: Tab; label: string; count: number | string; icon: typeof Users; color: string }[] = [
     { key: "lead",       label: "Lead",       count: activeLeads.length,     icon: Users,     color: "#00d4ff" },
@@ -512,7 +514,9 @@ function PipelinePage() {
             <LeadTab leads={activeLeads} role={role} onOpen={(id) => setOpenLeadId(id)} refetch={refetchLeads} />
           )}
           {activeTab === "preventivi" && (
-            <PreventiviTab leads={preventiviLeads} quotes={prevQuotes} role={role} onOpen={(id) => setOpenLeadId(id)} />
+            <PreventiviTab leads={preventiviLeads} quotes={prevQuotes} role={role}
+              onOpenQuotes={(id) => setOpenQuoteLeadId(id)}
+              onOpen={(id) => setOpenLeadId(id)} />
           )}
           {activeTab === "clienti" && (
             <ClientiTab leads={clientiLeads} role={role} onOpen={(id) => setOpenLeadId(id)} />
@@ -524,6 +528,11 @@ function PipelinePage() {
       )}
 
       <LeadDrawer lead={openLead} onClose={() => setOpenLeadId(null)} />
+      <PreventivDetailDrawer
+        lead={openQuoteLead}
+        onClose={() => setOpenQuoteLeadId(null)}
+        onOpenFullDrawer={(id) => { setOpenQuoteLeadId(null); setOpenLeadId(id); }}
+      />
     </div>
   );
 }
@@ -689,8 +698,9 @@ function LeadRowItem({ lead, onOpen, refetch }: { lead: LeadRow; onOpen: () => v
 
 // ─── Tab: Preventivi ──────────────────────────────────────────────────────────
 
-function PreventiviTab({ leads, quotes, role, onOpen }: {
-  leads: LeadRow[]; quotes: QuoteRow[]; role: string | null; onOpen: (id: string) => void;
+function PreventiviTab({ leads, quotes, role, onOpenQuotes, onOpen }: {
+  leads: LeadRow[]; quotes: QuoteRow[]; role: string | null;
+  onOpenQuotes: (id: string) => void; onOpen: (id: string) => void;
 }) {
   const quoteMap = useMemo(() => {
     const m = new Map<string, QuoteRow[]>();
@@ -727,7 +737,7 @@ function PreventiviTab({ leads, quotes, role, onOpen }: {
       ) : (
         <div className="space-y-3">
           {leads.map(l => (
-            <PreventivoCard key={l.id} lead={l} quotes={quoteMap.get(l.id) ?? []} showVenditore={role === "admin"} onOpen={() => onOpen(l.id)} />
+            <PreventivoCard key={l.id} lead={l} quotes={quoteMap.get(l.id) ?? []} showVenditore={role === "admin"} onOpen={() => onOpenQuotes(l.id)} />
           ))}
         </div>
       )}
@@ -1539,5 +1549,197 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
         </button>
       )}
     </section>
+  );
+}
+
+// ─── Preventiv Detail Drawer ──────────────────────────────────────────────────
+
+function PreventivDetailDrawer({ lead, onClose, onOpenFullDrawer }: {
+  lead: LeadRow | null;
+  onClose: () => void;
+  onOpenFullDrawer: (id: string) => void;
+}) {
+  const { role } = useAuth();
+  const queryClient = useQueryClient();
+  const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async (leadId: string) => {
+    if (!supabase) return;
+    setLoading(true);
+    const { data } = await supabase.from("quotes").select("*").eq("lead_id", leadId).order("created_at", { ascending: false });
+    setQuotes((data ?? []) as QuoteRow[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (lead) load(lead.id);
+    else setQuotes([]);
+  }, [lead?.id]);
+
+  useEffect(() => {
+    if (!lead) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [lead, onClose]);
+
+  const updateStatus = async (id: string, newStatus: string) => {
+    if (!supabase || !lead) return;
+    const now = new Date().toISOString();
+    const patch: Record<string, unknown> = { status: newStatus };
+    if (newStatus === "Pagato") patch.pagato_at = now;
+    setQuotes(list => list.map(q => q.id === id ? { ...q, status: newStatus } : q));
+    const { error } = await supabase.from("quotes").update(patch).eq("id", id);
+    if (error) { toast.error(`Errore: ${error.message}`); load(lead.id); return; }
+    if (newStatus === "Accettata" || newStatus === "Pagato") {
+      await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", lead.id);
+    } else if (newStatus === "Rifiutata") {
+      await supabase.from("leads").update({ pipeline_stage: "chiuso_perso" }).eq("id", lead.id);
+    }
+    if (newStatus === "Pagato") {
+      const quote = quotes.find(q => q.id === id);
+      if (quote) {
+        await supabase.from("payments").upsert({
+          lead_id: lead.id, quote_id: id, amount: quote.amount ?? 0,
+          status: "paid", description: quote.service ?? "Pagamento", paid_at: now,
+        }, { onConflict: "quote_id" });
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    queryClient.invalidateQueries({ queryKey: ["pipeline-payments"] });
+    toast.success(newStatus === "Pagato" ? "Pagamento registrato nel fatturato ✓" : "Stato aggiornato");
+  };
+
+  const isOpen = !!lead;
+  const statusOptions = role === "admin" ? QUOTE_STATUS_OPTIONS_ADMIN : QUOTE_STATUS_OPTIONS;
+  const seed = lead ? (lead.full_name || lead.email || lead.id) : "";
+  const tone = seed ? avatarTone(seed) : AVATAR_PALETTE[0];
+
+  return (
+    <>
+      <div onClick={onClose}
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} />
+      <aside
+        className={`fixed right-0 top-0 z-50 h-screen w-full max-w-[460px] overflow-y-auto border-l border-[rgba(167,139,250,0.18)] bg-[#0a1020] shadow-[-30px_0_80px_rgba(0,0,0,0.6)] transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+        aria-hidden={!isOpen}>
+        {lead && (
+          <div className="flex min-h-full flex-col">
+            {/* Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.06)] bg-[#0a1020]/95 px-6 py-4 backdrop-blur">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold border"
+                  style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}>
+                  {initials(lead.full_name, lead.email)}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-foreground truncate">{lead.full_name ?? "(senza nome)"}</p>
+                  {lead.company && <p className="text-xs truncate" style={{ color: "#6677aa" }}>{lead.company}</p>}
+                </div>
+              </div>
+              <button onClick={onClose} aria-label="Chiudi"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-muted-foreground hover:text-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-6 space-y-6">
+              {/* Section label + open full drawer button */}
+              <div className="flex items-center justify-between">
+                <p className="label-section flex items-center gap-2">
+                  <FileText className="h-3.5 w-3.5" />Preventivi inviati
+                </p>
+                <button onClick={() => onOpenFullDrawer(lead.id)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)] px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.12)]">
+                  <Eye className="h-3 w-3" />Vedi dettaglio lead
+                </button>
+              </div>
+
+              {/* Lead email */}
+              {lead.email && (
+                <a href={`mailto:${lead.email}`}
+                  className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
+                  <Mail className="h-3.5 w-3.5 shrink-0" />{lead.email}
+                </a>
+              )}
+
+              {/* Quotes */}
+              {loading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />Caricamento preventivi…
+                </div>
+              ) : quotes.length === 0 ? (
+                <div className="rounded-xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-4 py-8 text-center">
+                  <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: "#2a3a5c" }} />
+                  <p className="text-sm text-muted-foreground">Nessun preventivo trovato per questo lead.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {quotes.map(q => {
+                    const tone = QUOTE_STATUS_TONE[q.status ?? "Inviata"] ?? QUOTE_STATUS_TONE.Inviata;
+                    const isLocked = q.status === "Pagato" && role === "venditore";
+                    return (
+                      <div key={q.id} className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 space-y-3">
+                        {/* Quote header */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-foreground truncate">{q.service ?? "—"}</p>
+                            <p className="text-xs mt-0.5" style={{ color: "#6677aa" }}>
+                              {formatEuro(q.amount)}
+                              {q.sent_at && ` · ${format(new Date(q.sent_at), "d MMM yyyy", { locale: it })}`}
+                            </p>
+                          </div>
+                          {isLocked ? (
+                            <span className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold shrink-0"
+                              style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}>🔒 Pagato</span>
+                          ) : (
+                            <select value={q.status ?? "Inviata"} onChange={e => updateStatus(q.id, e.target.value)}
+                              className="rounded-lg border px-2.5 py-1.5 text-xs font-semibold outline-none shrink-0"
+                              style={{ background: tone.bg, color: tone.color, borderColor: tone.border }}>
+                              {statusOptions.map(s => (
+                                <option key={s} value={s} style={{ background: "#0a1020", color: "#e2e8f0" }}>{s}</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+
+                        {/* Status note for accepted/paid */}
+                        {(q.status === "Accettata" || q.status === "Pagato") && (
+                          <p className="text-xs font-semibold" style={{ color: q.status === "Pagato" ? "#a78bfa" : "#34d399" }}>
+                            {q.status === "Pagato" ? "✓ Pagamento registrato nel fatturato" : "✓ Preventivo accettato — lead spostato in Clienti"}
+                          </p>
+                        )}
+                        {q.status === "Rifiutata" && (
+                          <p className="text-xs font-semibold" style={{ color: "#f87171" }}>✗ Preventivo rifiutato — lead spostato in Perso</p>
+                        )}
+
+                        {/* Notes */}
+                        {q.content && (
+                          <p className="text-xs text-muted-foreground whitespace-pre-wrap border-t border-[rgba(255,255,255,0.06)] pt-2">{q.content}</p>
+                        )}
+
+                        {/* PDF */}
+                        {q.pdf_url && (
+                          <a href={q.pdf_url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold transition hover:underline"
+                            style={{ color: "#7dd9ff" }}>
+                            <Download className="h-3.5 w-3.5" />Scarica PDF allegato
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Footer hint */}
+              <p className="pb-6 text-xs text-center" style={{ color: "#2a3a5c" }}>
+                Per aggiungere o modificare preventivi, apri il dettaglio completo del lead.
+              </p>
+            </div>
+          </div>
+        )}
+      </aside>
+    </>
   );
 }
