@@ -34,7 +34,7 @@ export const Route = createFileRoute("/admin/analytics")({
   component: AnalyticsPage,
 });
 
-const STEP_LABELS = ["Pagina Intro", "Servizio", "Dettagli", "Budget", "Contatto", "Invio"];
+const STEP_LABELS = ["/pagina-intro", "Servizio", "Dettagli", "Budget", "Contatto", "Invio"];
 
 const tooltipStyle = {
   background: "#070b14",
@@ -147,8 +147,7 @@ function AnalyticsPage() {
     const visits = new Set(
       events.filter((e) => e.step === n).map((e) => e.session_id),
     ).size;
-    const label = n === 0 ? `↗ Pagina Intro` : `Step ${n} · ${STEP_LABELS[i]}`;
-    return { step: label, visits, pct: 0 };
+    return { step: STEP_LABELS[i], visits, pct: 0 };
   });
   funnelData.forEach((s, i) => {
     if (i === 0) {
@@ -310,12 +309,19 @@ function AnalyticsPage() {
         )}
       </div>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <AdminKpi
           icon={Users}
-          title="Totale visite form"
-          value={totalVisits.toLocaleString("it-IT")}
-          meta="sessioni uniche"
+          title="Pagina Intro"
+          value={(funnelData[0]?.visits ?? 0).toLocaleString("it-IT")}
+          meta="sessioni /pagina-intro"
+          tone="cyan"
+        />
+        <AdminKpi
+          icon={Users}
+          title="Visite Form"
+          value={(funnelData[1]?.visits ?? 0).toLocaleString("it-IT")}
+          meta="aperture step 1"
           tone="cyan"
         />
         <AdminKpi
@@ -327,7 +333,7 @@ function AnalyticsPage() {
         />
         <AdminKpi
           icon={TrendingDown}
-          title="Step con più abbandoni"
+          title="Più abbandoni"
           value={worstDropAvailable ? `${worstDrop.drop} ${worstDrop.drop === 1 ? "sessione" : "sessioni"}` : "N/D"}
           meta={worstDropAvailable ? worstDrop.step : "dati insufficienti"}
           tone="orange"
@@ -346,7 +352,7 @@ function AnalyticsPage() {
           <AdminSectionTitle eyebrow="Conversion" title="Funnel di compilazione" />
           <div className="hidden items-center gap-2 text-xs text-muted-foreground md:flex">
             <BarChart2 className="h-4 w-4 text-primary" />
-            5 step monitorati
+            6 step monitorati
           </div>
         </div>
 
@@ -391,12 +397,12 @@ function AnalyticsPage() {
               </ResponsiveContainer>
             </div>
 
-            <div className="mt-6 grid gap-2 md:grid-cols-5">
+            <div className="mt-6 grid gap-2 grid-cols-3 xl:grid-cols-6">
               {funnelData.map((s, i) => (
                 <div key={s.step} className="rounded-2xl border border-[rgba(0,212,255,0.12)] bg-[rgba(0,212,255,0.04)] p-3">
-                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Step {i + 1}</p>
+                  <p className="text-xs font-semibold truncate" style={{ color: "#6677aa" }}>{s.step}</p>
                   <p className="mt-2 text-lg font-bold text-foreground">{s.visits.toLocaleString("it-IT")}</p>
-                  <p className="mt-1 text-xs text-primary">{s.pct}% vs precedente</p>
+                  <p className="mt-1 text-xs text-primary">{i === 0 ? "—" : `${s.pct}% vs prec.`}</p>
                 </div>
               ))}
             </div>
