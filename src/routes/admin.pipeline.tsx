@@ -1036,7 +1036,7 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
       <div onClick={onClose}
         className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} />
       <aside
-        className={`fixed right-0 top-0 z-50 h-screen w-full max-w-[520px] overflow-y-auto border-l border-[rgba(0,212,255,0.12)] bg-[#0a1020] shadow-[-30px_0_80px_rgba(0,0,0,0.6)] transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-[520px] overflow-y-auto border-l border-[rgba(0,212,255,0.12)] bg-[#0a1020] shadow-[-30px_0_80px_rgba(0,0,0,0.6)] transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"}`}
         aria-hidden={!isOpen}>
         {lead && (
           <DrawerContent
@@ -1670,7 +1670,7 @@ function PreventivDetailDrawer({ lead, onClose, onOpenFullDrawer }: {
       <div onClick={onClose}
         className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} />
       <aside
-        className={`fixed right-0 top-0 z-50 h-screen w-full max-w-[460px] overflow-y-auto border-l border-[rgba(167,139,250,0.18)] bg-[#0a1020] shadow-[-30px_0_80px_rgba(0,0,0,0.6)] transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-[460px] overflow-y-auto border-l border-[rgba(167,139,250,0.18)] bg-[#0a1020] shadow-[-30px_0_80px_rgba(0,0,0,0.6)] transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"}`}
         aria-hidden={!isOpen}>
         {lead && (
           <div className="flex min-h-full flex-col">
