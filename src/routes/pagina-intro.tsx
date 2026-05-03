@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { supabase } from "@/lib/supabase";
 
 const FORM_PATH = "/form-contatto-1";
 const ACCENT = "#22d3ee";
@@ -446,6 +447,16 @@ function ProblemTimeline() {
 }
 
 function PaginaIntro() {
+  useEffect(() => {
+    if (!supabase) return;
+    const sid = typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    void supabase.from("form_events").insert({
+      session_id: sid, step: 0, step_name: "Pagina Intro", completed: false,
+    });
+  }, []);
+
   return (
     <div
       className="relative min-h-screen"

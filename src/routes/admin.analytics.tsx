@@ -34,7 +34,7 @@ export const Route = createFileRoute("/admin/analytics")({
   component: AnalyticsPage,
 });
 
-const STEP_LABELS = ["Servizio", "Dettagli", "Budget", "Contatto", "Invio"];
+const STEP_LABELS = ["Pagina Intro", "Servizio", "Dettagli", "Budget", "Contatto", "Invio"];
 
 const tooltipStyle = {
   background: "#070b14",
@@ -142,12 +142,13 @@ function AnalyticsPage() {
     enabled: isSupabaseConfigured,
   });
 
-  // Funnel aggregation
-  const funnelData = [1, 2, 3, 4, 5].map((n, i) => {
+  // Funnel aggregation — step 0 = Pagina Intro, steps 1-5 = form
+  const funnelData = [0, 1, 2, 3, 4, 5].map((n, i) => {
     const visits = new Set(
       events.filter((e) => e.step === n).map((e) => e.session_id),
     ).size;
-    return { step: `Step ${n} · ${STEP_LABELS[i]}`, visits, pct: 0 };
+    const label = n === 0 ? `↗ Pagina Intro` : `Step ${n} · ${STEP_LABELS[i]}`;
+    return { step: label, visits, pct: 0 };
   });
   funnelData.forEach((s, i) => {
     if (i === 0) {
@@ -159,7 +160,7 @@ function AnalyticsPage() {
   });
 
   const totalVisits = funnelData[0].visits;
-  const completed = funnelData[4].visits;
+  const completed = funnelData[5].visits;
   const completionRate = totalVisits ? Math.round((completed / totalVisits) * 100) : 0;
   const completionMeta = totalVisits
     ? `${completed} ${completed === 1 ? "persona" : "persone"} su ${totalVisits} che ${totalVisits === 1 ? "apre" : "aprono"} il form ${completed === 1 ? "lo completa" : "lo completano"}`
