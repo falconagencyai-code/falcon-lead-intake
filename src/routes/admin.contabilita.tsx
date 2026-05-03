@@ -289,7 +289,47 @@ function ContabilitaPage() {
 
   const deleteTx = async (id: string) => {
     if (!supabase || !confirm("Eliminare questa transazione?")) return;
+
+    // Fetch before deleting to check if it's an entrata linked to a lead
+    const { data: tx } = await supabase
+      .from("transactions")
+      .select("type, lead_id")
+      .eq("id", id)
+      .single();
+
     await supabase.from("transactions").delete().eq("id", id);
+
+    if (tx?.type === "entrata" && tx?.lead_id) {
+      const leadId = tx.lead_id;
+
+      // Find the paid payment for this lead
+      const { data: payment } = await supabase
+        .from("payments")
+        .select("id, quote_id")
+        .eq("lead_id", leadId)
+        .eq("status", "paid")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (payment) {
+        // Revert quote to Rifiutata
+        if (payment.quote_id) {
+          await supabase.from("quotes")
+            .update({ status: "Rifiutata" })
+            .eq("id", payment.quote_id);
+        }
+        // Remove the payment record (disappears from Chiusure)
+        await supabase.from("payments").delete().eq("id", payment.id);
+      }
+
+      // Move lead out of chiuso_vinto → proposta_inviata
+      await supabase.from("leads")
+        .update({ pipeline_stage: "proposta_inviata" })
+        .eq("id", leadId)
+        .eq("pipeline_stage", "chiuso_vinto");
+    }
+
     loadAll();
   };
 
