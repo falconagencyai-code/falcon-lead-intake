@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckCircle,
   Clock,
+  Layers,
   LayoutDashboard,
   Map,
   Radar,
@@ -46,9 +47,8 @@ type NavStatus = "active" | "mock";
 
 const navItems: { label: string; to: string; icon: typeof Users; status: NavStatus }[] = [
   { label: "Dashboard", to: "/admin", icon: LayoutDashboard, status: "mock" },
-  { label: "Lead", to: "/admin/leads", icon: Users, status: "active" },
+  { label: "Pipeline", to: "/admin/pipeline", icon: Layers, status: "active" },
   { label: "Analytics", to: "/admin/analytics", icon: BarChart2, status: "active" },
-  { label: "Clienti", to: "/admin/clienti", icon: Users, status: "active" },
   { label: "Team", to: "/admin/team", icon: Shield, status: "active" },
   { label: "Calendario", to: "/admin/calendario", icon: CalendarDays, status: "active" },
   { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2, status: "active" },
@@ -68,7 +68,7 @@ function AdminRoot() {
 }
 
 // Nav items visible per role
-const VENDOR_ROUTES = new Set(["/admin/leads", "/admin/clienti", "/admin/team", "/admin/calendario"]);
+const VENDOR_ROUTES = new Set(["/admin/pipeline", "/admin/leads", "/admin/clienti", "/admin/team", "/admin/calendario"]);
 
 function AdminLayout() {
   const location = useLocation();

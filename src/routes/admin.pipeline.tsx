@@ -1,430 +1,582 @@
-import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Activity, ArrowLeft, CheckCircle2, Users, XCircle } from "lucide-react";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
+import { AdminCard } from "./admin/-admin-ui";
 import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip as ReTooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-
-import { AdminCard, AdminKpi, AdminSectionTitle } from "./admin/-admin-ui";
+  ArrowRight,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Euro,
+  FileText,
+  Mail,
+  TrendingUp,
+  UserCheck,
+  Users,
+  XCircle,
+} from "lucide-react";
 
 export const Route = createFileRoute("/admin/pipeline")({
-  head: () => ({
-    meta: [
-      { title: "Falcon Admin — Pipeline" },
-      { name: "description", content: "Analisi conversioni e perdite lead della pipeline Falcon Agency." },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Falcon Admin — Pipeline" }] }),
   component: PipelinePage,
 });
 
-type LeadRow = {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Lead {
+  id: string;
+  full_name: string | null;
+  company: string | null;
+  email: string | null;
   pipeline_stage: string | null;
-  lost_reason: string | null;
   created_at: string;
+  venditore_id: string | null;
+  venditore: { full_name: string | null } | null;
+}
+
+interface Quote {
+  id: string;
+  lead_id: string;
+  service: string | null;
+  amount: number | null;
+  status: string | null;
+  created_at: string;
+}
+
+interface Payment {
+  id: string;
+  lead_id: string;
+  amount: number | null;
+  paid_at: string | null;
+  description: string | null;
+  lead: {
+    full_name: string | null;
+    company: string | null;
+    venditore: { full_name: string | null } | null;
+  } | null;
+}
+
+type Tab = "lead" | "preventivi" | "clienti" | "chiusure";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const ACTIVE_STAGES = ["form_compilato", "contattato", "call_schedulata", "call_effettuata", "no_show"];
+
+const STAGE_INFO: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  form_compilato:  { label: "Nuovo",          color: "#00d4ff", bg: "rgba(0,212,255,0.08)",   border: "rgba(0,212,255,0.25)" },
+  contattato:      { label: "Contattato",      color: "#60a5fa", bg: "rgba(96,165,250,0.08)",  border: "rgba(96,165,250,0.25)" },
+  call_schedulata: { label: "Call schedulata", color: "#a78bfa", bg: "rgba(167,139,250,0.08)", border: "rgba(167,139,250,0.25)" },
+  call_effettuata: { label: "Call effettuata", color: "#818cf8", bg: "rgba(129,140,248,0.08)", border: "rgba(129,140,248,0.25)" },
+  no_show:         { label: "No show",         color: "#f97316", bg: "rgba(249,115,22,0.08)",  border: "rgba(249,115,22,0.25)" },
 };
 
-type RangePreset = "today" | "yesterday" | "7d" | "30d" | "custom";
-
-const PRESETS: { id: RangePreset; label: string }[] = [
-  { id: "today", label: "Oggi" },
-  { id: "yesterday", label: "Ieri" },
-  { id: "7d", label: "7 giorni" },
-  { id: "30d", label: "30 giorni" },
-  { id: "custom", label: "Personalizzato" },
-];
-
-const STAGES: { id: string; label: string; color: string }[] = [
-  { id: "form_compilato", label: "Form compilato", color: "rgba(0,212,255,1)" },
-  { id: "contattato", label: "Contattato", color: "rgba(0,212,255,0.85)" },
-  { id: "call_schedulata", label: "Call schedulata", color: "rgba(0,212,255,0.7)" },
-  { id: "call_effettuata", label: "Call effettuata", color: "rgba(0,212,255,0.55)" },
-  { id: "no_show", label: "No show", color: "#f97316" },
-  { id: "preventivo_inviato", label: "Preventivo inviato", color: "rgba(0,212,255,0.4)" },
-  { id: "chiuso_vinto", label: "Chiuso vinto", color: "#22c55e" },
-  { id: "chiuso_perso", label: "Chiuso perso", color: "#ef4444" },
-];
-
-const INTERMEDIATE_STAGES = new Set([
-  "form_compilato",
-  "contattato",
-  "call_schedulata",
-  "call_effettuata",
-  "no_show",
-  "preventivo_inviato",
-]);
-
-const LOST_REASONS: { id: string; label: string; color: string }[] = [
-  { id: "prezzo_troppo_alto", label: "Prezzo troppo alto", color: "#ef4444" },
-  { id: "non_si_e_presentato", label: "Non si è presentato", color: "#f97316" },
-  { id: "nessuna_risposta", label: "Nessuna risposta", color: "#facc15" },
-  { id: "non_convinto", label: "Non convinto", color: "#a855f7" },
-  { id: "altro", label: "Altro", color: "#64748b" },
-];
-
-const tooltipStyle = {
-  background: "#070b14",
-  border: "1px solid rgba(0,212,255,0.2)",
-  borderRadius: 16,
+const QUOTE_STATUS_INFO: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  "In attesa": { label: "In attesa", color: "#facc15", bg: "rgba(250,204,21,0.08)",  border: "rgba(250,204,21,0.25)" },
+  "Accettata": { label: "Accettata", color: "#4ade80", bg: "rgba(74,222,128,0.08)", border: "rgba(74,222,128,0.25)" },
+  "Rifiutata": { label: "Rifiutata", color: "#f87171", bg: "rgba(248,113,113,0.08)",border: "rgba(248,113,113,0.25)" },
+  "Pagato":    { label: "Pagato",    color: "#34d399", bg: "rgba(52,211,153,0.08)", border: "rgba(52,211,153,0.25)" },
 };
 
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
-function startOfDay(iso: string) {
-  return new Date(`${iso}T00:00:00.000Z`).toISOString();
-}
-function endOfDay(iso: string) {
-  return new Date(`${iso}T23:59:59.999Z`).toISOString();
-}
-function computeRange(preset: RangePreset, customFrom: string, customTo: string) {
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
-  if (preset === "today") return { from: startOfDay(today), to: endOfDay(today) };
-  if (preset === "yesterday") {
-    const y = new Date(now);
-    y.setUTCDate(now.getUTCDate() - 1);
-    const yi = y.toISOString().slice(0, 10);
-    return { from: startOfDay(yi), to: endOfDay(yi) };
-  }
-  if (preset === "7d") {
-    const s = new Date(now);
-    s.setUTCDate(now.getUTCDate() - 6);
-    return { from: startOfDay(s.toISOString().slice(0, 10)), to: endOfDay(today) };
-  }
-  if (preset === "30d") {
-    const s = new Date(now);
-    s.setUTCDate(now.getUTCDate() - 29);
-    return { from: startOfDay(s.toISOString().slice(0, 10)), to: endOfDay(today) };
-  }
-  const f = customFrom || today;
-  const t = customTo || today;
-  return { from: startOfDay(f), to: endOfDay(t) };
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const d = Math.floor(diff / 86_400_000);
+  const h = Math.floor(diff / 3_600_000);
+  if (d >= 1) return `${d}g fa`;
+  if (h >= 1) return `${h}h fa`;
+  return "adesso";
 }
 
-function normalizeReason(raw: string | null): string {
-  if (!raw) return "altro";
-  const k = raw.toLowerCase().trim().replace(/\s+/g, "_").replace(/'/g, "");
-  if (LOST_REASONS.some((r) => r.id === k)) return k;
-  return "altro";
+function fmtEur(n: number | null) {
+  if (!n) return "—";
+  return new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 }
+
+// ─── Shared micro-components ──────────────────────────────────────────────────
+
+function VenditoreChip({ name }: { name: string | null }) {
+  if (!name) return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+      style={{ background: "rgba(0,212,255,0.07)", color: "#7dd9ff", border: "1px solid rgba(0,212,255,0.15)" }}>
+      {name}
+    </span>
+  );
+}
+
+function StageBadge({ stage }: { stage: string }) {
+  const s = STAGE_INFO[stage] ?? STAGE_INFO.form_compilato;
+  return (
+    <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+      style={{ color: s.color, background: s.bg, border: `1px solid ${s.border}` }}>
+      {s.label}
+    </span>
+  );
+}
+
+function QuoteStatusBadge({ status }: { status: string }) {
+  const s = QUOTE_STATUS_INFO[status] ?? QUOTE_STATUS_INFO["In attesa"];
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+      style={{ color: s.color, background: s.bg, border: `1px solid ${s.border}` }}>
+      {status === "Pagato" && <CheckCircle2 className="w-3 h-3" />}
+      {status === "Rifiutata" && <XCircle className="w-3 h-3" />}
+      {s.label}
+    </span>
+  );
+}
+
+function EmptyState({ icon: Icon, text }: { icon: typeof Users; text: string }) {
+  return (
+    <AdminCard className="p-12 text-center">
+      <Icon className="w-12 h-12 mx-auto mb-4" style={{ color: "#2a3a5c" }} />
+      <p className="text-muted-foreground">{text}</p>
+    </AdminCard>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 
 function PipelinePage() {
-  const [preset, setPreset] = useState<RangePreset>("30d");
-  const today = todayISO();
-  const [customFrom, setCustomFrom] = useState<string>(() => {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() - 29);
-    return d.toISOString().slice(0, 10);
-  });
-  const [customTo, setCustomTo] = useState<string>(today);
+  const { role, user } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>("lead");
+  const [loading, setLoading] = useState(true);
 
-  const range = useMemo(
-    () => computeRange(preset, customFrom, customTo),
-    [preset, customFrom, customTo],
-  );
+  const [activeLeads, setActiveLeads] = useState<Lead[]>([]);
+  const [preventiviLeads, setPreventiviLeads] = useState<Lead[]>([]);
+  const [preventiviQuotes, setPreventiviQuotes] = useState<Quote[]>([]);
+  const [clientiLeads, setClientiLeads] = useState<Lead[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
 
-  const { data: leads = [], isLoading } = useQuery<LeadRow[]>({
-    queryKey: ["leads-pipeline", range.from, range.to],
-    queryFn: async () => {
-      if (!supabase) return [];
-      const { data, error } = await supabase
-        .from("leads")
-        .select("pipeline_stage, lost_reason, created_at")
-        .gte("created_at", range.from)
-        .lte("created_at", range.to);
-      if (error) throw error;
-      return (data ?? []) as LeadRow[];
-    },
-    enabled: isSupabaseConfigured,
-  });
+  const load = async () => {
+    if (!supabase) return;
+    setLoading(true);
+    try {
+      const sel = "id, full_name, company, email, pipeline_stage, created_at, venditore_id, venditore:profiles!venditore_id(full_name)";
+      let q = supabase.from("leads").select(sel).order("created_at", { ascending: false });
+      if (role === "venditore" && user?.id) q = q.eq("venditore_id", user.id);
 
-  const total = leads.length;
-  const withStage = leads.filter((l) => l.pipeline_stage);
-  const won = leads.filter((l) => l.pipeline_stage === "chiuso_vinto").length;
-  const lost = leads.filter((l) => l.pipeline_stage === "chiuso_perso").length;
-  const inProgress = leads.filter(
-    (l) => l.pipeline_stage && INTERMEDIATE_STAGES.has(l.pipeline_stage),
-  ).length;
+      const { data: leadsData } = await q;
+      const all = (leadsData ?? []) as unknown as Lead[];
 
-  const pct = (n: number) => (total ? Math.round((n / total) * 100) : 0);
+      const active    = all.filter(l => ACTIVE_STAGES.includes(l.pipeline_stage ?? ""));
+      const preventivi = all.filter(l => l.pipeline_stage === "preventivo_inviato");
+      const clienti   = all.filter(l => l.pipeline_stage === "chiuso_vinto");
+      const allIds    = all.map(l => l.id);
+      const prevIds   = preventivi.map(l => l.id);
 
-  const funnelData = STAGES.map((s) => {
-    const count = leads.filter((l) => l.pipeline_stage === s.id).length;
-    return {
-      stage: s.label,
-      id: s.id,
-      count,
-      color: s.color,
-      pct: pct(count),
-    };
-  });
+      const [quotesRes, paymentsRes] = await Promise.all([
+        prevIds.length > 0
+          ? supabase.from("quotes")
+              .select("id, lead_id, service, amount, status, created_at")
+              .in("lead_id", prevIds)
+              .order("created_at", { ascending: false })
+          : Promise.resolve({ data: [] as Quote[] }),
+        allIds.length > 0
+          ? supabase.from("payments")
+              .select("id, lead_id, amount, paid_at, description, lead:leads!lead_id(full_name, company, venditore:profiles!venditore_id(full_name))")
+              .eq("status", "paid")
+              .in("lead_id", allIds)
+              .order("paid_at", { ascending: false })
+          : Promise.resolve({ data: [] as Payment[] }),
+      ]);
 
-  // Lost reasons
-  const lostLeads = leads.filter((l) => l.pipeline_stage === "chiuso_perso");
-  const reasonCounts = new Map<string, number>();
-  for (const l of lostLeads) {
-    const k = normalizeReason(l.lost_reason);
-    reasonCounts.set(k, (reasonCounts.get(k) ?? 0) + 1);
-  }
-  const reasonsData = LOST_REASONS.map((r) => ({
-    id: r.id,
-    label: r.label,
-    color: r.color,
-    count: reasonCounts.get(r.id) ?? 0,
-  })).filter((r) => r.count > 0);
-  const reasonsTotal = reasonsData.reduce((acc, r) => acc + r.count, 0);
+      setActiveLeads(active);
+      setPreventiviLeads(preventivi);
+      setPreventiviQuotes((quotesRes.data ?? []) as Quote[]);
+      setClientiLeads(clienti);
+      setPayments((paymentsRes.data ?? []) as Payment[]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const hasPipelineData = withStage.length > 0;
+  useEffect(() => { load(); }, [role, user?.id]);
+
+  useEffect(() => {
+    if (!supabase) return;
+    const ch = supabase.channel("pipeline-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "quotes" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, load)
+      .subscribe();
+    return () => { supabase!.removeChannel(ch); };
+  }, []);
+
+  const totaleChiusure = payments.reduce((s, p) => s + (p.amount ?? 0), 0);
+
+  const tabs: {
+    key: Tab;
+    label: string;
+    count: number | string;
+    icon: typeof Users;
+    color: string;
+  }[] = [
+    { key: "lead",       label: "Lead",       count: activeLeads.length,     icon: Users,     color: "#00d4ff" },
+    { key: "preventivi", label: "Preventivi", count: preventiviLeads.length, icon: FileText,  color: "#a78bfa" },
+    { key: "clienti",    label: "Clienti",    count: clientiLeads.length,    icon: UserCheck, color: "#4ade80" },
+    { key: "chiusure",   label: "Chiusure",   count: fmtEur(totaleChiusure), icon: TrendingUp,color: "#34d399" },
+  ];
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <header>
-        <Link
-          to="/admin/analytics"
-          className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-primary"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Torna ad Analytics
-        </Link>
-        <p className="label-section mt-4">Pipeline · Conversioni</p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight text-foreground md:text-5xl">
-          Pipeline <span className="text-primary text-glow">Lead</span>
+        <p className="label-section">Commerciale</p>
+        <h1 className="mt-3 text-4xl font-black text-foreground">
+          Pipeline <span className="text-primary text-glow">Commerciale</span>
         </h1>
-        <p className="mt-3 max-w-2xl text-muted-foreground">
-          Analisi conversioni e perdite lead lungo l&apos;intera pipeline commerciale.
+        <p className="mt-2 text-sm text-muted-foreground">
+          Lead · Preventivi · Clienti · Chiusure
         </p>
       </header>
 
-      {/* Date filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        {PRESETS.map((p) => {
-          const active = preset === p.id;
+      {/* Tab navigation */}
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        {tabs.map((t, i) => {
+          const Icon = t.icon;
+          const active = activeTab === t.key;
           return (
             <button
-              key={p.id}
-              type="button"
-              onClick={() => setPreset(p.id)}
-              className="rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition"
-              style={
-                active
-                  ? {
-                      color: "#00d4ff",
-                      background: "rgba(0,212,255,0.12)",
-                      borderColor: "rgba(0,212,255,0.5)",
-                      boxShadow: "0 0 16px rgba(0,212,255,0.18)",
-                    }
-                  : {
-                      color: "var(--falcon-subtle)",
-                      background: "rgba(255,255,255,0.03)",
-                      borderColor: "rgba(255,255,255,0.1)",
-                    }
-              }
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className="relative flex flex-col items-start gap-2 rounded-2xl p-4 text-left transition-all"
+              style={{
+                background: active ? `color-mix(in srgb, ${t.color} 10%, transparent)` : "rgba(255,255,255,0.03)",
+                border: `1px solid ${active ? `color-mix(in srgb, ${t.color} 40%, transparent)` : "rgba(255,255,255,0.08)"}`,
+                boxShadow: active ? `0 0 32px color-mix(in srgb, ${t.color} 15%, transparent)` : "none",
+              }}
             >
-              {p.label}
+              {/* Step number */}
+              <div className="flex items-center justify-between w-full">
+                <span className="text-[10px] font-bold uppercase tracking-widest"
+                  style={{ color: active ? t.color : "#4a5568" }}>
+                  0{i + 1}
+                </span>
+                {/* Arrow to next (except last) */}
+                {i < tabs.length - 1 && (
+                  <ArrowRight className="w-3 h-3 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10 hidden md:block"
+                    style={{ color: active ? t.color : "#2a3a5c" }} />
+                )}
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl shrink-0"
+                  style={{ background: active ? `color-mix(in srgb, ${t.color} 15%, transparent)` : "rgba(255,255,255,0.04)", color: active ? t.color : "#4a5568" }}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: active ? t.color : "#c8d8e8" }}>{t.label}</p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: active ? t.color : "#6677aa" }}>
+                    {t.key === "chiusure" ? t.count : `${t.count} ${(t.count as number) === 1 ? "elemento" : "elementi"}`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Active indicator bar */}
+              {active && (
+                <div className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full"
+                  style={{ background: t.color }} />
+              )}
             </button>
           );
         })}
-
-        {preset === "custom" && (
-          <div className="flex items-center gap-2 rounded-full border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.04)] px-3 py-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Da</label>
-            <input
-              type="date"
-              value={customFrom}
-              max={today}
-              onChange={(e) => setCustomFrom(e.target.value)}
-              className="bg-transparent text-xs text-foreground outline-none"
-            />
-            <span className="text-muted-foreground">→</span>
-            <label className="text-xs font-medium text-muted-foreground">A</label>
-            <input
-              type="date"
-              value={customTo}
-              max={today}
-              min={customFrom}
-              onChange={(e) => setCustomTo(e.target.value)}
-              className="bg-transparent text-xs text-foreground outline-none"
-            />
-          </div>
-        )}
       </div>
 
-      {/* KPI */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <AdminKpi
-          icon={Users}
-          title="Lead totali nel periodo"
-          value={total.toLocaleString("it-IT")}
-          meta="lead acquisiti"
-          tone="cyan"
-        />
-        <AdminKpi
-          icon={CheckCircle2}
-          title="% Convertiti"
-          value={`${pct(won)}%`}
-          meta={`${won} ${won === 1 ? "lead vinto" : "lead vinti"}`}
-          tone="green"
-        />
-        <AdminKpi
-          icon={XCircle}
-          title="% Persi"
-          value={`${pct(lost)}%`}
-          meta={`${lost} ${lost === 1 ? "lead perso" : "lead persi"}`}
-          tone="orange"
-        />
-        <AdminKpi
-          icon={Activity}
-          title="In lavorazione"
-          value={`${pct(inProgress)}%`}
-          meta={`${inProgress} ${inProgress === 1 ? "lead attivo" : "lead attivi"}`}
-          tone="cyan"
-        />
-      </section>
-
-      {/* Funnel pipeline */}
-      <AdminCard className="p-5">
-        <AdminSectionTitle eyebrow="Funnel" title="Distribuzione per stage" />
-
-        {!hasPipelineData && !isLoading ? (
-          <div className="mt-6 flex h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.03)] text-center">
-            <Activity className="h-10 w-10 text-primary/60" />
-            <p className="mt-4 text-sm font-medium text-foreground">Nessun dato pipeline ancora</p>
-            <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-              Aggiorna lo stage dei lead dal drawer dettaglio per vedere le analisi.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="mt-6 h-[420px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={funnelData} layout="vertical" margin={{ left: 20, right: 60, top: 8, bottom: 8 }}>
-                  <XAxis type="number" stroke="var(--falcon-subtle)" tickLine={false} axisLine={false} allowDecimals={false} />
-                  <YAxis
-                    type="category"
-                    dataKey="stage"
-                    stroke="var(--falcon-subtle)"
-                    tickLine={false}
-                    axisLine={false}
-                    width={160}
-                  />
-                  <ReTooltip
-                    contentStyle={tooltipStyle}
-                    cursor={{ fill: "rgba(0,212,255,0.06)" }}
-                    formatter={(value: number, _n, item) => [
-                      `${value.toLocaleString("it-IT")} lead (${item.payload.pct}%)`,
-                      "Stage",
-                    ]}
-                  />
-                  <Bar dataKey="count" radius={[0, 8, 8, 0]} background={{ fill: "rgba(0,212,255,0.06)" }}>
-                    {funnelData.map((d) => (
-                      <Cell key={d.id} fill={d.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="mt-6 grid gap-2 md:grid-cols-4 xl:grid-cols-8">
-              {funnelData.map((s) => (
-                <div
-                  key={s.id}
-                  className="rounded-2xl border p-3"
-                  style={{
-                    borderColor: "rgba(255,255,255,0.08)",
-                    background: "rgba(255,255,255,0.02)",
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
-                    <p className="truncate text-[11px] uppercase tracking-wider text-muted-foreground">
-                      {s.stage}
-                    </p>
-                  </div>
-                  <p className="mt-2 text-lg font-bold text-foreground">{s.count}</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{s.pct}% del totale</p>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </AdminCard>
-
-      {/* Lost reasons */}
-      {reasonsData.length > 0 && (
-        <AdminCard className="p-5">
-          <AdminSectionTitle eyebrow="Perdite" title="Motivi di chiusura persa" />
-          <div className="mt-6 grid gap-6 lg:grid-cols-2">
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={reasonsData}
-                    dataKey="count"
-                    nameKey="label"
-                    innerRadius={60}
-                    outerRadius={110}
-                    paddingAngle={2}
-                    stroke="#070b14"
-                    strokeWidth={2}
-                  >
-                    {reasonsData.map((r) => (
-                      <Cell key={r.id} fill={r.color} />
-                    ))}
-                  </Pie>
-                  <ReTooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(value: number, name: string) => [
-                      `${value} (${Math.round((value / reasonsTotal) * 100)}%)`,
-                      name,
-                    ]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div className="space-y-2">
-              {reasonsData.map((r) => {
-                const p = Math.round((r.count / reasonsTotal) * 100);
-                return (
-                  <div
-                    key={r.id}
-                    className="flex items-center justify-between gap-4 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="h-3 w-3 rounded-full" style={{ background: r.color }} />
-                      <p className="text-sm font-medium text-foreground">{r.label}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground">{r.count} lead</span>
-                      <span
-                        className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                        style={{
-                          color: r.color,
-                          background: `${r.color}1f`,
-                          border: `1px solid ${r.color}55`,
-                        }}
-                      >
-                        {p}%
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </AdminCard>
+      {/* Content */}
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="w-8 h-8 rounded-full border-2 animate-spin"
+            style={{ borderColor: "#00d4ff", borderTopColor: "transparent" }} />
+        </div>
+      ) : (
+        <>
+          {activeTab === "lead"       && <LeadTab       leads={activeLeads}                     role={role} />}
+          {activeTab === "preventivi" && <PreventiviTab leads={preventiviLeads} quotes={preventiviQuotes} role={role} />}
+          {activeTab === "clienti"    && <ClientiTab    leads={clientiLeads}                    role={role} />}
+          {activeTab === "chiusure"   && <ChiusureTab   payments={payments} totale={totaleChiusure} role={role} />}
+        </>
       )}
     </div>
+  );
+}
+
+// ─── Tab: Lead ────────────────────────────────────────────────────────────────
+
+function LeadTab({ leads, role }: { leads: Lead[]; role: string | null }) {
+  return (
+    <div className="space-y-5">
+      {/* Stage breakdown strip */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {Object.entries(STAGE_INFO).map(([key, info]) => {
+          const n = leads.filter(l => l.pipeline_stage === key).length;
+          return (
+            <div key={key} className="flex items-center gap-3 rounded-2xl px-4 py-2.5 shrink-0"
+              style={{ background: info.bg, border: `1px solid ${info.border}` }}>
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: info.color }} />
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: info.color }}>{info.label}</p>
+                <p className="text-lg font-black text-foreground leading-none mt-0.5">{n}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {leads.length === 0 ? (
+        <EmptyState icon={Users} text="Nessun lead attivo nella pipeline." />
+      ) : (
+        <div className="space-y-3">
+          {leads.map(l => <LeadCard key={l.id} lead={l} showVenditore={role === "admin"} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LeadCard({ lead: l, showVenditore }: { lead: Lead; showVenditore: boolean }) {
+  const stage = STAGE_INFO[l.pipeline_stage ?? "form_compilato"] ?? STAGE_INFO.form_compilato;
+  return (
+    <AdminCard className="p-4">
+      <div className="flex items-center gap-4">
+        <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: stage.color }} />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-foreground">{l.full_name ?? "—"}</p>
+            <StageBadge stage={l.pipeline_stage ?? "form_compilato"} />
+            {showVenditore && <VenditoreChip name={l.venditore?.full_name ?? null} />}
+          </div>
+          <div className="flex items-center gap-3 mt-1 text-sm" style={{ color: "#6677aa" }}>
+            {l.company && (
+              <span className="flex items-center gap-1">
+                <Building2 className="w-3.5 h-3.5" />{l.company}
+              </span>
+            )}
+            {l.email && (
+              <span className="flex items-center gap-1 truncate max-w-[200px]">
+                <Mail className="w-3.5 h-3.5" />{l.email}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs shrink-0" style={{ color: "#4a5568" }}>
+          <Clock className="w-3.5 h-3.5" />{timeAgo(l.created_at)}
+        </div>
+      </div>
+    </AdminCard>
+  );
+}
+
+// ─── Tab: Preventivi ──────────────────────────────────────────────────────────
+
+function PreventiviTab({ leads, quotes, role }: { leads: Lead[]; quotes: Quote[]; role: string | null }) {
+  const quoteMap = new Map<string, Quote[]>();
+  for (const q of quotes) {
+    const arr = quoteMap.get(q.lead_id) ?? [];
+    arr.push(q);
+    quoteMap.set(q.lead_id, arr);
+  }
+
+  const inAttesa  = quotes.filter(q => q.status === "In attesa").length;
+  const accettati = quotes.filter(q => q.status === "Accettata").length;
+  const rifiutati = quotes.filter(q => q.status === "Rifiutata").length;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex gap-3">
+        {[
+          { label: "In attesa", count: inAttesa,  color: "#facc15" },
+          { label: "Accettati", count: accettati, color: "#4ade80" },
+          { label: "Rifiutati", count: rifiutati, color: "#f87171" },
+        ].map(k => (
+          <div key={k.label} className="flex-1 rounded-2xl px-4 py-3 text-center"
+            style={{ background: `color-mix(in srgb, ${k.color} 8%, transparent)`, border: `1px solid color-mix(in srgb, ${k.color} 25%, transparent)` }}>
+            <p className="text-xl font-black text-foreground">{k.count}</p>
+            <p className="text-xs mt-0.5" style={{ color: k.color }}>{k.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {leads.length === 0 ? (
+        <EmptyState icon={FileText} text="Nessun preventivo in corso." />
+      ) : (
+        <div className="space-y-3">
+          {leads.map(l => (
+            <PreventivoCard key={l.id} lead={l} quotes={quoteMap.get(l.id) ?? []} showVenditore={role === "admin"} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PreventivoCard({ lead: l, quotes, showVenditore }: { lead: Lead; quotes: Quote[]; showVenditore: boolean }) {
+  return (
+    <AdminCard className="p-4">
+      <div className="flex items-start gap-4">
+        <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: "#a78bfa" }} />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-foreground">{l.full_name ?? "—"}</p>
+            {showVenditore && <VenditoreChip name={l.venditore?.full_name ?? null} />}
+          </div>
+          {l.company && (
+            <p className="text-sm mt-0.5 flex items-center gap-1" style={{ color: "#6677aa" }}>
+              <Building2 className="w-3.5 h-3.5" />{l.company}
+            </p>
+          )}
+
+          <div className="mt-3 space-y-2">
+            {quotes.length === 0 ? (
+              <p className="text-xs" style={{ color: "#4a5568" }}>Nessun preventivo trovato</p>
+            ) : (
+              quotes.map(q => (
+                <div key={q.id} className="flex items-center gap-3 rounded-xl px-3 py-2"
+                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <QuoteStatusBadge status={q.status ?? "In attesa"} />
+                  <span className="text-sm text-foreground flex-1 truncate">{q.service ?? "—"}</span>
+                  <span className="text-sm font-bold" style={{ color: "#00d4ff" }}>{fmtEur(q.amount)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs shrink-0 mt-0.5" style={{ color: "#4a5568" }}>
+          <Clock className="w-3.5 h-3.5" />{timeAgo(l.created_at)}
+        </div>
+      </div>
+    </AdminCard>
+  );
+}
+
+// ─── Tab: Clienti ─────────────────────────────────────────────────────────────
+
+function ClientiTab({ leads, role }: { leads: Lead[]; role: string | null }) {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 rounded-2xl px-5 py-3"
+        style={{ background: "rgba(74,222,128,0.06)", border: "1px solid rgba(74,222,128,0.2)" }}>
+        <UserCheck className="w-5 h-5" style={{ color: "#4ade80" }} />
+        <p className="text-sm font-medium text-foreground">
+          {leads.length} {leads.length === 1 ? "cliente acquisito" : "clienti acquisiti"}
+        </p>
+      </div>
+
+      {leads.length === 0 ? (
+        <EmptyState icon={UserCheck} text="Nessun cliente acquisito ancora." />
+      ) : (
+        <div className="space-y-3">
+          {leads.map(l => <ClienteCard key={l.id} lead={l} showVenditore={role === "admin"} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClienteCard({ lead: l, showVenditore }: { lead: Lead; showVenditore: boolean }) {
+  return (
+    <AdminCard className="p-4">
+      <div className="flex items-center gap-4">
+        <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: "#4ade80" }} />
+
+        <div className="flex items-center justify-center w-10 h-10 rounded-2xl shrink-0 font-black text-sm"
+          style={{ background: "rgba(74,222,128,0.1)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
+          {(l.full_name ?? "?")[0].toUpperCase()}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-foreground">{l.full_name ?? "—"}</p>
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold"
+              style={{ background: "rgba(74,222,128,0.08)", color: "#4ade80", border: "1px solid rgba(74,222,128,0.2)" }}>
+              <CheckCircle2 className="w-3 h-3" /> Cliente
+            </span>
+            {showVenditore && <VenditoreChip name={l.venditore?.full_name ?? null} />}
+          </div>
+          {l.company && (
+            <p className="text-sm mt-0.5 flex items-center gap-1" style={{ color: "#6677aa" }}>
+              <Building2 className="w-3.5 h-3.5" />{l.company}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5 text-xs shrink-0" style={{ color: "#4a5568" }}>
+          <CalendarDays className="w-3.5 h-3.5" />{timeAgo(l.created_at)}
+        </div>
+      </div>
+    </AdminCard>
+  );
+}
+
+// ─── Tab: Chiusure ────────────────────────────────────────────────────────────
+
+function ChiusureTab({ payments, totale, role }: { payments: Payment[]; totale: number; role: string | null }) {
+  return (
+    <div className="space-y-5">
+      <AdminCard className="p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#34d399" }}>Fatturato totale</p>
+            <p className="mt-1.5 text-3xl font-black text-foreground text-glow">{fmtEur(totale)}</p>
+            <p className="mt-1 text-sm" style={{ color: "#6677aa" }}>
+              {payments.length} {payments.length === 1 ? "pagamento ricevuto" : "pagamenti ricevuti"}
+            </p>
+          </div>
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl"
+            style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.25)" }}>
+            <Euro className="w-6 h-6" style={{ color: "#34d399" }} />
+          </div>
+        </div>
+      </AdminCard>
+
+      {payments.length === 0 ? (
+        <EmptyState icon={TrendingUp} text="Nessun pagamento registrato ancora." />
+      ) : (
+        <div className="space-y-3">
+          {payments.map(p => <ChiusuraCard key={p.id} payment={p} showVenditore={role === "admin"} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChiusuraCard({ payment: p, showVenditore }: { payment: Payment; showVenditore: boolean }) {
+  return (
+    <AdminCard className="p-4">
+      <div className="flex items-center gap-4">
+        <div className="w-1 self-stretch rounded-full shrink-0" style={{ background: "#34d399" }} />
+
+        <div className="flex items-center justify-center w-10 h-10 rounded-2xl shrink-0"
+          style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.2)" }}>
+          <CheckCircle2 className="w-5 h-5" style={{ color: "#34d399" }} />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold text-foreground">{p.lead?.full_name ?? "—"}</p>
+            {showVenditore && <VenditoreChip name={p.lead?.venditore?.full_name ?? null} />}
+          </div>
+          <p className="text-sm mt-0.5" style={{ color: "#6677aa" }}>
+            {p.description ?? p.lead?.company ?? "—"}
+          </p>
+        </div>
+
+        <div className="text-right shrink-0">
+          <p className="text-lg font-black" style={{ color: "#34d399" }}>{fmtEur(p.amount)}</p>
+          {p.paid_at && (
+            <p className="text-xs mt-0.5" style={{ color: "#4a5568" }}>
+              {new Date(p.paid_at).toLocaleDateString("it-IT", { day: "numeric", month: "short", year: "numeric" })}
+            </p>
+          )}
+        </div>
+      </div>
+    </AdminCard>
   );
 }
