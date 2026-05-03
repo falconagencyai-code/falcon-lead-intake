@@ -55,38 +55,47 @@ const PRESETS: { id: RangePreset; label: string }[] = [
   { id: "custom", label: "Personalizzato" },
 ];
 
+const ITALY_TZ = "Europe/Rome";
+
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ITALY_TZ }).format(new Date());
+}
+
+// Returns how many ms Italy is ahead of UTC for a given date string (YYYY-MM-DD)
+function italyOffsetMs(dateStr: string): number {
+  const probe = new Date(`${dateStr}T12:00:00Z`);
+  const local = probe.toLocaleString("sv-SE", { timeZone: ITALY_TZ });
+  return new Date(local.replace(" ", "T") + "Z").getTime() - probe.getTime();
 }
 
 function startOfDay(iso: string) {
-  return new Date(`${iso}T00:00:00.000Z`).toISOString();
+  const off = italyOffsetMs(iso);
+  return new Date(new Date(`${iso}T00:00:00.000Z`).getTime() - off).toISOString();
 }
 function endOfDay(iso: string) {
-  return new Date(`${iso}T23:59:59.999Z`).toISOString();
+  const off = italyOffsetMs(iso);
+  return new Date(new Date(`${iso}T23:59:59.999Z`).getTime() - off).toISOString();
+}
+
+function subtractDays(dateStr: string, n: number): string {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - n);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ITALY_TZ }).format(d);
 }
 
 function computeRange(preset: RangePreset, customFrom: string, customTo: string) {
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = todayISO();
   if (preset === "today") return { from: startOfDay(today), to: endOfDay(today), days: 1 };
   if (preset === "yesterday") {
-    const y = new Date(now);
-    y.setUTCDate(now.getUTCDate() - 1);
-    const yi = y.toISOString().slice(0, 10);
+    const yi = subtractDays(today, 1);
     return { from: startOfDay(yi), to: endOfDay(yi), days: 1 };
   }
   if (preset === "7d") {
-    const s = new Date(now);
-    s.setUTCDate(now.getUTCDate() - 6);
-    return { from: startOfDay(s.toISOString().slice(0, 10)), to: endOfDay(today), days: 7 };
+    return { from: startOfDay(subtractDays(today, 6)), to: endOfDay(today), days: 7 };
   }
   if (preset === "30d") {
-    const s = new Date(now);
-    s.setUTCDate(now.getUTCDate() - 29);
-    return { from: startOfDay(s.toISOString().slice(0, 10)), to: endOfDay(today), days: 30 };
+    return { from: startOfDay(subtractDays(today, 29)), to: endOfDay(today), days: 30 };
   }
-  // custom
   const f = customFrom || today;
   const t = customTo || today;
   const days = Math.max(
@@ -176,24 +185,28 @@ function AnalyticsPage() {
     : { step: "—", drop: 0 };
   const worstDropAvailable = hasEnoughData && worstDrop.drop > 0;
 
-  // Trend chart from leads (granularity: days in range)
+  // Trend chart from leads (granularity: days in range, Italian timezone)
   const trendData = useMemo(() => {
+    const endItalian = todayISO();
     const days: { day: string; invii: number; key: string }[] = [];
-    const end = new Date(range.to);
     for (let i = range.days - 1; i >= 0; i--) {
-      const d = new Date(end);
-      d.setUTCDate(end.getUTCDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      const label = d.toLocaleDateString("it-IT", { day: "2-digit", month: "short" });
+      const key = subtractDays(endItalian, i);
+      const label = new Date(`${key}T12:00:00Z`).toLocaleDateString("it-IT", {
+        day: "2-digit",
+        month: "short",
+        timeZone: ITALY_TZ,
+      });
       days.push({ day: label, invii: 0, key });
     }
     const counts = new Map<string, number>();
     for (const l of leads) {
-      const k = new Date(l.created_at).toISOString().slice(0, 10);
+      const k = new Intl.DateTimeFormat("en-CA", { timeZone: ITALY_TZ }).format(
+        new Date(l.created_at),
+      );
       counts.set(k, (counts.get(k) ?? 0) + 1);
     }
     return days.map((d) => ({ day: d.day, invii: counts.get(d.key) ?? 0 }));
-  }, [leads, range.to, range.days]);
+  }, [leads, range.days]);
 
   const hasFunnelData = events.length > 0;
 
@@ -334,8 +347,8 @@ function AnalyticsPage() {
         <AdminKpi
           icon={TrendingDown}
           title="Più abbandoni"
-          value={worstDropAvailable ? `${worstDrop.drop} ${worstDrop.drop === 1 ? "sessione" : "sessioni"}` : "N/D"}
-          meta={worstDropAvailable ? worstDrop.step : "dati insufficienti"}
+          value={worstDropAvailable ? worstDrop.step : "N/D"}
+          meta={worstDropAvailable ? `${worstDrop.drop} ${worstDrop.drop === 1 ? "sessione" : "sessioni"} abbandonate` : "dati insufficienti"}
           tone="orange"
         />
         <AdminKpi
