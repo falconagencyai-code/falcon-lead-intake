@@ -20,6 +20,7 @@ import { Route as AdminRoadmapRouteImport } from './routes/admin.roadmap'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
+import { Route as AdminGuidaRouteImport } from './routes/admin.guida'
 import { Route as AdminFattureRouteImport } from './routes/admin.fatture'
 import { Route as AdminContractsRouteImport } from './routes/admin.contracts'
 import { Route as AdminContabilitaRouteImport } from './routes/admin.contabilita'
@@ -85,6 +86,11 @@ const AdminLeadsRoute = AdminLeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminGuidaRoute = AdminGuidaRouteImport.update({
+  id: '/guida',
+  path: '/guida',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminFattureRoute = AdminFattureRouteImport.update({
   id: '/fatture',
   path: '/fatture',
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/fatture': typeof AdminFattureRoute
+  '/admin/guida': typeof AdminGuidaRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/pipeline': typeof AdminPipelineRoute
@@ -167,6 +174,7 @@ export interface FileRoutesByTo {
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/fatture': typeof AdminFattureRoute
+  '/admin/guida': typeof AdminGuidaRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/pipeline': typeof AdminPipelineRoute
@@ -190,6 +198,7 @@ export interface FileRoutesById {
   '/admin/contabilita': typeof AdminContabilitaRoute
   '/admin/contracts': typeof AdminContractsRoute
   '/admin/fatture': typeof AdminFattureRoute
+  '/admin/guida': typeof AdminGuidaRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/pipeline': typeof AdminPipelineRoute
@@ -214,6 +223,7 @@ export interface FileRouteTypes {
     | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/fatture'
+    | '/admin/guida'
     | '/admin/leads'
     | '/admin/login'
     | '/admin/pipeline'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/fatture'
+    | '/admin/guida'
     | '/admin/leads'
     | '/admin/login'
     | '/admin/pipeline'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/admin/contabilita'
     | '/admin/contracts'
     | '/admin/fatture'
+    | '/admin/guida'
     | '/admin/leads'
     | '/admin/login'
     | '/admin/pipeline'
@@ -353,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLeadsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/guida': {
+      id: '/admin/guida'
+      path: '/guida'
+      fullPath: '/admin/guida'
+      preLoaderRoute: typeof AdminGuidaRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/fatture': {
       id: '/admin/fatture'
       path: '/fatture'
@@ -429,6 +448,7 @@ interface AdminRouteChildren {
   AdminContabilitaRoute: typeof AdminContabilitaRoute
   AdminContractsRoute: typeof AdminContractsRoute
   AdminFattureRoute: typeof AdminFattureRoute
+  AdminGuidaRoute: typeof AdminGuidaRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
@@ -448,6 +468,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminContabilitaRoute: AdminContabilitaRoute,
   AdminContractsRoute: AdminContractsRoute,
   AdminFattureRoute: AdminFattureRoute,
+  AdminGuidaRoute: AdminGuidaRoute,
   AdminLeadsRoute: AdminLeadsRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminPipelineRoute: AdminPipelineRoute,
