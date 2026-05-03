@@ -27,6 +27,7 @@ import {
   X,
   XCircle,
 } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useEffect, useMemo, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
@@ -713,6 +714,8 @@ function PreventiviTab({ leads, quotes, role, onOpenQuotes, onOpen }: {
     return m;
   }, [quotes]);
 
+  const groups = useMemo(() => groupByDate(leads), [leads]);
+
   const inAttesa  = quotes.filter(q => q.status === "In attesa" || q.status === "Inviata" || q.status === "Vista").length;
   const accettati = quotes.filter(q => q.status === "Accettata" || q.status === "Pagato").length;
   const rifiutati = quotes.filter(q => q.status === "Rifiutata" || q.status === "Scaduta").length;
@@ -736,9 +739,23 @@ function PreventiviTab({ leads, quotes, role, onOpenQuotes, onOpen }: {
       {leads.length === 0 ? (
         <EmptyState icon={FileText} text="Nessun preventivo in corso." />
       ) : (
-        <div className="space-y-3">
-          {leads.map(l => (
-            <PreventivoCard key={l.id} lead={l} quotes={quoteMap.get(l.id) ?? []} showVenditore={role === "admin"} onOpen={() => onOpenQuotes(l.id)} />
+        <div className="space-y-6">
+          {groups.map(({ label, items }) => (
+            <div key={label}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-px flex-1" style={{ background: "rgba(167,139,250,0.15)" }} />
+                <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full"
+                  style={{ color: "#a78bfa", background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)" }}>
+                  {label}
+                </span>
+                <div className="h-px flex-1" style={{ background: "rgba(167,139,250,0.15)" }} />
+              </div>
+              <div className="space-y-3">
+                {items.map(l => (
+                  <PreventivoCard key={l.id} lead={l} quotes={quoteMap.get(l.id) ?? []} showVenditore={role === "admin"} onOpen={() => onOpenQuotes(l.id)} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -787,6 +804,8 @@ function PreventivoCard({ lead: l, quotes, showVenditore, onOpen }: {
 // ─── Tab: Clienti ─────────────────────────────────────────────────────────────
 
 function ClientiTab({ leads, role, onOpen }: { leads: LeadRow[]; role: string | null; onOpen: (id: string) => void }) {
+  const groups = useMemo(() => groupByDate(leads), [leads]);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3 rounded-2xl px-5 py-3"
@@ -799,8 +818,22 @@ function ClientiTab({ leads, role, onOpen }: { leads: LeadRow[]; role: string | 
       {leads.length === 0 ? (
         <EmptyState icon={UserCheck} text="Nessun cliente acquisito ancora." />
       ) : (
-        <div className="space-y-3">
-          {leads.map(l => <ClienteCard key={l.id} lead={l} showVenditore={role === "admin"} onOpen={() => onOpen(l.id)} />)}
+        <div className="space-y-6">
+          {groups.map(({ label, items }) => (
+            <div key={label}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-px flex-1" style={{ background: "rgba(74,222,128,0.12)" }} />
+                <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full"
+                  style={{ color: "#4ade80", background: "rgba(74,222,128,0.07)", border: "1px solid rgba(74,222,128,0.18)" }}>
+                  {label}
+                </span>
+                <div className="h-px flex-1" style={{ background: "rgba(74,222,128,0.12)" }} />
+              </div>
+              <div className="space-y-3">
+                {items.map(l => <ClienteCard key={l.id} lead={l} showVenditore={role === "admin"} onOpen={() => onOpen(l.id)} />)}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -1806,10 +1839,12 @@ function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
     }
 
     // 2. Mark quote as paid
-    await supabase.from("quotes").update({ status: "Pagato", pagato_at: now }).eq("id", quote.id);
+    const { error: quoteErr } = await supabase.from("quotes")
+      .update({ status: "Pagato", pagato_at: now }).eq("id", quote.id);
+    if (quoteErr) { toast.error(`Errore preventivo: ${quoteErr.message}`); setSaving(false); return; }
 
-    // 3. Upsert payment with invoice and commission data
-    await supabase.from("payments").upsert({
+    // 3. Insert payment record (insert, not upsert, to avoid partial-index conflict)
+    const { error: payErr } = await supabase.from("payments").insert({
       lead_id: lead.id,
       quote_id: quote.id,
       amount,
@@ -1820,10 +1855,18 @@ function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
       venditore_id: lead.venditore_id ?? null,
       commission_pct: commissionPct,
       commission_amount: commissionAmount,
-    }, { onConflict: "quote_id" });
+    });
+    // 23505 = unique_violation → payment already exists, continue anyway
+    if (payErr && payErr.code !== "23505") {
+      toast.error(`Errore pagamento: ${payErr.message}`);
+      setSaving(false);
+      return;
+    }
 
     // 4. Move lead to chiuso_vinto
-    await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", lead.id);
+    const { error: leadErr } = await supabase.from("leads")
+      .update({ pipeline_stage: "chiuso_vinto" }).eq("id", lead.id);
+    if (leadErr) { toast.error(`Errore lead: ${leadErr.message}`); setSaving(false); return; }
 
     // 5. Auto-create contabilità entry
     await supabase.from("transactions").insert({
@@ -1844,7 +1887,7 @@ function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
     onConfirmed();
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center px-4"
       style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}>
       <div className="relative w-full max-w-md rounded-3xl p-7 space-y-6"
@@ -1944,6 +1987,7 @@ function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
