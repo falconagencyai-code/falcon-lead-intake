@@ -957,7 +957,18 @@ function LeadDrawer({ lead, onClose }: { lead: LeadRow | null; onClose: () => vo
     onError: (e: Error) => toast.error(`Errore: ${e.message}`),
   });
 
-  const handleStageChange = (s: string) => {
+  const handleStageChange = async (s: string) => {
+    // Guard: can't move to "preventivo_inviato" without an existing quote
+    if (s === "preventivo_inviato" && supabase && lead) {
+      const { count } = await supabase
+        .from("quotes")
+        .select("id", { count: "exact", head: true })
+        .eq("lead_id", lead.id);
+      if (!count || count === 0) {
+        toast.error("Crea prima un preventivo per questo lead prima di spostarlo in 'Preventivo inviato'.");
+        return;
+      }
+    }
     setStageDraft(s);
     if (s === "chiuso_perso") {
       if (lostReasonDraft) stageMutation.mutate({ newStage: s, reason: lostReasonDraft });
@@ -1429,11 +1440,11 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
 
   return (
     <section>
-      <p className="label-section mb-3 flex items-center gap-2"><FileText className="h-3.5 w-3.5" />Proposte</p>
+      <p className="label-section mb-3 flex items-center gap-2"><FileText className="h-3.5 w-3.5" />Preventivi</p>
       {loading ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Caricamento…</div>
       ) : quotes.length === 0 ? (
-        <p className="text-sm text-muted-foreground italic">Nessuna proposta ancora.</p>
+        <p className="text-sm text-muted-foreground italic">Nessun preventivo ancora.</p>
       ) : (
         <div className="space-y-2">
           {quotes.map(q => {
@@ -1492,7 +1503,7 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
       ) : (
         <button onClick={() => setShowForm(true)}
           className="mt-3 inline-flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.2)] bg-[rgba(0,212,255,0.05)] px-4 py-2 text-xs font-semibold text-primary transition hover:bg-[rgba(0,212,255,0.1)]">
-          <Plus className="h-3.5 w-3.5" />Nuova proposta
+          <Plus className="h-3.5 w-3.5" />Nuovo preventivo
         </button>
       )}
     </section>
