@@ -17,6 +17,7 @@ import {
   Paperclip,
   Phone,
   Plus,
+  Receipt,
   Send,
   Trash2,
   TrendingUp,
@@ -1156,7 +1157,7 @@ function DrawerContent({
 
         <VenditoreSection lead={lead} />
         {lead.pipeline_stage === "chiuso_vinto" && <ProjectSection lead={lead} />}
-        <ProposalsSection leadId={lead.id} role={role} userId={user?.id ?? null}
+        <ProposalsSection lead={lead} role={role} userId={user?.id ?? null}
           onLeadStageChanged={() => queryClient.invalidateQueries({ queryKey: ["leads"] })} />
 
         {/* Risposte form */}
@@ -1381,9 +1382,10 @@ function ProjectSection({ lead }: { lead: LeadRow }) {
 
 // ─── Proposals section ────────────────────────────────────────────────────────
 
-function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
-  leadId: string; role: string | null; userId: string | null; onLeadStageChanged: () => void;
+function ProposalsSection({ lead, role, userId, onLeadStageChanged }: {
+  lead: LeadRow; role: string | null; userId: string | null; onLeadStageChanged: () => void;
 }) {
+  const leadId = lead.id;
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -1393,6 +1395,7 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
   const [sentAt, setSentAt] = useState(format(new Date(), "yyyy-MM-dd"));
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pendingPayQuote, setPendingPayQuote] = useState<QuoteRow | null>(null);
 
   const load = async () => {
     if (!supabase) { setLoading(false); return; }
@@ -1407,29 +1410,22 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
 
   const updateStatus = async (id: string, newStatus: string) => {
     if (!supabase) return;
-    const now = new Date().toISOString();
-    const patch: Record<string, unknown> = { status: newStatus };
-    if (newStatus === "Pagato") patch.pagato_at = now;
+    // Intercept "Pagato" → open payment modal
+    if (newStatus === "Pagato") {
+      const quote = quotes.find(q => q.id === id);
+      if (quote) { setPendingPayQuote(quote); return; }
+    }
     setQuotes(list => list.map(q => q.id === id ? { ...q, status: newStatus } : q));
-    const { error } = await supabase.from("quotes").update(patch).eq("id", id);
+    const { error } = await supabase.from("quotes").update({ status: newStatus }).eq("id", id);
     if (error) { toast.error(`Errore: ${error.message}`); load(); return; }
-    if (newStatus === "Accettata" || newStatus === "Pagato") {
+    if (newStatus === "Accettata") {
       await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", leadId);
       onLeadStageChanged();
     } else if (newStatus === "Rifiutata") {
       await supabase.from("leads").update({ pipeline_stage: "chiuso_perso" }).eq("id", leadId);
       onLeadStageChanged();
     }
-    if (newStatus === "Pagato") {
-      const quote = quotes.find(q => q.id === id);
-      if (quote) {
-        await supabase.from("payments").upsert({
-          lead_id: leadId, quote_id: id, amount: quote.amount ?? 0,
-          status: "paid", description: quote.service ?? "Pagamento", paid_at: now,
-        }, { onConflict: "quote_id" });
-      }
-    }
-    toast.success(newStatus === "Pagato" ? "Pagamento registrato nel fatturato ✓" : "Proposta aggiornata");
+    toast.success("Proposta aggiornata");
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -1467,6 +1463,18 @@ function ProposalsSection({ leadId, role, userId, onLeadStageChanged }: {
 
   return (
     <section>
+      {pendingPayQuote && (
+        <PaymentModal
+          quote={pendingPayQuote}
+          lead={lead}
+          onCancel={() => setPendingPayQuote(null)}
+          onConfirmed={() => {
+            setPendingPayQuote(null);
+            load();
+            onLeadStageChanged();
+          }}
+        />
+      )}
       <p className="label-section mb-3 flex items-center gap-2"><FileText className="h-3.5 w-3.5" />Preventivi</p>
       {loading ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" />Caricamento…</div>
@@ -1586,30 +1594,25 @@ function PreventivDetailDrawer({ lead, onClose, onOpenFullDrawer }: {
 
   const updateStatus = async (id: string, newStatus: string) => {
     if (!supabase || !lead) return;
-    const now = new Date().toISOString();
-    const patch: Record<string, unknown> = { status: newStatus };
-    if (newStatus === "Pagato") patch.pagato_at = now;
+    // Intercept "Pagato" → open payment modal
+    if (newStatus === "Pagato") {
+      const quote = quotes.find(q => q.id === id);
+      if (quote) { setPendingPayQuote(quote); return; }
+    }
     setQuotes(list => list.map(q => q.id === id ? { ...q, status: newStatus } : q));
-    const { error } = await supabase.from("quotes").update(patch).eq("id", id);
+    const { error } = await supabase.from("quotes").update({ status: newStatus }).eq("id", id);
     if (error) { toast.error(`Errore: ${error.message}`); load(lead.id); return; }
-    if (newStatus === "Accettata" || newStatus === "Pagato") {
+    if (newStatus === "Accettata") {
       await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", lead.id);
     } else if (newStatus === "Rifiutata") {
       await supabase.from("leads").update({ pipeline_stage: "chiuso_perso" }).eq("id", lead.id);
     }
-    if (newStatus === "Pagato") {
-      const quote = quotes.find(q => q.id === id);
-      if (quote) {
-        await supabase.from("payments").upsert({
-          lead_id: lead.id, quote_id: id, amount: quote.amount ?? 0,
-          status: "paid", description: quote.service ?? "Pagamento", paid_at: now,
-        }, { onConflict: "quote_id" });
-      }
-    }
     queryClient.invalidateQueries({ queryKey: ["leads"] });
     queryClient.invalidateQueries({ queryKey: ["pipeline-payments"] });
-    toast.success(newStatus === "Pagato" ? "Pagamento registrato nel fatturato ✓" : "Stato aggiornato");
+    toast.success("Stato aggiornato");
   };
+
+  const [pendingPayQuote, setPendingPayQuote] = useState<QuoteRow | null>(null);
 
   const isOpen = !!lead;
   const statusOptions = role === "admin" ? QUOTE_STATUS_OPTIONS_ADMIN : QUOTE_STATUS_OPTIONS;
@@ -1618,6 +1621,19 @@ function PreventivDetailDrawer({ lead, onClose, onOpenFullDrawer }: {
 
   return (
     <>
+      {pendingPayQuote && lead && (
+        <PaymentModal
+          quote={pendingPayQuote}
+          lead={lead}
+          onCancel={() => setPendingPayQuote(null)}
+          onConfirmed={() => {
+            setPendingPayQuote(null);
+            load(lead.id);
+            queryClient.invalidateQueries({ queryKey: ["leads"] });
+            queryClient.invalidateQueries({ queryKey: ["pipeline-payments"] });
+          }}
+        />
+      )}
       <div onClick={onClose}
         className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"}`} />
       <aside
@@ -1741,5 +1757,193 @@ function PreventivDetailDrawer({ lead, onClose, onOpenFullDrawer }: {
         )}
       </aside>
     </>
+  );
+}
+
+// ─── Payment Modal ────────────────────────────────────────────────────────────
+
+function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
+  quote: QuoteRow;
+  lead: LeadRow;
+  onCancel: () => void;
+  onConfirmed: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [file, setFile] = useState<File | null>(null);
+  const [commissionPct, setCommissionPct] = useState<number>(0);
+  const [saving, setSaving] = useState(false);
+
+  // Fetch venditore's commission %
+  useEffect(() => {
+    if (!supabase || !lead.venditore_id) return;
+    supabase.from("profiles")
+      .select("percentuale_commissione")
+      .eq("id", lead.venditore_id)
+      .single()
+      .then(({ data }) => { if (data) setCommissionPct(data.percentuale_commissione ?? 0); });
+  }, [lead.venditore_id]);
+
+  const amount = quote.amount ?? 0;
+  const commissionAmount = Math.round((amount * commissionPct) / 100 * 100) / 100;
+  const fmtEuro = (n: number) =>
+    new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+
+  const handleConfirm = async () => {
+    if (!supabase) return;
+    setSaving(true);
+    const now = new Date().toISOString();
+    const today = format(new Date(), "yyyy-MM-dd");
+
+    // 1. Upload invoice/receipt if provided
+    let invoice_url: string | null = null;
+    if (file) {
+      const ext = file.name.split(".").pop() ?? "pdf";
+      const path = `${lead.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("fatture").upload(path, file, { upsert: true });
+      if (upErr) { toast.error(`Errore upload: ${upErr.message}`); setSaving(false); return; }
+      const { data: urlData } = supabase.storage.from("fatture").getPublicUrl(path);
+      invoice_url = urlData.publicUrl;
+    }
+
+    // 2. Mark quote as paid
+    await supabase.from("quotes").update({ status: "Pagato", pagato_at: now }).eq("id", quote.id);
+
+    // 3. Upsert payment with invoice and commission data
+    await supabase.from("payments").upsert({
+      lead_id: lead.id,
+      quote_id: quote.id,
+      amount,
+      status: "paid",
+      description: quote.service ?? "Pagamento",
+      paid_at: now,
+      invoice_url,
+      venditore_id: lead.venditore_id ?? null,
+      commission_pct: commissionPct,
+      commission_amount: commissionAmount,
+    }, { onConflict: "quote_id" });
+
+    // 4. Move lead to chiuso_vinto
+    await supabase.from("leads").update({ pipeline_stage: "chiuso_vinto" }).eq("id", lead.id);
+
+    // 5. Auto-create contabilità entry
+    await supabase.from("transactions").insert({
+      type: "entrata",
+      category: "cliente",
+      amount,
+      description: `${lead.full_name ?? "—"} — ${quote.service ?? "Servizio"}`,
+      date: today,
+      lead_id: lead.id,
+      paid_by: "agenzia",
+    });
+
+    queryClient.invalidateQueries({ queryKey: ["leads"] });
+    queryClient.invalidateQueries({ queryKey: ["pipeline-payments"] });
+
+    toast.success("Pagamento registrato! Chiusure e Contabilità aggiornati ✓");
+    setSaving(false);
+    onConfirmed();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}>
+      <div className="relative w-full max-w-md rounded-3xl p-7 space-y-6"
+        style={{ background: "rgba(10,16,32,0.98)", border: "1px solid rgba(167,139,250,0.3)", boxShadow: "0 0 80px rgba(167,139,250,0.15)" }}>
+
+        {/* Close */}
+        <button onClick={onCancel} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-muted-foreground hover:text-foreground">
+          <X className="h-4 w-4" />
+        </button>
+
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+            style={{ background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)" }}>
+            <Receipt className="h-6 w-6" style={{ color: "#a78bfa" }} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#a78bfa" }}>Conferma pagamento</p>
+            <h2 className="text-lg font-black text-foreground">{fmtEuro(amount)}</h2>
+          </div>
+        </div>
+
+        {/* Quote summary */}
+        <div className="rounded-2xl px-4 py-3 space-y-1"
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <p className="text-sm font-semibold text-foreground">{quote.service ?? "—"}</p>
+          <p className="text-xs" style={{ color: "#6677aa" }}>
+            Cliente: <span className="text-foreground/80">{lead.full_name ?? "—"}</span>
+            {lead.company && <> · {lead.company}</>}
+          </p>
+          {lead.venditore && (
+            <p className="text-xs" style={{ color: "#6677aa" }}>
+              Venditore: <span style={{ color: "#7dd9ff" }}>{lead.venditore.full_name ?? "—"}</span>
+              {commissionPct > 0 && (
+                <span className="ml-2 font-semibold" style={{ color: "#a78bfa" }}>
+                  → commissione {commissionPct}% = {fmtEuro(commissionAmount)}
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+
+        {/* File upload */}
+        <div>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Allega fattura / ricevuta di pagamento
+          </p>
+          <label className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed px-4 py-5 text-center transition-all"
+            style={{
+              borderColor: file ? "rgba(167,139,250,0.6)" : "rgba(255,255,255,0.1)",
+              background: file ? "rgba(167,139,250,0.06)" : "rgba(255,255,255,0.02)",
+            }}>
+            {file ? (
+              <>
+                <Receipt className="h-6 w-6" style={{ color: "#a78bfa" }} />
+                <p className="text-sm font-semibold" style={{ color: "#a78bfa" }}>{file.name}</p>
+                <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB</p>
+              </>
+            ) : (
+              <>
+                <Paperclip className="h-6 w-6 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">Clicca per caricare PDF, JPG o PNG</p>
+                <p className="text-xs" style={{ color: "#4a5568" }}>Max 20 MB — opzionale</p>
+              </>
+            )}
+            <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden"
+              onChange={e => setFile(e.target.files?.[0] ?? null)} />
+          </label>
+          {file && (
+            <button onClick={() => setFile(null)} className="mt-1.5 text-xs text-muted-foreground hover:text-foreground">
+              Rimuovi file
+            </button>
+          )}
+        </div>
+
+        {/* Info box */}
+        <div className="rounded-xl px-4 py-3 space-y-1 text-xs" style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.15)" }}>
+          <p className="font-semibold" style={{ color: "#a78bfa" }}>Cosa succede dopo la conferma:</p>
+          <ul className="space-y-0.5" style={{ color: "#6677aa" }}>
+            <li>✓ Lead spostato in <span className="text-foreground/80">Chiusure</span></li>
+            <li>✓ Entrata registrata in <span className="text-foreground/80">Contabilità</span></li>
+            {commissionAmount > 0 && <li>✓ Commissione <span style={{ color: "#a78bfa" }}>{fmtEuro(commissionAmount)}</span> registrata per il team</li>}
+          </ul>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          <button onClick={onCancel} disabled={saving}
+            className="flex-1 rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground disabled:opacity-40">
+            Annulla
+          </button>
+          <button onClick={handleConfirm} disabled={saving}
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-bold transition disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg,rgba(167,139,250,0.25),rgba(167,139,250,0.12))", border: "1px solid rgba(167,139,250,0.5)", color: "#a78bfa", boxShadow: "0 0 24px rgba(167,139,250,0.2)" }}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            {saving ? "Salvataggio…" : "Conferma pagamento"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
