@@ -1873,7 +1873,7 @@ function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
     // paid_by check constraint only allows 'pat'|'stefano' — use null for automatic entries
     const { error: txErr } = await supabase.from("transactions").insert({
       type: "entrata",
-      category: "cliente",
+      category: quote.service ?? "Cliente",
       amount,
       description: `${lead.full_name ?? "—"} — ${quote.service ?? "Servizio"}`,
       date: today,
