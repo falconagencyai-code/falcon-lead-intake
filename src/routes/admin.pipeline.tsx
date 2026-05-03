@@ -1803,6 +1803,7 @@ function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
 }) {
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
   const [commissionPct, setCommissionPct] = useState<number>(0);
   const [saving, setSaving] = useState(false);
 
@@ -1869,15 +1870,18 @@ function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
     if (leadErr) { toast.error(`Errore lead: ${leadErr.message}`); setSaving(false); return; }
 
     // 5. Auto-create contabilità entry
-    await supabase.from("transactions").insert({
+    // paid_by check constraint only allows 'pat'|'stefano' — use null for automatic entries
+    const { error: txErr } = await supabase.from("transactions").insert({
       type: "entrata",
       category: "cliente",
       amount,
       description: `${lead.full_name ?? "—"} — ${quote.service ?? "Servizio"}`,
       date: today,
       lead_id: lead.id,
-      paid_by: "agenzia",
+      invoice_number: invoiceNumber.trim() || null,
+      paid_by: null,
     });
+    if (txErr) { toast.error(`Errore contabilità: ${txErr.message}`); setSaving(false); return; }
 
     queryClient.invalidateQueries({ queryKey: ["leads"] });
     queryClient.invalidateQueries({ queryKey: ["pipeline-payments"] });
@@ -1963,12 +1967,28 @@ function PaymentModal({ quote, lead, onCancel, onConfirmed }: {
           )}
         </div>
 
+        {/* Invoice number */}
+        <div>
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Numero fattura <span style={{ color: "#4a5568" }}>(opzionale)</span>
+          </label>
+          <input
+            type="text"
+            value={invoiceNumber}
+            onChange={e => setInvoiceNumber(e.target.value)}
+            placeholder="Es. FAT-2026-001"
+            className="w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.04)] px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-[rgba(167,139,250,0.5)]"
+          />
+        </div>
+
         {/* Info box */}
         <div className="rounded-xl px-4 py-3 space-y-1 text-xs" style={{ background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.15)" }}>
           <p className="font-semibold" style={{ color: "#a78bfa" }}>Cosa succede dopo la conferma:</p>
           <ul className="space-y-0.5" style={{ color: "#6677aa" }}>
             <li>✓ Lead spostato in <span className="text-foreground/80">Chiusure</span></li>
-            <li>✓ Entrata registrata in <span className="text-foreground/80">Contabilità</span></li>
+            <li>✓ Entrata registrata in <span className="text-foreground/80">Contabilità</span>
+              {invoiceNumber.trim() && <span style={{ color: "#a78bfa" }}> · n° {invoiceNumber.trim()}</span>}
+            </li>
             {commissionAmount > 0 && <li>✓ Commissione <span style={{ color: "#a78bfa" }}>{fmtEuro(commissionAmount)}</span> registrata per il team</li>}
           </ul>
         </div>
