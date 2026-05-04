@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-type Range = "today" | "7d" | "30d" | "90d";
+type Range = "today" | "yesterday" | "7d" | "30d" | "90d" | "custom";
 
 export type MetaCampaign = {
   id: string;
@@ -28,15 +28,20 @@ export type MetaAdsData = {
   error: string | null;
 };
 
-const datePresetMap: Record<Range, string> = {
+const datePresetMap: Record<Exclude<Range, "custom">, string> = {
   today: "today",
+  yesterday: "yesterday",
   "7d": "last_7d",
   "30d": "last_30d",
   "90d": "last_90d",
 };
 
 export const getMetaAds = createServerFn({ method: "GET" })
-  .inputValidator((data: { range?: Range }) => ({ range: data?.range ?? "30d" }))
+  .inputValidator((data: { range?: Range; since?: string; until?: string }) => ({
+    range: data?.range ?? "30d",
+    since: data?.since,
+    until: data?.until,
+  }))
   .handler(async ({ data }): Promise<MetaAdsData> => {
     const empty: MetaAdsData = {
       totals: { spend: 0, impressions: 0, clicks: 0, leads: 0, cpl: 0, ctr: 0 },
