@@ -57,7 +57,6 @@ export const getMetaAds = createServerFn({ method: "GET" })
     }
     if (!accountId.startsWith("act_")) accountId = `act_${accountId}`;
 
-    const preset = datePresetMap[data.range];
     const fields = [
       "campaign_id",
       "campaign_name",
@@ -68,9 +67,18 @@ export const getMetaAds = createServerFn({ method: "GET" })
       "actions",
     ].join(",");
 
+    let dateParam = "";
+    if (data.range === "custom" && data.since && data.until) {
+      const tr = encodeURIComponent(JSON.stringify({ since: data.since, until: data.until }));
+      dateParam = `time_range=${tr}`;
+    } else {
+      const preset = datePresetMap[(data.range === "custom" ? "30d" : data.range) as Exclude<Range, "custom">];
+      dateParam = `date_preset=${preset}`;
+    }
+
     const url =
       `https://graph.facebook.com/v21.0/${accountId}/insights` +
-      `?level=campaign&date_preset=${preset}&fields=${fields}&limit=200&access_token=${encodeURIComponent(token)}`;
+      `?level=campaign&${dateParam}&fields=${fields}&limit=200&access_token=${encodeURIComponent(token)}`;
 
     try {
       const res = await fetch(url);
