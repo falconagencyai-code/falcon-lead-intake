@@ -1,6 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { ArrowLeft, DollarSign, Loader2, RefreshCw, Target, TrendingUp, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { format } from "date-fns";
+import {
+  ArrowLeft,
+  CalendarIcon,
+  DollarSign,
+  Loader2,
+  RefreshCw,
+  Target,
+  TrendingUp,
+  Users,
+  Zap,
+} from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 import { AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
 import { getMetaAds, type MetaAdsData } from "@/server/meta-ads.functions";
@@ -15,10 +29,11 @@ export const Route = createFileRoute("/admin/ads")({
   component: AdsPage,
 });
 
-type Range = "today" | "7d" | "30d" | "90d";
+type Range = "today" | "yesterday" | "7d" | "30d" | "90d" | "custom";
 
 const ranges: { key: Range; label: string }[] = [
   { key: "today", label: "Oggi" },
+  { key: "yesterday", label: "Ieri" },
   { key: "7d", label: "7 giorni" },
   { key: "30d", label: "30 giorni" },
   { key: "90d", label: "90 giorni" },
@@ -31,13 +46,24 @@ const fmtPct = (n: number) => `${n.toFixed(2)}%`;
 
 function AdsPage() {
   const [range, setRange] = useState<Range>("30d");
+  const [customSince, setCustomSince] = useState<Date | undefined>();
+  const [customUntil, setCustomUntil] = useState<Date | undefined>();
   const [data, setData] = useState<MetaAdsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [liveSync, setLiveSync] = useState(false);
+  const intervalRef = useRef<number | null>(null);
 
-  const load = async (r: Range) => {
+  const load = async (r: Range, since?: Date, until?: Date) => {
+    if (r === "custom" && (!since || !until)) return;
     setLoading(true);
     try {
-      const result = await getMetaAds({ data: { range: r } });
+      const result = await getMetaAds({
+        data: {
+          range: r,
+          since: since ? format(since, "yyyy-MM-dd") : undefined,
+          until: until ? format(until, "yyyy-MM-dd") : undefined,
+        },
+      });
       setData(result);
     } catch (e) {
       console.error(e);
@@ -53,8 +79,25 @@ function AdsPage() {
   };
 
   useEffect(() => {
-    void load(range);
-  }, [range]);
+    void load(range, customSince, customUntil);
+  }, [range, customSince, customUntil]);
+
+  // Live sync: refetch every 30s when active
+  useEffect(() => {
+    if (!liveSync) {
+      if (intervalRef.current) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+    intervalRef.current = window.setInterval(() => {
+      void load(range, customSince, customUntil);
+    }, 30_000);
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+    };
+  }, [liveSync, range, customSince, customUntil]);
 
   const kpis = [
     { icon: DollarSign, title: "Spesa totale", value: data ? fmtEur(data.totals.spend) : "—" },
@@ -96,14 +139,73 @@ function AdsPage() {
             {r.label}
           </button>
         ))}
-        <button
-          onClick={() => load(range)}
-          disabled={loading}
-          className="ml-auto inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.1)] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          Aggiorna
-        </button>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              onClick={() => setRange("custom")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition",
+                range === "custom"
+                  ? "border-[rgba(0,212,255,0.5)] bg-[rgba(0,212,255,0.12)] text-primary"
+                  : "border-[rgba(255,255,255,0.1)] text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <CalendarIcon className="h-3.5 w-3.5" />
+              {customSince && customUntil
+                ? `${format(customSince, "dd/MM")} – ${format(customUntil, "dd/MM")}`
+                : "Personalizzato"}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto border-[rgba(255,255,255,0.08)] bg-[#0c1322] p-3" align="start">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Da</p>
+                <Calendar
+                  mode="single"
+                  selected={customSince}
+                  onSelect={setCustomSince}
+                  disabled={(d) => d > new Date()}
+                  className={cn("p-0 pointer-events-auto")}
+                />
+              </div>
+              <div>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">A</p>
+                <Calendar
+                  mode="single"
+                  selected={customUntil}
+                  onSelect={setCustomUntil}
+                  disabled={(d) => d > new Date() || (customSince ? d < customSince : false)}
+                  className={cn("p-0 pointer-events-auto")}
+                />
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setLiveSync((v) => !v)}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition",
+              liveSync
+                ? "border-green-500/50 bg-green-500/10 text-green-300"
+                : "border-[rgba(255,255,255,0.1)] text-muted-foreground hover:text-foreground"
+            )}
+            title="Aggiornamento automatico ogni 30 secondi"
+          >
+            <Zap className={cn("h-3.5 w-3.5", liveSync && "animate-pulse")} />
+            {liveSync ? "Live · ON" : "Live Sync"}
+          </button>
+          <button
+            onClick={() => load(range, customSince, customUntil)}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.1)] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Aggiorna
+          </button>
+        </div>
       </div>
 
       {data?.error && (
