@@ -27,7 +27,7 @@ function SetupProfiloPage() {
   const [hashError, setHashError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Detect Supabase error params in the URL hash (e.g. expired invite link)
+    // Detect explicit Supabase error params in the URL hash
     const hash = window.location.hash.slice(1);
     if (hash.includes("error=")) {
       const params = new URLSearchParams(hash);
@@ -43,7 +43,7 @@ function SetupProfiloPage() {
 
     if (!supabase) return;
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
         setEmail(session.user.email ?? "");
@@ -58,11 +58,20 @@ function SetupProfiloPage() {
       }
     });
 
-    // Fallback: if session never resolves in 6s, show an error instead of spinning forever
-    const timer = setTimeout(() => {
-      setHashError("Sessione non trovata. Il link potrebbe essere scaduto o già usato. Richiedi un nuovo invito.");
-    }, 6000);
-    return () => clearTimeout(timer);
+    // Only apply timeout when there is NO token in the hash at all
+    // (user navigated here without a valid invite link)
+    const hasToken = hash.includes("access_token") || hash.includes("refresh_token");
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (!hasToken) {
+      timer = setTimeout(() => {
+        setHashError("Nessun link di invito rilevato. Richiedi un nuovo invito all'amministratore.");
+      }, 5000);
+    }
+
+    return () => {
+      subscription.unsubscribe();
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
