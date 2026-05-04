@@ -29,10 +29,11 @@ export const Route = createFileRoute("/admin/ads")({
   component: AdsPage,
 });
 
-type Range = "today" | "7d" | "30d" | "90d";
+type Range = "today" | "yesterday" | "7d" | "30d" | "90d" | "custom";
 
 const ranges: { key: Range; label: string }[] = [
   { key: "today", label: "Oggi" },
+  { key: "yesterday", label: "Ieri" },
   { key: "7d", label: "7 giorni" },
   { key: "30d", label: "30 giorni" },
   { key: "90d", label: "90 giorni" },
