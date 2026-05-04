@@ -99,6 +99,53 @@ interface LeadOption {
 const eur = (n: number) =>
   new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
+function isoDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Counts how many billing events for a fixed expense have actually occurred
+ * within [fromStr, toStr], capped at today (no future billings counted).
+ * For "mensile": bills on start_date.getDate() each month.
+ * For "annuale": bills on the anniversary of start_date each year.
+ */
+function countFixedExpenseBillings(f: FixedExpense, fromStr: string, toStr: string): number {
+  if (!f.active || !f.start_date) return 0;
+  const todayStr = isoDateStr(new Date());
+  const effectiveTo = toStr < todayStr ? toStr : todayStr;
+  const effectiveFrom = f.start_date > fromStr ? f.start_date : fromStr;
+  if (effectiveFrom > effectiveTo) return 0;
+
+  const startDate = new Date(f.start_date + "T00:00:00");
+  const fromDate = new Date(effectiveFrom + "T00:00:00");
+  const toDate = new Date(effectiveTo + "T00:00:00");
+
+  if (f.frequency === "annuale") {
+    let count = 0;
+    for (let y = startDate.getFullYear(); y <= toDate.getFullYear(); y++) {
+      const billing = new Date(y, startDate.getMonth(), startDate.getDate());
+      if (billing >= fromDate && billing <= toDate) count++;
+    }
+    return count;
+  }
+
+  // mensile: billing on start day each month
+  const billingDay = startDate.getDate();
+  let count = 0;
+  let year = fromDate.getFullYear();
+  let month = fromDate.getMonth();
+  for (;;) {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const actualDay = Math.min(billingDay, daysInMonth);
+    const billing = new Date(year, month, actualDay);
+    if (billing > toDate) break;
+    if (billing >= fromDate) count++;
+    month++;
+    if (month > 11) { month = 0; year++; }
+  }
+  return count;
+}
+
 const tooltipStyle = {
   background: "#070b14",
   border: "1px solid rgba(0,212,255,0.2)",
@@ -197,14 +244,6 @@ function ContabilitaPage() {
     loadAll();
   }, []);
 
-  // Months span between periodFrom and periodTo (inclusive)
-  const monthsInPeriod = useMemo(() => {
-    const from = new Date(periodFrom);
-    const to = new Date(periodTo);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) return 1;
-    return (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()) + 1;
-  }, [periodFrom, periodTo]);
-
   // KPI computation — selected period
   const kpi = useMemo(() => {
     const from = new Date(periodFrom);
@@ -223,10 +262,11 @@ function ContabilitaPage() {
     const usciteUnaTantum = oneTimeExpenses
       .filter((o) => inRange(o.date))
       .reduce((s, o) => s + Number(o.amount || 0), 0);
-    const usciteFisseMese = fixedExpenses
-      .filter((f) => f.active)
-      .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
-    const uscite = usciteTx + usciteUnaTantum + usciteFisseMese * Math.max(1, monthsInPeriod);
+    const usciteFisse = fixedExpenses.reduce((s, f) => {
+      const n = countFixedExpenseBillings(f, periodFrom, periodTo);
+      return s + n * Number(f.amount || 0);
+    }, 0);
+    const uscite = usciteTx + usciteUnaTantum + usciteFisse;
     const utile = entrate - uscite;
     const inAttesa = transactions.filter((t) => t.type === "entrata" && !t.invoice_number && inRange(t.date)).length;
     return {
@@ -236,7 +276,7 @@ function ContabilitaPage() {
       quota50: utile / 2,
       inAttesa,
     };
-  }, [transactions, fixedExpenses, oneTimeExpenses, periodFrom, periodTo, monthsInPeriod]);
+  }, [transactions, fixedExpenses, oneTimeExpenses, periodFrom, periodTo]);
 
   // Chart — months within selected period
   const cashFlow = useMemo(() => {
@@ -264,10 +304,16 @@ function ContabilitaPage() {
         else b.uscite += Number(t.amount || 0);
       }
     });
-    const usciteFisseMese = fixedExpenses
-      .filter((f) => f.active)
-      .reduce((s, f) => s + (f.frequency === "annuale" ? Number(f.amount) / 12 : Number(f.amount)), 0);
-    buckets.forEach((b) => (b.uscite += usciteFisseMese));
+    buckets.forEach((b) => {
+      const [yr, mo0] = b.key.split("-").map(Number);
+      const mPad = String(mo0 + 1).padStart(2, "0");
+      const lastDay = new Date(yr, mo0 + 1, 0).getDate();
+      const mStart = `${yr}-${mPad}-01`;
+      const mEnd = `${yr}-${mPad}-${String(lastDay).padStart(2, "0")}`;
+      fixedExpenses.forEach((f) => {
+        b.uscite += countFixedExpenseBillings(f, mStart, mEnd) * Number(f.amount || 0);
+      });
+    });
     return buckets;
   }, [transactions, fixedExpenses, periodFrom, periodTo]);
 
