@@ -632,33 +632,33 @@ function ContabilitaPage() {
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               <tr className="border-b border-[rgba(0,212,255,0.1)]">
-                <th className="py-4">Data</th>
-                <th>Descrizione</th>
-                <th>Categoria</th>
-                <th className="text-right">Importo</th>
-                <th>Gestito da</th>
-                <th className="text-right">Azioni</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3">Data</th>
+                <th className="whitespace-nowrap px-4 py-3">Descrizione</th>
+                <th className="w-[140px] whitespace-nowrap px-4 py-3">Categoria</th>
+                <th className="w-[120px] whitespace-nowrap px-4 py-3 text-right">Importo</th>
+                <th className="w-[120px] whitespace-nowrap px-4 py-3">Gestito da</th>
+                <th className="w-[80px] whitespace-nowrap px-4 py-3 text-right">Azioni</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && oneTimeExpenses.length === 0 && (
-                <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Nessuna spesa una tantum</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Nessuna spesa una tantum</td></tr>
               )}
               {oneTimeExpenses.map((ot) => (
                 <tr key={ot.id} className="group border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
-                  <td className="py-4 text-muted-foreground">{new Date(ot.date).toLocaleDateString("it-IT")}</td>
-                  <td className="font-medium">{ot.description ?? "—"}</td>
-                  <td className="text-muted-foreground">{ot.category ?? "—"}</td>
-                  <td className="text-right font-semibold text-red-400">−{eur(Number(ot.amount))}</td>
-                  <td>
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(ot.date).toLocaleDateString("it-IT")}</td>
+                  <td className="px-4 py-3 font-medium">{ot.description ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{ot.category ?? "—"}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-red-400">−{eur(Number(ot.amount))}</td>
+                  <td className="px-4 py-3">
                     <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold", partnerBadgeClass[ot.paid_by])}>
                       {partnerLabel[ot.paid_by]}
                     </span>
                   </td>
-                  <td className="text-right">
+                  <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5 opacity-0 transition group-hover:opacity-100">
                       <button onClick={() => setEditingOt(ot)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
                         <Pencil className="h-4 w-4" />
@@ -714,30 +714,30 @@ function ContabilitaPage() {
           <table className="w-full min-w-[1040px] text-left text-sm">
             <thead className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               <tr className="border-b border-[rgba(0,212,255,0.1)]">
-                <th className="py-4">Data</th>
-                <th>Tipo</th>
-                <th>Gestito da</th>
-                <th>Categoria</th>
-                <th>Descrizione</th>
-                <th>Cliente</th>
-                <th className="text-right">Importo</th>
-                <th>Fattura n°</th>
-                <th className="text-right">Azioni</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3">Data</th>
+                <th className="w-[90px] whitespace-nowrap px-4 py-3">Tipo</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3">Gestito da</th>
+                <th className="w-[120px] whitespace-nowrap px-4 py-3">Categoria</th>
+                <th className="whitespace-nowrap px-4 py-3">Descrizione</th>
+                <th className="w-[130px] whitespace-nowrap px-4 py-3">Cliente</th>
+                <th className="w-[120px] whitespace-nowrap px-4 py-3 text-right">Importo</th>
+                <th className="w-[110px] whitespace-nowrap px-4 py-3">Fattura n°</th>
+                <th className="w-[80px] whitespace-nowrap px-4 py-3 text-right">Azioni</th>
               </tr>
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Caricamento…</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Caricamento…</td></tr>
               )}
               {!loading && filteredTx.length === 0 && (
-                <tr><td colSpan={9} className="py-8 text-center text-muted-foreground">Nessuna transazione</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Nessuna transazione</td></tr>
               )}
               {filteredTx.map((tx) => {
                 const handler = (tx.paid_by ?? "agenzia") as Handler;
                 return (
                 <tr key={tx.id} className="group border-b border-[rgba(255,255,255,0.06)] text-foreground/90">
-                  <td className="py-4 text-muted-foreground">{new Date(tx.date).toLocaleDateString("it-IT")}</td>
-                  <td>
+                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(tx.date).toLocaleDateString("it-IT")}</td>
+                  <td className="px-4 py-3">
                     <span className={cn(
                       "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize",
                       tx.type === "entrata"
@@ -747,7 +747,7 @@ function ContabilitaPage() {
                       {tx.type}
                     </span>
                   </td>
-                  <td>
+                  <td className="px-4 py-3">
                     <span className={cn(
                       "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold",
                       handlerBadgeClass[handler],
@@ -755,16 +755,16 @@ function ContabilitaPage() {
                       {handlerLabel[handler]}
                     </span>
                   </td>
-                  <td className="text-muted-foreground">{tx.category ?? "—"}</td>
-                  <td className="font-medium">{tx.description ?? "—"}</td>
-                  <td className="text-muted-foreground">
+                  <td className="px-4 py-3 text-muted-foreground">{tx.category ?? "—"}</td>
+                  <td className="px-4 py-3 font-medium">{tx.description ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
                     {tx.leads?.full_name ?? tx.leads?.company ?? "—"}
                   </td>
-                  <td className={cn("text-right font-semibold", tx.type === "entrata" ? "text-emerald-300" : "text-red-400")}>
+                  <td className={cn("px-4 py-3 text-right font-semibold", tx.type === "entrata" ? "text-emerald-300" : "text-red-400")}>
                     {tx.type === "entrata" ? "+" : "−"}{eur(Number(tx.amount))}
                   </td>
-                  <td className="text-muted-foreground">{tx.invoice_number ?? "—"}</td>
-                  <td className="text-right">
+                  <td className="px-4 py-3 text-muted-foreground">{tx.invoice_number ?? "—"}</td>
+                  <td className="px-4 py-3 text-right">
                     <div className="inline-flex items-center gap-1.5 opacity-0 transition group-hover:opacity-100">
                       <button onClick={() => setEditingTx(tx)} className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.08)] text-muted-foreground hover:border-primary hover:text-primary" aria-label="Modifica">
                         <Pencil className="h-4 w-4" />
