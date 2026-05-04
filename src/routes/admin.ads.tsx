@@ -45,7 +45,7 @@ const ranges: { key: Range; label: string }[] = [
 ];
 
 const fmtEur = (n: number) =>
-  new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 const fmtNum = (n: number) => new Intl.NumberFormat("it-IT").format(n);
 const fmtPct = (n: number) => `${n.toFixed(2)}%`;
 
