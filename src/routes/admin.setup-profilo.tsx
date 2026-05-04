@@ -24,9 +24,25 @@ function SetupProfiloPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [hashError, setHashError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Detect Supabase error params in the URL hash (e.g. expired invite link)
+    const hash = window.location.hash.slice(1);
+    if (hash.includes("error=")) {
+      const params = new URLSearchParams(hash);
+      const code = params.get("error_code") ?? params.get("error");
+      if (code === "otp_expired" || code === "access_denied") {
+        setHashError("Il link di invito è scaduto. Chiedi all'amministratore di inviare un nuovo invito.");
+      } else {
+        const desc = params.get("error_description")?.replace(/\+/g, " ");
+        setHashError(desc ?? "Link non valido. Richiedi un nuovo invito all'amministratore.");
+      }
+      return;
+    }
+
     if (!supabase) return;
+
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
@@ -41,6 +57,12 @@ function SetupProfiloPage() {
         setSessionReady(true);
       }
     });
+
+    // Fallback: if session never resolves in 6s, show an error instead of spinning forever
+    const timer = setTimeout(() => {
+      setHashError("Sessione non trovata. Il link potrebbe essere scaduto o già usato. Richiedi un nuovo invito.");
+    }, 6000);
+    return () => clearTimeout(timer);
   }, []);
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,6 +124,21 @@ function SetupProfiloPage() {
       setLoading(false);
     }
   };
+
+  if (hashError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: "#070b14" }}>
+        <div className="w-full max-w-sm rounded-2xl p-8 text-center space-y-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(248,113,113,0.25)" }}>
+          <div className="text-4xl">⏱️</div>
+          <h2 className="text-xl font-bold text-white">Link scaduto</h2>
+          <p className="text-sm leading-relaxed" style={{ color: "#6677aa" }}>{hashError}</p>
+          <p className="text-xs" style={{ color: "#4a5568" }}>
+            Contatta <span className="font-semibold" style={{ color: "#00d4ff" }}>falconagency.ai@gmail.com</span> per ricevere un nuovo invito.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!sessionReady) {
     return (
