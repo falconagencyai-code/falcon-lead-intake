@@ -446,15 +446,24 @@ function ProblemTimeline() {
   );
 }
 
+const FALCON_SID_KEY = "falcon_sid";
+
 function PaginaIntro() {
   useEffect(() => {
     if (!supabase) return;
-    const sid = typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    void supabase.from("form_events").insert({
-      session_id: sid, step: 0, step_name: "Pagina Intro", completed: false,
-    });
+    // Generate and persist the session_id so the form can reuse the same one
+    const existing = sessionStorage.getItem(FALCON_SID_KEY);
+    const sid = existing ?? (
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+    if (!existing) {
+      sessionStorage.setItem(FALCON_SID_KEY, sid);
+      void supabase.from("form_events").insert({
+        session_id: sid, step: 0, step_name: "Pagina Intro", completed: false,
+      });
+    }
   }, []);
 
   return (

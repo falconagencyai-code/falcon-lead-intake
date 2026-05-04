@@ -65,11 +65,15 @@ function FormPage() {
   const [visible, setVisible] = useState(true);
   const [state, setState] = useState<FormState>(initialState);
   const [submitting, setSubmitting] = useState(false);
-  const sessionIdRef = useRef<string>(
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  );
+  const sessionIdRef = useRef<string>(() => {
+    // Reuse the session_id from pagina-intro if the user came through it
+    const stored = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("falcon_sid") : null;
+    return stored ?? (
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
+  });
 
   // Fire-and-forget step tracking
   useEffect(() => {
