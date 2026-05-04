@@ -46,13 +46,24 @@ const fmtPct = (n: number) => `${n.toFixed(2)}%`;
 
 function AdsPage() {
   const [range, setRange] = useState<Range>("30d");
+  const [customSince, setCustomSince] = useState<Date | undefined>();
+  const [customUntil, setCustomUntil] = useState<Date | undefined>();
   const [data, setData] = useState<MetaAdsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [liveSync, setLiveSync] = useState(false);
+  const intervalRef = useRef<number | null>(null);
 
-  const load = async (r: Range) => {
+  const load = async (r: Range, since?: Date, until?: Date) => {
+    if (r === "custom" && (!since || !until)) return;
     setLoading(true);
     try {
-      const result = await getMetaAds({ data: { range: r } });
+      const result = await getMetaAds({
+        data: {
+          range: r,
+          since: since ? format(since, "yyyy-MM-dd") : undefined,
+          until: until ? format(until, "yyyy-MM-dd") : undefined,
+        },
+      });
       setData(result);
     } catch (e) {
       console.error(e);
@@ -68,8 +79,25 @@ function AdsPage() {
   };
 
   useEffect(() => {
-    void load(range);
-  }, [range]);
+    void load(range, customSince, customUntil);
+  }, [range, customSince, customUntil]);
+
+  // Live sync: refetch every 30s when active
+  useEffect(() => {
+    if (!liveSync) {
+      if (intervalRef.current) {
+        window.clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+    intervalRef.current = window.setInterval(() => {
+      void load(range, customSince, customUntil);
+    }, 30_000);
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+    };
+  }, [liveSync, range, customSince, customUntil]);
 
   const kpis = [
     { icon: DollarSign, title: "Spesa totale", value: data ? fmtEur(data.totals.spend) : "—" },
