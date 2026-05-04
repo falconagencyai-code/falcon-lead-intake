@@ -159,11 +159,13 @@ function VenditoreDrawer({
   onClose,
   initials: ini,
   onCommissioneUpdated,
+  onRemoved,
 }: {
   v: Venditore;
   onClose: () => void;
   initials: (n: string | null) => string;
   onCommissioneUpdated: (id: string, pct: number) => void;
+  onRemoved: (id: string) => void;
 }) {
   const { role } = useAuth();
   const [leads, setLeads] = useState<VendLead[]>([]);
@@ -173,6 +175,30 @@ function VenditoreDrawer({
   const [editingComm, setEditingComm] = useState(false);
   const [commDraft, setCommDraft] = useState(String(v.percentuale_commissione));
   const [commSaving, setCommSaving] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  const handleRemove = async () => {
+    if (!supabase) return;
+    setRemoving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/remove-venditore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ venditore_id: v.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Errore nella rimozione");
+      onRemoved(v.id);
+      onClose();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Errore imprevisto");
+    } finally {
+      setRemoving(false);
+      setConfirmRemove(false);
+    }
+  };
 
   useEffect(() => {
     if (!supabase) return;
@@ -242,6 +268,36 @@ function VenditoreDrawer({
           <X className="w-5 h-5" />
         </button>
 
+        {/* Remove confirmation overlay */}
+        {confirmRemove && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center p-6" style={{ background: "rgba(7,11,20,0.92)", backdropFilter: "blur(4px)" }}>
+            <div className="w-full max-w-sm rounded-2xl p-6 space-y-4 text-center" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(248,113,113,0.3)" }}>
+              <div className="text-3xl">⚠️</div>
+              <h3 className="text-lg font-bold text-white">Rimuovere {v.full_name ?? "questo venditore"}?</h3>
+              <p className="text-sm" style={{ color: "#6677aa" }}>
+                Il venditore perderà immediatamente l'accesso al pannello. Lead e dati storici rimarranno invariati.
+              </p>
+              <div className="flex gap-3 justify-center pt-1">
+                <button
+                  onClick={() => setConfirmRemove(false)}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleRemove}
+                  disabled={removing}
+                  className="rounded-xl px-4 py-2 text-sm font-bold transition-all"
+                  style={{ background: "rgba(248,113,113,0.15)", color: "#f87171", border: "1px solid rgba(248,113,113,0.4)" }}
+                >
+                  {removing ? "Rimozione…" : "Sì, rimuovi accesso"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="p-6 space-y-7">
           {/* Profile header */}
           <div className="flex items-center gap-4 pt-2">
@@ -263,6 +319,15 @@ function VenditoreDrawer({
               <h2 className="text-xl font-bold text-foreground">{v.full_name ?? "—"}</h2>
               <p className="text-sm text-muted-foreground">Venditore</p>
               {/* Commissione — editabile solo da admin */}
+              {role === "admin" && !editingComm && (
+                <button
+                  onClick={() => setConfirmRemove(true)}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold transition-all"
+                  style={{ background: "rgba(248,113,113,0.08)", color: "#f87171", border: "1px solid rgba(248,113,113,0.25)" }}
+                >
+                  Rimuovi accesso
+                </button>
+              )}
               {role === "admin" && editingComm ? (
                 <div className="mt-2 flex items-center gap-2">
                   <input
@@ -600,6 +665,10 @@ function TeamPage() {
           onCommissioneUpdated={(id, pct) => {
             setVenditori(vs => vs.map(v => v.id === id ? { ...v, percentuale_commissione: pct } : v));
             setSelectedVenditore(sv => sv && sv.id === id ? { ...sv, percentuale_commissione: pct } : sv);
+          }}
+          onRemoved={(id) => {
+            setVenditori(vs => vs.filter(v => v.id !== id));
+            setSelectedVenditore(null);
           }}
         />
       )}
