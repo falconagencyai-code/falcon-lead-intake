@@ -27,16 +27,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadRole = async (userId: string) => {
     if (!supabase) return;
-    try {
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", userId)
-        .single();
-      setRole((data?.role as Role) ?? "venditore");
-    } catch {
-      setRole("venditore");
+    const { data } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .single();
+    if (!data) {
+      // Profile deleted — force immediate sign out
+      await supabase.auth.signOut();
+      setUser(null);
+      setRole(null);
+      return;
     }
+    setRole((data.role as Role) ?? "venditore");
   };
 
   useEffect(() => {
