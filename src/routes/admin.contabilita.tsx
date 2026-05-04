@@ -97,7 +97,7 @@ interface LeadOption {
 // =============== HELPERS ===============
 
 const eur = (n: number) =>
-  new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
 const tooltipStyle = {
   background: "#070b14",
