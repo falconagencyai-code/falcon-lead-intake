@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowLeft, DollarSign, ExternalLink, Target, TrendingUp, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, DollarSign, Loader2, RefreshCw, Target, TrendingUp, Users } from "lucide-react";
 
 import { AdminCard, AdminSectionTitle } from "./admin/-admin-ui";
+import { getMetaAds, type MetaAdsData } from "@/server/meta-ads.functions";
 
 export const Route = createFileRoute("/admin/ads")({
   head: () => ({
@@ -13,14 +15,54 @@ export const Route = createFileRoute("/admin/ads")({
   component: AdsPage,
 });
 
-const kpis = [
-  { icon: DollarSign, title: "Spesa totale", value: "—" },
-  { icon: Target, title: "CPL medio", value: "—" },
-  { icon: Users, title: "Lead generati", value: "—" },
-  { icon: TrendingUp, title: "ROAS", value: "—" },
+type Range = "today" | "7d" | "30d" | "90d";
+
+const ranges: { key: Range; label: string }[] = [
+  { key: "today", label: "Oggi" },
+  { key: "7d", label: "7 giorni" },
+  { key: "30d", label: "30 giorni" },
+  { key: "90d", label: "90 giorni" },
 ];
 
+const fmtEur = (n: number) =>
+  new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+const fmtNum = (n: number) => new Intl.NumberFormat("it-IT").format(n);
+const fmtPct = (n: number) => `${n.toFixed(2)}%`;
+
 function AdsPage() {
+  const [range, setRange] = useState<Range>("30d");
+  const [data, setData] = useState<MetaAdsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = async (r: Range) => {
+    setLoading(true);
+    try {
+      const result = await getMetaAds({ data: { range: r } });
+      setData(result);
+    } catch (e) {
+      console.error(e);
+      setData({
+        totals: { spend: 0, impressions: 0, clicks: 0, leads: 0, cpl: 0, ctr: 0 },
+        campaigns: [],
+        currency: "EUR",
+        error: e instanceof Error ? e.message : "Errore sconosciuto",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load(range);
+  }, [range]);
+
+  const kpis = [
+    { icon: DollarSign, title: "Spesa totale", value: data ? fmtEur(data.totals.spend) : "—" },
+    { icon: Target, title: "CPL medio", value: data ? fmtEur(data.totals.cpl) : "—" },
+    { icon: Users, title: "Lead generati", value: data ? fmtNum(data.totals.leads) : "—" },
+    { icon: TrendingUp, title: "CTR medio", value: data ? fmtPct(data.totals.ctr) : "—" },
+  ];
+
   return (
     <div className="space-y-8">
       <header>
@@ -36,61 +78,120 @@ function AdsPage() {
           Ads & <span className="text-primary text-glow">Campagne</span>
         </h1>
         <p className="mt-3 max-w-2xl text-muted-foreground">
-          Collega il tuo Business Manager per vedere le campagne in tempo reale.
+          Performance live delle tue campagne Meta (Facebook & Instagram).
         </p>
       </header>
 
-      <AdminCard className="p-8 text-center">
-        <div className="mx-auto flex max-w-md flex-col items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[rgba(0,212,255,0.35)] bg-[rgba(0,212,255,0.08)] text-primary shadow-[0_0_28px_rgba(0,212,255,0.25)]">
-            <Target className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-bold text-foreground">Nessun account collegato</h2>
-          <p className="text-sm text-muted-foreground">
-            Connetti Facebook Business Manager per importare automaticamente spesa, CPL, lead e ROAS delle tue campagne.
-          </p>
-          <a
-            href="https://business.facebook.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary mt-2 inline-flex items-center gap-2 text-sm"
+      <div className="flex flex-wrap items-center gap-2">
+        {ranges.map((r) => (
+          <button
+            key={r.key}
+            onClick={() => setRange(r.key)}
+            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+              range === r.key
+                ? "border-[rgba(0,212,255,0.5)] bg-[rgba(0,212,255,0.12)] text-primary"
+                : "border-[rgba(255,255,255,0.1)] text-muted-foreground hover:text-foreground"
+            }`}
           >
-            Connetti Facebook Business Manager
-            <ExternalLink className="h-4 w-4" />
-          </a>
-        </div>
-      </AdminCard>
+            {r.label}
+          </button>
+        ))}
+        <button
+          onClick={() => load(range)}
+          disabled={loading}
+          className="ml-auto inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.1)] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+        >
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Aggiorna
+        </button>
+      </div>
+
+      {data?.error && (
+        <AdminCard className="border-red-500/30 bg-red-500/5 p-5 text-sm text-red-300">
+          ⚠️ {data.error}
+        </AdminCard>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {kpis.map((k) => {
+          const Icon = k.icon;
+          return (
+            <AdminCard key={k.title} className="p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">{k.title}</p>
+                  <p className="mt-3 text-3xl font-black text-foreground">
+                    {loading ? <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" /> : k.value}
+                  </p>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[rgba(0,212,255,0.25)] bg-[rgba(0,212,255,0.06)] text-primary">
+                  <Icon className="h-6 w-6" />
+                </div>
+              </div>
+            </AdminCard>
+          );
+        })}
+      </div>
 
       <section>
-        <AdminSectionTitle eyebrow="Preview" title="Metriche disponibili dopo il collegamento" />
-        <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((k) => {
-            const Icon = k.icon;
-            return (
-              <AdminCard key={k.title} className="p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{k.title}</p>
-                    <p className="mt-3 text-3xl font-black text-foreground/40">{k.value}</p>
-                    <span
-                      className="mt-3 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider"
-                      style={{
-                        color: "var(--falcon-subtle)",
-                        background: "rgba(255,255,255,0.04)",
-                        borderColor: "rgba(255,255,255,0.12)",
-                      }}
-                    >
-                      In arrivo
-                    </span>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] text-muted-foreground">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                </div>
-              </AdminCard>
-            );
-          })}
-        </div>
+        <AdminSectionTitle eyebrow="Dettaglio" title="Campagne attive" />
+        <AdminCard className="mt-5 overflow-hidden p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-[rgba(255,255,255,0.06)] text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="px-5 py-3">Campagna</th>
+                  <th className="px-5 py-3">Stato</th>
+                  <th className="px-5 py-3 text-right">Spesa</th>
+                  <th className="px-5 py-3 text-right">Impression</th>
+                  <th className="px-5 py-3 text-right">Click</th>
+                  <th className="px-5 py-3 text-right">CTR</th>
+                  <th className="px-5 py-3 text-right">Lead</th>
+                  <th className="px-5 py-3 text-right">CPL</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading && (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">
+                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                    </td>
+                  </tr>
+                )}
+                {!loading && data?.campaigns.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-5 py-10 text-center text-muted-foreground">
+                      Nessuna campagna nel periodo selezionato.
+                    </td>
+                  </tr>
+                )}
+                {!loading &&
+                  data?.campaigns.map((c) => (
+                    <tr key={c.id} className="border-b border-[rgba(255,255,255,0.04)] last:border-0">
+                      <td className="px-5 py-3 font-medium text-foreground">{c.name}</td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                            c.status === "ACTIVE"
+                              ? "bg-green-500/15 text-green-300"
+                              : "bg-white/5 text-muted-foreground"
+                          }`}
+                        >
+                          {c.status}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right">{fmtEur(c.spend)}</td>
+                      <td className="px-5 py-3 text-right">{fmtNum(c.impressions)}</td>
+                      <td className="px-5 py-3 text-right">{fmtNum(c.clicks)}</td>
+                      <td className="px-5 py-3 text-right">{fmtPct(c.ctr)}</td>
+                      <td className="px-5 py-3 text-right font-semibold text-primary">{fmtNum(c.leads)}</td>
+                      <td className="px-5 py-3 text-right">{c.cpl > 0 ? fmtEur(c.cpl) : "—"}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </AdminCard>
       </section>
     </div>
   );
