@@ -299,7 +299,7 @@ export default function GuidaPage() {
             <Card
               key={t.tier}
               className={t.highlight ? "ring-1" : ""}
-              style={t.highlight ? { "--tw-ring-color": "rgba(0,212,255,0.3)" } as React.CSSProperties : {}}
+              
             >
               <div className="p-5">
                 <div className="flex items-center justify-between mb-3">
