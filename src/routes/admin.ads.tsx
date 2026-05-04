@@ -139,14 +139,73 @@ function AdsPage() {
             {r.label}
           </button>
         ))}
-        <button
-          onClick={() => load(range)}
-          disabled={loading}
-          className="ml-auto inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.1)] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-          Aggiorna
-        </button>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              onClick={() => setRange("custom")}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition",
+                range === "custom"
+                  ? "border-[rgba(0,212,255,0.5)] bg-[rgba(0,212,255,0.12)] text-primary"
+                  : "border-[rgba(255,255,255,0.1)] text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <CalendarIcon className="h-3.5 w-3.5" />
+              {customSince && customUntil
+                ? `${format(customSince, "dd/MM")} – ${format(customUntil, "dd/MM")}`
+                : "Personalizzato"}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto border-[rgba(255,255,255,0.08)] bg-[#0c1322] p-3" align="start">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <div>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Da</p>
+                <Calendar
+                  mode="single"
+                  selected={customSince}
+                  onSelect={setCustomSince}
+                  disabled={(d) => d > new Date()}
+                  className={cn("p-0 pointer-events-auto")}
+                />
+              </div>
+              <div>
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">A</p>
+                <Calendar
+                  mode="single"
+                  selected={customUntil}
+                  onSelect={setCustomUntil}
+                  disabled={(d) => d > new Date() || (customSince ? d < customSince : false)}
+                  className={cn("p-0 pointer-events-auto")}
+                />
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setLiveSync((v) => !v)}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition",
+              liveSync
+                ? "border-green-500/50 bg-green-500/10 text-green-300"
+                : "border-[rgba(255,255,255,0.1)] text-muted-foreground hover:text-foreground"
+            )}
+            title="Aggiornamento automatico ogni 30 secondi"
+          >
+            <Zap className={cn("h-3.5 w-3.5", liveSync && "animate-pulse")} />
+            {liveSync ? "Live · ON" : "Live Sync"}
+          </button>
+          <button
+            onClick={() => load(range, customSince, customUntil)}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.1)] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Aggiorna
+          </button>
+        </div>
       </div>
 
       {data?.error && (
