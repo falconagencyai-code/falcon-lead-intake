@@ -25,6 +25,7 @@ function SetupProfiloPage() {
   const [error, setError] = useState<string | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [hashError, setHashError] = useState<string | null>(null);
+  const sessionEstablished = useRef(false);
 
   useEffect(() => {
     // Detect explicit Supabase error params in the URL hash
@@ -45,6 +46,7 @@ function SetupProfiloPage() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        sessionEstablished.current = true;
         setUserId(session.user.id);
         setEmail(session.user.email ?? "");
         setSessionReady(true);
@@ -52,19 +54,26 @@ function SetupProfiloPage() {
     });
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
+        sessionEstablished.current = true;
         setUserId(data.session.user.id);
         setEmail(data.session.user.email ?? "");
         setSessionReady(true);
       }
     });
 
-    // Only apply timeout when there is NO token in the hash at all
-    // (user navigated here without a valid invite link)
+    // Check both hash tokens (implicit flow) and PKCE code (query param flow)
     const hasToken = hash.includes("access_token") || hash.includes("refresh_token");
+    const hasCode = new URLSearchParams(window.location.search).has("code");
+
+    // Only start the timeout if there's no token/code AND no session yet.
+    // Supabase SDK strips the hash before useEffect runs, so we can't rely
+    // on hasToken being true — we use sessionEstablished ref instead.
     let timer: ReturnType<typeof setTimeout> | null = null;
-    if (!hasToken) {
+    if (!hasToken && !hasCode) {
       timer = setTimeout(() => {
-        setHashError("Nessun link di invito rilevato. Richiedi un nuovo invito all'amministratore.");
+        if (!sessionEstablished.current) {
+          setHashError("Nessun link di invito rilevato. Richiedi un nuovo invito all'amministratore.");
+        }
       }, 5000);
     }
 
