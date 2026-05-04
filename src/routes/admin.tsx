@@ -86,10 +86,10 @@ function AdminLayout() {
     if (loading) return;
     if (isSetupPage) return; // setup page handles its own session
     if (!user && !isLoginPage) navigate({ to: "/admin/login" });
-    if (user && isLoginPage) navigate({ to: "/admin/leads" });
+    if (user && isLoginPage) navigate({ to: "/admin/pipeline" });
     // Venditore cannot access dashboard or restricted pages
     if (user && role === "venditore" && !VENDOR_ROUTES.has(location.pathname)) {
-      navigate({ to: "/admin/leads" });
+      navigate({ to: "/admin/pipeline" });
     }
   }, [loading, user, role, isLoginPage, isSetupPage, location.pathname]);
 

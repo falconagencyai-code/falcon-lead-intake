@@ -135,7 +135,7 @@ function SetupProfiloPage() {
         .eq("id", userId);
       if (profileErr) throw profileErr;
 
-      navigate({ to: "/admin/leads" });
+      navigate({ to: "/admin/pipeline" });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Errore imprevisto");
     } finally {
