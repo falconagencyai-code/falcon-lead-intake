@@ -18,6 +18,7 @@ import { Route as AdminSetupProfiloRouteImport } from './routes/admin.setup-prof
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminRoadmapRouteImport } from './routes/admin.roadmap'
 import { Route as AdminPipelineRouteImport } from './routes/admin.pipeline'
+import { Route as AdminMcpHubRouteImport } from './routes/admin.mcp-hub'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
 import { Route as AdminGuidaRouteImport } from './routes/admin.guida'
@@ -74,6 +75,11 @@ const AdminRoadmapRoute = AdminRoadmapRouteImport.update({
 const AdminPipelineRoute = AdminPipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMcpHubRoute = AdminMcpHubRouteImport.update({
+  id: '/mcp-hub',
+  path: '/mcp-hub',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/admin/guida': typeof AdminGuidaRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mcp-hub': typeof AdminMcpHubRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/admin/guida': typeof AdminGuidaRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mcp-hub': typeof AdminMcpHubRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -201,6 +209,7 @@ export interface FileRoutesById {
   '/admin/guida': typeof AdminGuidaRoute
   '/admin/leads': typeof AdminLeadsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/mcp-hub': typeof AdminMcpHubRoute
   '/admin/pipeline': typeof AdminPipelineRoute
   '/admin/roadmap': typeof AdminRoadmapRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -226,6 +235,7 @@ export interface FileRouteTypes {
     | '/admin/guida'
     | '/admin/leads'
     | '/admin/login'
+    | '/admin/mcp-hub'
     | '/admin/pipeline'
     | '/admin/roadmap'
     | '/admin/settings'
@@ -249,6 +259,7 @@ export interface FileRouteTypes {
     | '/admin/guida'
     | '/admin/leads'
     | '/admin/login'
+    | '/admin/mcp-hub'
     | '/admin/pipeline'
     | '/admin/roadmap'
     | '/admin/settings'
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/admin/guida'
     | '/admin/leads'
     | '/admin/login'
+    | '/admin/mcp-hub'
     | '/admin/pipeline'
     | '/admin/roadmap'
     | '/admin/settings'
@@ -349,6 +361,13 @@ declare module '@tanstack/react-router' {
       path: '/pipeline'
       fullPath: '/admin/pipeline'
       preLoaderRoute: typeof AdminPipelineRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/mcp-hub': {
+      id: '/admin/mcp-hub'
+      path: '/mcp-hub'
+      fullPath: '/admin/mcp-hub'
+      preLoaderRoute: typeof AdminMcpHubRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/login': {
@@ -451,6 +470,7 @@ interface AdminRouteChildren {
   AdminGuidaRoute: typeof AdminGuidaRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminMcpHubRoute: typeof AdminMcpHubRoute
   AdminPipelineRoute: typeof AdminPipelineRoute
   AdminRoadmapRoute: typeof AdminRoadmapRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -471,6 +491,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminGuidaRoute: AdminGuidaRoute,
   AdminLeadsRoute: AdminLeadsRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminMcpHubRoute: AdminMcpHubRoute,
   AdminPipelineRoute: AdminPipelineRoute,
   AdminRoadmapRoute: AdminRoadmapRoute,
   AdminSettingsRoute: AdminSettingsRoute,

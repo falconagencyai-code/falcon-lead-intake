@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "falcon-mcp-gateway",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "MCP_SERVER_NAME": "falcon-mcp",
+    "MCP_SERVER_VERSION": "0.1.0"
+  }
+  // Secrets (set with `npx wrangler secret put <NAME>`):
+  //   SUPABASE_URL              — https://tpzpydnvcbcdkuthyweh.supabase.co
+  //   SUPABASE_ANON_KEY         — anon key (used to verify user JWT via auth.getUser)
+  //   SUPABASE_SERVICE_ROLE_KEY — service role (used to write audit log bypassing RLS)
+}

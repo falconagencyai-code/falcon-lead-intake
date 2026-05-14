@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CheckCircle,
   Clock,
+  Cpu,
   Layers,
   LayoutDashboard,
   Map,
@@ -55,6 +56,7 @@ const navItems: { label: string; to: string; icon: typeof Users; status: NavStat
   { label: "Contabilità", to: "/admin/contabilita", icon: BarChart2, status: "active" },
   { label: "Road-map", to: "/admin/roadmap", icon: Map, status: "active" },
   { label: "Guida", to: "/admin/guida", icon: BookOpen, status: "active" },
+  { label: "MCP Hub", to: "/admin/mcp-hub", icon: Cpu, status: "active" },
   { label: "Competitor", to: "/admin/competitor", icon: Radar, status: "mock" },
   { label: "Impostazioni", to: "/admin/settings", icon: Settings, status: "mock" },
 ];
