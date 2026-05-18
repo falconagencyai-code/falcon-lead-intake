@@ -784,6 +784,9 @@ function CodeBlock({ title, data }: { title: string; data: unknown }) {
 function ConnectSection() {
   const [tokens, setTokens] = useState<McpToken[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [minted, setMinted] = useState<string | null>(null);
   const gatewayUrl = import.meta.env.VITE_MCP_GATEWAY_URL ?? "https://falcon-mcp.<your-account>.workers.dev";
 
   const load = async () => {
@@ -802,6 +805,42 @@ function ConnectSection() {
     void load();
   }, []);
 
+  const createToken = async () => {
+    if (!supabase) return;
+    const name = newName.trim();
+    if (!name) {
+      toast.error("Dai un nome al token (es. 'Claude Code  laptop')");
+      return;
+    }
+    setCreating(true);
+    try {
+      const { data: userRes, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userRes.user) throw new Error("Non autenticato");
+
+      const rand = new Uint8Array(32);
+      crypto.getRandomValues(rand);
+      const plaintext = "fmcp_" + base64UrlEncode(rand);
+      const hash = await sha256Hex(plaintext);
+
+      const { error } = await supabase.from("mcp_tokens").insert({
+        user_id: userRes.user.id,
+        name,
+        token_hash: hash,
+        scopes: ["*"],
+      });
+      if (error) throw error;
+
+      setMinted(plaintext);
+      setNewName("");
+      await load();
+      toast.success("Token creato  copialo subito, non lo rivedrai");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Errore creazione token");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const revokeToken = async (token: McpToken) => {
     if (!supabase) return;
     if (!confirm(`Revocare il token "${token.name}"?`)) return;
@@ -818,12 +857,15 @@ function ConnectSection() {
 
   if (!isSupabaseConfigured) return <NotConfigured />;
 
-  const claudeCodeSnippet = JSON.stringify(
+  const tokenForSnippet = minted ?? "<INCOLLA_QUI_IL_TOKEN>";
+  const claudeCodeCli = `claude mcp add --transport http --scope user falcon \\\n  ${gatewayUrl} \\\n  --header "Authorization: Bearer ${tokenForSnippet}"`;
+  const claudeCodeJson = JSON.stringify(
     {
       mcpServers: {
         falcon: {
+          type: "http",
           url: gatewayUrl,
-          transport: "http",
+          headers: { Authorization: `Bearer ${tokenForSnippet}` },
         },
       },
     },
@@ -834,20 +876,75 @@ function ConnectSection() {
   return (
     <div className="space-y-5">
       <AdminCard className="p-5">
-        <AdminSectionTitle eyebrow="Setup" title="Collega Claude Code" />
+        <div className="flex items-center justify-between">
+          <AdminSectionTitle eyebrow="Step 1" title="Genera un token personale" />
+          <KeyRound className="h-5 w-5 text-muted-foreground" />
+        </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Aggiungi il blocco seguente in <code className="rounded bg-[rgba(255,255,255,0.05)] px-1 py-0.5 text-xs font-mono text-primary">~/.claude/mcp.json</code>:
+          Il token autentica Claude verso il gateway al posto tuo. Mostrato una volta sola: salvalo nel password manager.
         </p>
-        <CodeBlock title="mcp.json" data={claudeCodeSnippet} />
-        <p className="mt-4 text-xs text-muted-foreground">
-          Al primo accesso si aprirà il browser per il login con Supabase Auth (lo stesso account che usi per entrare in questo admin).
-        </p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Es. Claude Code  laptop"
+            className="flex-1 rounded-xl border border-[rgba(0,212,255,0.1)] bg-[rgba(0,0,0,0.4)] px-3 py-2 text-sm text-foreground outline-none focus:border-[rgba(0,212,255,0.4)]"
+            disabled={creating}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void createToken();
+            }}
+          />
+          <button
+            onClick={() => void createToken()}
+            disabled={creating || !newName.trim()}
+            className="inline-flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.32)] bg-[rgba(0,212,255,0.08)] px-4 py-2 text-sm font-semibold text-primary hover:bg-[rgba(0,212,255,0.14)] disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            {creating ? "Generazione..." : "Genera token"}
+          </button>
+        </div>
+
+        {minted && (
+          <div className="mt-4 rounded-xl border border-[rgba(52,211,153,0.32)] bg-[rgba(52,211,153,0.06)] p-4">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#34d399]">
+              <CheckCircle2 className="h-4 w-4" /> Token creato  copialo ora
+            </div>
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-[rgba(52,211,153,0.2)] bg-[rgba(0,0,0,0.45)] p-3">
+              <code className="flex-1 break-all text-xs font-mono text-foreground">{minted}</code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(minted);
+                  toast.success("Token copiato");
+                }}
+                className="rounded-lg border border-[rgba(52,211,153,0.32)] px-2.5 py-1 text-xs font-semibold text-[#34d399] hover:bg-[rgba(52,211,153,0.1)]"
+              >
+                Copia
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Se chiudi questa pagina senza copiarlo non potrai recuperarlo: dovrai revocarlo e generarne un altro.
+            </p>
+          </div>
+        )}
       </AdminCard>
 
       <AdminCard className="p-5">
-        <AdminSectionTitle eyebrow="Setup" title="Collega Claude AI (web)" />
+        <AdminSectionTitle eyebrow="Step 2A" title="Collega Claude Code (CLI)" />
         <p className="mt-3 text-sm text-muted-foreground">
-          Vai su Claude AI → Settings → Connectors → Add custom connector e incolla l'URL:
+          Comando one-shot da terminale (sostituisce `&lt;INCOLLA_QUI_IL_TOKEN&gt;` con quello generato sopra se non l'hai già fatto):
+        </p>
+        <CodeBlock title="terminale" data={claudeCodeCli} />
+        <p className="mt-4 text-xs text-muted-foreground">
+          In alternativa, aggiungi questo blocco in <code className="rounded bg-[rgba(255,255,255,0.05)] px-1 py-0.5 text-xs font-mono text-primary">~/.claude.json</code>:
+        </p>
+        <CodeBlock title="~/.claude.json" data={claudeCodeJson} />
+      </AdminCard>
+
+      <AdminCard className="p-5">
+        <AdminSectionTitle eyebrow="Step 2B" title="Collega Claude AI (web/desktop)" />
+        <p className="mt-3 text-sm text-muted-foreground">
+          Claude.ai → Settings → Connectors → Add custom connector. URL:
         </p>
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.1)] bg-[rgba(0,0,0,0.4)] p-3">
           <Link2 className="h-4 w-4 text-primary" />
@@ -862,11 +959,15 @@ function ConnectSection() {
             Copia
           </button>
         </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Poi scegli "Custom header" e incolla:{" "}
+          <code className="rounded bg-[rgba(255,255,255,0.05)] px-1 py-0.5 font-mono text-primary">Authorization: Bearer {tokenForSnippet}</code>
+        </p>
       </AdminCard>
 
       <AdminCard className="p-0">
         <div className="flex items-center justify-between p-5">
-          <AdminSectionTitle eyebrow="Tokens" title="Token personali attivi" />
+          <AdminSectionTitle eyebrow="Step 3" title="I tuoi token attivi" />
           <KeyRound className="h-5 w-5 text-muted-foreground" />
         </div>
         <div className="overflow-x-auto">
@@ -890,7 +991,7 @@ function ConnectSection() {
               ) : !tokens.length ? (
                 <tr>
                   <td colSpan={5} className="px-5 py-12 text-center text-muted-foreground">
-                    Nessun token attivo. Si creano automaticamente al primo login OAuth da Claude.
+                    Nessun token. Generane uno qui sopra per collegare Claude.
                   </td>
                 </tr>
               ) : (
@@ -937,6 +1038,20 @@ function ConnectSection() {
       </AdminCard>
     </div>
   );
+}
+
+function base64UrlEncode(buf: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < buf.length; i++) s += String.fromCharCode(buf[i]);
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 type McpToken = {
