@@ -51,11 +51,17 @@ export async function handleMcp(c: Context<{ Bindings: Env }>): Promise<Response
   // All other methods require auth
   const user = await authenticate(env, c.req.raw);
   if (!user) {
-    return c.json({
-      jsonrpc: "2.0",
-      id: body.id,
-      error: { code: -32001, message: "Unauthorized: missing or invalid Bearer token" },
-    } satisfies JsonRpcResponse, 401);
+    // Advertise the OAuth resource metadata so MCP clients can discover the auth flow.
+    const origin = new URL(c.req.url).origin;
+    const challenge = `Bearer realm="falcon-mcp", resource_metadata="${origin}/.well-known/oauth-protected-resource"`;
+    return new Response(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: body.id,
+        error: { code: -32001, message: "Unauthorized: missing or invalid Bearer token" },
+      } satisfies JsonRpcResponse),
+      { status: 401, headers: { "content-type": "application/json", "www-authenticate": challenge } },
+    );
   }
 
   if (body.method === "tools/list") {

@@ -944,7 +944,7 @@ function ConnectSection() {
       <AdminCard className="p-5">
         <AdminSectionTitle eyebrow="Step 2B" title="Collega Claude AI (web/desktop)" />
         <p className="mt-3 text-sm text-muted-foreground">
-          Claude.ai → Settings → Connectors → Add custom connector. URL:
+          Claude.ai → Settings → Connectors → Aggiungi connettore personalizzato. Incolla solo questo URL:
         </p>
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-[rgba(0,212,255,0.1)] bg-[rgba(0,0,0,0.4)] p-3">
           <Link2 className="h-4 w-4 text-primary" />
@@ -960,8 +960,7 @@ function ConnectSection() {
           </button>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Poi scegli "Custom header" e incolla:{" "}
-          <code className="rounded bg-[rgba(255,255,255,0.05)] px-1 py-0.5 font-mono text-primary">Authorization: Bearer {tokenForSnippet}</code>
+          I campi OAuth restano vuoti: Claude scopre l'auth da solo via metadata. Al primo uso ti chiederà di accedere col tuo account Falcon  e il token long-lived viene creato in automatico (lo vedi sotto in "I tuoi token attivi").
         </p>
       </AdminCard>
 
