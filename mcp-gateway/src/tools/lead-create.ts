@@ -1,5 +1,4 @@
 import type { ToolModule } from "../types.ts";
-import { createUserClient } from "../supabase.ts";
 
 export const leadCreate: ToolModule = {
   definition: {
@@ -29,8 +28,7 @@ export const leadCreate: ToolModule = {
       return { isError: true, content: [{ type: "text", text: "full_name è obbligatorio" }] };
     }
 
-    const jwt = (ctx as unknown as { jwt?: string }).jwt ?? "";
-    const sb = createUserClient(ctx.env, jwt);
+    const sb = ctx.db;
 
     const insertPayload: Record<string, unknown> = {
       full_name: fullName,

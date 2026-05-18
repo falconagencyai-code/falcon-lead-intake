@@ -1,5 +1,4 @@
 import type { ToolModule } from "../types.ts";
-import { createUserClient } from "../supabase.ts";
 
 const PIPELINE_STAGES = [
   "nuovo",
@@ -50,8 +49,7 @@ export const leadList: ToolModule = {
     const since = typeof args.since === "string" ? args.since : undefined;
     const limit = typeof args.limit === "number" ? Math.min(50, Math.max(1, args.limit)) : 20;
 
-    const jwt = ctx.env ? extractJwtFromCtx(ctx) : "";
-    const sb = createUserClient(ctx.env, jwt);
+    const sb = ctx.db;
 
     let query = sb
       .from("leads")
@@ -84,7 +82,3 @@ export const leadList: ToolModule = {
   },
 };
 
-function extractJwtFromCtx(ctx: { env: unknown }): string {
-  // JWT is injected via ctx by the dispatcher (see mcp-server.ts).
-  return (ctx as unknown as { jwt?: string }).jwt ?? "";
-}

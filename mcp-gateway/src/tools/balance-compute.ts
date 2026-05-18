@@ -1,5 +1,4 @@
 import type { ToolModule } from "../types.ts";
-import { createUserClient } from "../supabase.ts";
 
 /**
  * Implements the patDelta logic from CLAUDE.md memory:
@@ -39,8 +38,7 @@ export const balanceCompute: ToolModule = {
         : new Date(today.getFullYear(), today.getMonth(), 1);
     const periodEnd = typeof args.period_end === "string" ? new Date(args.period_end) : today;
 
-    const jwt = (ctx as unknown as { jwt?: string }).jwt ?? "";
-    const sb = createUserClient(ctx.env, jwt);
+    const sb = ctx.db;
 
     const periodStartIso = periodStart.toISOString().slice(0, 10);
 

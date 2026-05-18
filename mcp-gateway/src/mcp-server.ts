@@ -7,8 +7,8 @@ import type {
   ToolHandlerContext,
 } from "./types.ts";
 import { buildRegistry, type RegistryEntry } from "./registry.ts";
-import { authenticate, extractJwt } from "./auth.ts";
-import { createServiceClient } from "./supabase.ts";
+import { authenticate, extractJwt, isApiToken } from "./auth.ts";
+import { createServiceClient, createUserClient } from "./supabase.ts";
 import { logAction } from "./audit.ts";
 
 const PROTOCOL_VERSION = "2025-03-26";
@@ -92,12 +92,18 @@ export async function handleMcp(c: Context<{ Bindings: Env }>): Promise<Response
     }
 
     const start = Date.now();
-    const jwt = extractJwt(c.req.raw) ?? "";
+    const bearer = extractJwt(c.req.raw) ?? "";
+    // API tokens carry no Supabase JWT, so we use a service-role client (RLS bypassed,
+    // but the user has already been verified against mcp_tokens). JWT auth keeps the
+    // user-scoped client so RLS still applies.
+    const serviceClient = createServiceClient(env);
+    const db = isApiToken(bearer) ? serviceClient : createUserClient(env, bearer);
     const ctx: ToolHandlerContext & { jwt: string } = {
       env,
       user,
-      serviceClient: createServiceClient(env),
-      jwt,
+      db,
+      serviceClient,
+      jwt: bearer,
     };
 
     try {

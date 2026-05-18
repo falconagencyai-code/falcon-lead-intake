@@ -37,6 +37,12 @@ export interface McpToolDefinition {
 export interface ToolHandlerContext {
   env: Env;
   user: AuthedUser;
+  /**
+   * Pre-built Supabase client for tool handlers. Either user-scoped (JWT auth,
+   * RLS applies) or service-role (API-token auth, RLS bypassed; gateway has
+   * already verified the user role from mcp_tokens). Tools must use this.
+   */
+  db: ReturnType<typeof import("./supabase.ts").createServiceClient>;
   serviceClient: ReturnType<typeof import("./supabase.ts").createServiceClient>;
 }
 
